@@ -7,7 +7,13 @@ export function App() {
   return (
     <AuthProvider>
       <AppRoutes />
-      <ToastContainer position="top-center" autoClose={2500} theme="colored" hideProgressBar />
+      <ToastContainer
+        position="top-center"
+        autoClose={2500}
+        theme="colored"
+        hideProgressBar
+        style={{ zIndex: 20000 }}
+      />
     </AuthProvider>
   )
 }

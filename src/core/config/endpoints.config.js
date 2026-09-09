@@ -28,4 +28,16 @@ export const API_ENDPOINTS = {
     USUARIO_ASIGNACION: (usuarioId) => `/api/seguridad/usuarios/${usuarioId}/asignacion`,
     USUARIO_ESTADO: (usuarioId) => `/api/seguridad/usuarios/${usuarioId}/estado`,
   },
+  DETECCION: {
+    SALUD: '/api/deteccion/salud',
+    WMS_CAPAS: '/api/deteccion/wms/capas',
+    DETECTAR_WMS: '/api/deteccion/trabajos/detectar-wms',
+    PROGRESO: (jobId) => `/api/deteccion/trabajos/${jobId}/progreso`,
+    RESULTADO: (jobId) => `/api/deteccion/trabajos/${jobId}/resultado`,
+    CANCELAR: (jobId) => `/api/deteccion/trabajos/${jobId}/cancelar`,
+    ALINEACION: (jobId) => `/api/deteccion/trabajos/${jobId}/alineacion-manual`,
+    ALINEACION_PREVIEW: (jobId) => `/api/deteccion/trabajos/${jobId}/alineacion-manual/vista-previa`,
+    ALINEACION_APLICAR: (jobId) => `/api/deteccion/trabajos/${jobId}/alineacion-manual/aplicar`,
+    REGISTRO_CATASTRAL: (id) => `/api/deteccion/catastro/registro-catastral/${id}`,
+  },
 }

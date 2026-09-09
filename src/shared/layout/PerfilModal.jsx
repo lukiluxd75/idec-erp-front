@@ -155,7 +155,7 @@ export function PerfilModal({ open, onClose, user }) {
               onBlur={handleBlur('confirmPassword')}
               error={touched.confirmPassword ? errors.confirmPassword : undefined}
               icon={LockClosedIcon}
-              placeholder="Repite la nueva contraseña"
+              placeholder="Repita la nueva contraseña"
             />
 
             {formError && <Alert type="error" message={formError} />}

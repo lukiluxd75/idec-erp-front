@@ -95,7 +95,7 @@ class HttpClient {
       response = await fetch(url, config)
     } catch (networkError) {
       throw new ApiError(
-        'No se pudo conectar con el servidor backend. Verifica que esté en ejecución.',
+        'No se pudo conectar con el servidor backend. Verifique que esté en ejecución.',
         null,
         networkError
       )

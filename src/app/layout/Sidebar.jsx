@@ -5,14 +5,12 @@ import { NAV_SECTIONS, getCurrentDomain } from '@/shared/nav'
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
 const linkBase =
-  'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200'
-const linkActive = 'bg-brand-800 text-white shadow-sm'
-const linkInactive = 'text-brand-600 hover:bg-brand-900/10 hover:text-brand-800'
+  'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-150'
+const linkActive = 'bg-brand-800 text-white shadow-sm shadow-brand-800/20'
+const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 
 /**
- * Sidebar contextual: no se muestra en Inicio. Al entrar a un dominio (ver
- * shared/nav/navConfig.js) aparece mostrando únicamente los subapartados de ESE dominio,
- * más un link para volver a Inicio (donde están todos los demás módulos).
+ * Sidebar contextual: contraste alto sobre fondo blanco (legible sobre el celeste del ERP).
  */
 export function Sidebar({ open = true }) {
   const { pathname } = useLocation()
@@ -28,20 +26,32 @@ export function Sidebar({ open = true }) {
         open ? 'w-64' : 'w-0'
       }`}
     >
-      <aside className="flex h-dvh w-64 flex-col border-r border-brand-600/20 bg-accent-300 shadow-sm">
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5">
+      <aside className="flex h-dvh w-64 flex-col border-r border-slate-200/90 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.06)]">
+        <div className="border-b border-slate-100 px-4 py-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Navegación</p>
+          <div className="mt-2 flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-800 text-white">
+              <DomainIcon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-900">{currentDomain.label}</p>
+              <p className="truncate text-[11px] text-slate-500">Módulo activo</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           <NavLink
             to={INICIO.path}
-            className={`${linkBase} ${linkInactive} mb-3 border-b border-brand-600/20 pb-4`}
+            className={`${linkBase} ${linkInactive} mb-2`}
           >
-            <ArrowLeft className="h-[18px] w-[18px] shrink-0" />
+            <ArrowLeft className="h-[18px] w-[18px] shrink-0 text-slate-500" />
             <span>Volver a Inicio</span>
           </NavLink>
 
-          <div className="flex items-center gap-2.5 px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-brand-600/70">
-            <DomainIcon className="h-4 w-4 shrink-0" />
-            <span>{currentDomain.label}</span>
-          </div>
+          <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+            Funciones
+          </p>
 
           {currentDomain.children?.map((child) => {
             const ChildIcon = child.icon

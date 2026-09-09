@@ -1,79 +1,92 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutGrid, UserRound } from 'lucide-react'
+import { ChevronRight, LayoutGrid, UserRound } from 'lucide-react'
 import { Card, EmptyState } from '@/shared/ui'
 import { useAuth } from '@/auth/hooks/useAuth'
 import { NAV_SECTIONS, puedeVerModulo } from '@/shared/nav'
 
-function ModuleTile({ label, path, icon: Icon }) {
+function ModuleRow({ label, path, icon: Icon, children }) {
+  const subtitle = children?.length
+    ? `${children.length} función${children.length === 1 ? '' : 'es'} disponible${children.length === 1 ? '' : 's'}`
+    : 'Abrir módulo'
+
   return (
     <NavLink
       to={path}
-      className="group flex flex-col items-center gap-2.5 rounded-2xl border border-slate-200/70 bg-white/60 p-5 text-center shadow-xs backdrop-blur-sm transition-colors duration-150 hover:border-accent-300 hover:bg-white hover:shadow-md"
+      className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition-all duration-150 hover:border-accent-300 hover:bg-accent-50/40 hover:shadow-sm"
     >
-      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors duration-200 group-hover:bg-accent-500 group-hover:text-white">
-        <Icon className="h-6 w-6" />
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-brand-800 group-hover:text-white">
+        <Icon className="h-5 w-5" />
       </span>
-      <span className="text-xs font-semibold text-slate-700 transition-colors duration-200 group-hover:text-slate-900">
-        {label}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold text-slate-900">{label}</span>
+        <span className="mt-0.5 block text-xs text-slate-500">{subtitle}</span>
       </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-accent-600" />
     </NavLink>
   )
 }
 
 /**
- * Home de la aplicación: saludo personalizado del usuario logueado y la grilla de módulos
- * del ERP. Al entrar a un módulo desde acá, el sidebar contextual aparece (ver
- * app/layout/Sidebar.jsx) — antes de eso el sidebar no se muestra.
+ * Home del ERP: bienvenida clara y módulos en filas profesionales.
  */
 export function DashboardPage() {
   const { user } = useAuth()
 
   const displayName = user?.username || 'Usuario'
-  // Solo los módulos que el rol interno asignado habilita (CLAUDE.md §5) — sin rol
-  // asignado, `user.permisos` viene vacío y no se muestra ningún módulo.
   const modules = NAV_SECTIONS.filter(
     (section) => section.path !== '/dashboard' && puedeVerModulo(user?.permisos, section)
   )
 
   return (
-    <>
-      <Card>
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-            <UserRound className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-accent-600">
-              Bienvenido/a
-            </p>
-            <h2 className="text-lg font-bold text-slate-900">{displayName}</h2>
+    <div className="space-y-5">
+      <Card glass={false} className="!p-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-brand-800 to-brand-600 px-5 py-5 text-white sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
+              <UserRound className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/70">
+                Sesión iniciada
+              </p>
+              <h1 className="text-xl font-bold tracking-tight">{displayName}</h1>
+              <p className="mt-0.5 text-sm text-white/80">
+                Seleccione un módulo para continuar su trabajo.
+              </p>
+            </div>
           </div>
         </div>
       </Card>
 
-      <Card>
-        <div className="mb-5 flex items-center gap-2.5 border-b border-slate-200/60 pb-3.5">
-          <LayoutGrid className="h-5 w-5 text-accent-600" />
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-800">
-            Módulos del ERP
-          </h3>
+      <Card glass={false} className="space-y-4 !p-5 sm:!p-6">
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
+            <LayoutGrid className="h-4 w-4" />
+          </span>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+              Catálogo
+            </p>
+            <h2 className="text-sm font-bold text-slate-900">Módulos del ERP</h2>
+          </div>
         </div>
 
         {modules.length === 0 ? (
           <EmptyState
             icon={LayoutGrid}
-            title="Todavía no tenés ningún módulo asignado"
-            subtitle="Pedile a un administrador que te asigne un rol y un área en Seguridad → Permisos."
+            title="Todavía no tiene ningún módulo asignado"
+            subtitle="Solicite a un administrador que le asigne un rol y un área en Seguridad → Permisos."
+            className="py-10"
           />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2">
             {modules.map((module) => (
-              <ModuleTile key={module.path} {...module} />
+              <ModuleRow key={module.path} {...module} />
             ))}
           </div>
         )}
       </Card>
-    </>
+    </div>
   )
 }
 

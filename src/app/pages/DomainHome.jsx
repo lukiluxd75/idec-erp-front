@@ -1,26 +1,28 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 import { Card, SectionHeader } from '@/shared/ui'
 import { DOMAIN_SECTIONS } from '@/shared/nav'
 
-function SubsystemTile({ label, path, icon: Icon }) {
+function SubsystemRow({ label, path, icon: Icon }) {
   return (
     <NavLink
       to={path}
-      className="group flex flex-col items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/60 p-6 text-center shadow-xs backdrop-blur-sm transition-colors duration-150 hover:border-accent-300 hover:bg-white hover:shadow-md"
+      className="group flex items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition-all duration-150 hover:border-accent-300 hover:bg-accent-50/40 hover:shadow-sm"
     >
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition-colors duration-200 group-hover:bg-accent-500 group-hover:text-white">
-        <Icon className="h-6 w-6" />
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition-colors group-hover:bg-brand-800 group-hover:text-white">
+        <Icon className="h-5 w-5" />
       </span>
-      <span className="text-sm font-semibold text-slate-700 transition-colors duration-200 group-hover:text-slate-900">
-        {label}
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold text-slate-900">{label}</span>
+        <span className="mt-0.5 block text-xs text-slate-500">Abrir función</span>
       </span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-accent-600" />
     </NavLink>
   )
 }
 
 /**
- * Pantalla de entrada a un dominio (Catastro, Administración, ...): muestra sus
- * subsistemas como botones grandes, en vez de un submenú anidado en el sidebar.
+ * Pantalla de entrada a un dominio: lista profesional de funciones.
  */
 export function DomainHome() {
   const { pathname } = useLocation()
@@ -29,12 +31,12 @@ export function DomainHome() {
   if (!domain) return null
 
   return (
-    <Card>
-      <SectionHeader icon={domain.icon} eyebrow="Módulo" title={domain.label} />
+    <Card glass={false} className="space-y-5 !p-5 sm:!p-6">
+      <SectionHeader icon={domain.icon} eyebrow="Módulo" title={domain.label} className="mb-0" />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         {domain.children.map((item) => (
-          <SubsystemTile key={item.path} {...item} />
+          <SubsystemRow key={item.path} {...item} />
         ))}
       </div>
     </Card>

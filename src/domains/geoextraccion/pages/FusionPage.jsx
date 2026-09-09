@@ -57,7 +57,7 @@ export default function FusionPage() {
 
   const handleMerge = async () => {
     if (selectedFiles.length < 2) {
-      toast.warn('Necesitas al menos 2 archivos ZIP para unirlos.')
+      toast.warn('Se requieren al menos 2 archivos ZIP para unirlos.')
       return
     }
 
@@ -86,7 +86,7 @@ export default function FusionPage() {
     <Card>
       <SectionHeader icon={Layers} eyebrow="Geo-Extract" title="Fusión de Shapefiles" />
 
-      <p className="mb-5 text-sm text-slate-500">Sube múltiples archivos ZIP generados para unirlos en una sola capa.</p>
+      <p className="mb-5 text-sm text-slate-500">Cargue múltiples archivos ZIP generados para unirlos en una sola capa.</p>
 
       <label
         onDragOver={handleDragOver}
@@ -99,7 +99,7 @@ export default function FusionPage() {
       >
         <UploadCloud size={40} className={cn('mb-3 transition-colors', isDragging ? 'text-accent-600' : 'text-accent-500')} />
         <p className="font-bold text-slate-700">
-          {isDragging ? '¡Suelta los archivos aquí!' : 'Haz clic o arrastra tus archivos .ZIP aquí'}
+          {isDragging ? 'Suelte los archivos aquí' : 'Pulse o arrastre sus archivos .ZIP aquí'}
         </p>
         <p className="mt-1 text-xs text-slate-400">Solo se aceptan archivos ZIP que contengan un Shapefile</p>
         <input type="file" multiple accept=".zip" className="hidden" onChange={handleFileSelect} />

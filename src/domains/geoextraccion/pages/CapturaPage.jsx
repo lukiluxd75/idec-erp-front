@@ -267,7 +267,7 @@ export default function CapturaPage() {
     const xIdx = Object.keys(columnTypes).find((k) => columnTypes[k] === 'x')
     const yIdx = Object.keys(columnTypes).find((k) => columnTypes[k] === 'y')
     if (xIdx === undefined || yIdx === undefined) {
-      toast.warn('Asigna X e Y antes de continuar.')
+      toast.warn('Asigne las columnas X e Y antes de continuar.')
       return null
     }
     const points = []
@@ -384,7 +384,7 @@ export default function CapturaPage() {
 
   const deleteColumn = (colIndex) => {
     if (results[0].items.length <= 1) {
-      toast.warn('No puedes eliminar la única columna existente.')
+      toast.warn('No es posible eliminar la única columna existente.')
       return
     }
 
@@ -409,7 +409,7 @@ export default function CapturaPage() {
 
   const invertColumns = () => {
     if (results.length === 0 || results[0].items.length < 2) {
-      toast.warn('Necesitas al menos 2 columnas para invertir.')
+      toast.warn('Se requieren al menos 2 columnas para invertir.')
       return
     }
 
@@ -545,8 +545,8 @@ export default function CapturaPage() {
                 <EmptyState
                   icon={FileSpreadsheet}
                   iconClassName={isDragging ? 'text-accent-500' : undefined}
-                  title={isDragging ? '¡Suelta la imagen aquí!' : 'Arrastra un documento escaneado'}
-                  subtitle={!isDragging ? 'o si lo prefieres...' : undefined}
+                  title={isDragging ? 'Suelte la imagen aquí' : 'Arrastre un documento escaneado'}
+                  subtitle={!isDragging ? 'o, si lo prefiere…' : undefined}
                 />
 
                 <label className="pointer-events-auto mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-800 px-8 py-3.5 text-[10px] font-black uppercase text-white shadow-md shadow-brand-800/20 transition-all hover:bg-brand-600">
