@@ -1,6 +1,7 @@
 import { Component, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import '../styles/deteccion-precision-cursor.css'
 import { Alert, Button } from '@/shared/ui'
 
 const DEFAULT_CENTER = [-17.39325, -66.15625]
@@ -142,6 +143,9 @@ function DetectionMapInner({
     mapInstance.current = map
     drawnLayer.current = L.layerGroup().addTo(map)
     overlaysRef.current = {}
+    map.getContainer().classList.add('deteccion-precision-cursor')
+    map.getContainer().style.cursor = 'crosshair'
+    map.getContainer().title = 'Clic para agregar vértices del polígono'
 
     try {
       baseLayer.current = osmLayer().addTo(map)
@@ -362,8 +366,9 @@ function DetectionMapInner({
         </div>
         <div
           ref={mapRef}
-          style={{ height, width: '100%', minHeight: height, background: '#0a0d12' }}
-          className="w-full"
+          style={{ height, width: '100%', minHeight: height, background: '#0a0d12', cursor: 'crosshair' }}
+          className="deteccion-precision-cursor w-full"
+          title="Clic para agregar vértices del polígono"
         />
       </div>
       {typeof window !== 'undefined' &&

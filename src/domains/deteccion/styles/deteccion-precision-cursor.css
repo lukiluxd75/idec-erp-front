@@ -1,0 +1,24 @@
+/**
+ * Cursor de precisión para dibujar polígonos / marcar puntos de control.
+ * Leaflet usa “mano” (grab) por defecto y tapa la precisión del clic.
+ */
+.deteccion-precision-cursor,
+.deteccion-precision-cursor.leaflet-container,
+.deteccion-precision-cursor.leaflet-grab {
+  cursor: crosshair !important;
+}
+
+.deteccion-precision-cursor .leaflet-overlay-pane,
+.deteccion-precision-cursor .leaflet-marker-pane,
+.deteccion-precision-cursor .leaflet-tooltip-pane,
+.deteccion-precision-cursor .leaflet-overlay-pane svg,
+.deteccion-precision-cursor .leaflet-zoom-anim .leaflet-zoom-animated {
+  cursor: crosshair !important;
+}
+
+/* Al arrastrar el mapa: agarre; al soltar vuelve a mira */
+.deteccion-precision-cursor.leaflet-dragging,
+.deteccion-precision-cursor.leaflet-dragging.leaflet-grab,
+.deteccion-precision-cursor.leaflet-dragging .leaflet-grab {
+  cursor: grabbing !important;
+}

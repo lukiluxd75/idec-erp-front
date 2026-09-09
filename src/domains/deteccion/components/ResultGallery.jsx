@@ -27,7 +27,7 @@ const PRIMARY_KEYS = new Set(['resultado', 'panel_resultado', 'align_check'])
 /**
  * Galería de evidencias: imágenes a tamaño completo + visor ampliado.
  */
-export default function ResultGallery({ assetUrls = {} }) {
+export default function ResultGallery({ assetUrls = {}, compact = false }) {
   const [viewer, setViewer] = useState(null)
 
   const items = useMemo(() => {
@@ -53,20 +53,27 @@ export default function ResultGallery({ assetUrls = {} }) {
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-            <Images className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-              Evidencia
-            </p>
-            <h2 className="text-sm font-bold text-slate-900">Resultados visuales</h2>
-            <p className="text-[11px] text-slate-500">
-              Pulse una imagen para verla a tamaño completo.
-            </p>
+        {!compact && (
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
+              <Images className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                Evidencia
+              </p>
+              <h2 className="text-sm font-bold text-slate-900">Resultados visuales</h2>
+              <p className="text-[11px] text-slate-500">
+                Pulse una imagen para verla a tamaño completo.
+              </p>
+            </div>
           </div>
-        </div>
+        )}
+        {compact && (
+          <p className="text-[11px] text-slate-500">
+            Pulse una imagen para verla a tamaño completo.
+          </p>
+        )}
 
         {primary.length > 0 && (
           <div className="space-y-4">

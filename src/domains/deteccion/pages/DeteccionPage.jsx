@@ -2,19 +2,25 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { toast } from 'react-toastify'
 import {
   Building2,
-  Cpu,
+  ChevronDown,
+  ChevronUp,
   Images,
   Info,
+  Layers2,
   Loader2,
   MapPinned,
   Play,
   RefreshCw,
+  Settings2,
   Table2,
 } from 'lucide-react'
 import { Alert, Badge, Button, Card, EmptyState, Select, Spinner } from '@/shared/ui'
 import { deteccionApi } from '../api/deteccion.api'
 import CompareZoomPanel from '../components/CompareZoomPanel'
-import AsientosPanel from '../components/AsientosPanel'
+import ValidateEvidenceMaps from '../components/ValidateEvidenceMaps'
+import AlignReviewPanel from '../components/AlignReviewPanel'
+import PredioFiscalPanel from '../components/PredioFiscalPanel'
+import ExpedienteSiscatModal from '../components/ExpedienteSiscatModal'
 import ManualAlignPanel from '../components/ManualAlignPanel'
 import ResultGallery from '../components/ResultGallery'
 import DetectionProgressModal from '../components/DetectionProgressModal'
@@ -22,6 +28,13 @@ import DetectionProgressModal from '../components/DetectionProgressModal'
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
 
 const POLL_MS = 800
+
+/** Vista principal = validación fiscal; el resto son herramientas secundarias. */
+const RESULT_TABS = [
+  { id: 'validacion', label: 'Validación fiscal', icon: Table2 },
+  { id: 'chequeo', label: 'Chequeo A|B', icon: Layers2 },
+  { id: 'evidencias', label: 'Galería', icon: Images },
+]
 
 function bboxFromPolygon(ring) {
   if (!ring?.length) return null
@@ -59,17 +72,8 @@ function tipoBadgeVariant(tipo) {
   return 'warning'
 }
 
-function FieldGroup({ title, children }) {
-  return (
-    <section className="space-y-3">
-      <h3 className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{title}</h3>
-      <div className="space-y-3">{children}</div>
-    </section>
-  )
-}
-
 /**
- * Construction detection workbench — modern ERP layout.
+ * Banco de trabajo de inteligencia fiscal: configurar → detectar → validar (imagen vs SISCAT).
  */
 export default function DeteccionPage() {
   const [health, setHealth] = useState(null)
@@ -92,13 +96,18 @@ export default function DeteccionPage() {
   const [assetUrls, setAssetUrls] = useState({})
   const [selectedRow, setSelectedRow] = useState(null)
   const [alignOpen, setAlignOpen] = useState(false)
+  const [expedienteOpen, setExpedienteOpen] = useState(false)
   const [showGsdHelp, setShowGsdHelp] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [resultTab, setResultTab] = useState('validacion')
   const [cancelling, setCancelling] = useState(false)
   const [runStartedAt, setRunStartedAt] = useState(null)
 
   const pollRef = useRef(null)
   const objectUrlsRef = useRef([])
   const resultsRef = useRef(null)
+  /** Tras aplicar alineación manual, no reabrir el modal automáticamente al terminar la re-detección. */
+  const skipAutoAlignOpenRef = useRef(false)
 
   const yearOptions = useMemo(() => {
     const layers = wmsMeta.layers || []
@@ -194,19 +203,35 @@ export default function DeteccionPage() {
     const level = String(
       res.align_quality?.level || res.resumen_confiabilidad?.align_level || ''
     ).toLowerCase()
+    const method = String(
+      res.align_method || res.align_quality?.method || res.resumen_confiabilidad?.align_method || ''
+    ).toLowerCase()
+    const isManual = method.startsWith('manual')
+    const alignFailed = level === 'poor' || level === 'bad'
     const rows = res?.reporte_arquitecto || []
     if (rows.length) {
       const first = rows[0]
       const bbox = findBboxForRow(res, first)
       setSelectedRow({ ...first, bbox_px: bbox || first.bbox_px || first.bbox })
     }
-    if (res.needs_manual_align || level === 'poor' || level === 'bad') {
+
+    skipAutoAlignOpenRef.current = false
+
+    if (alignFailed) {
+      setResultTab('validacion')
+      // Aviso claro + modal para que pueda corregir y volver a aplicar
       setAlignOpen(true)
       toast.warn(
-        'La alineación automática es insuficiente. Se recomienda completar la alineación manual.'
+        isManual
+          ? 'La alineación manual sigue siendo insuficiente. Corrija los puntos de control y vuelva a aplicar la detección.'
+          : 'La alineación automática es insuficiente. Complete la alineación manual con puntos de control.'
       )
+    } else if (isManual) {
+      setResultTab('validacion')
+      toast.success('Alineación aplicada. Valide cada hallazgo: imagen vs ficha SISCAT.')
     } else {
-      toast.success('Detección finalizada correctamente.')
+      setResultTab('validacion')
+      toast.success('Detección lista. Valide hallazgos contrastando imagen y SISCAT.')
     }
     requestAnimationFrame(() => {
       resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -279,6 +304,8 @@ export default function DeteccionPage() {
     setResult(null)
     setSelectedRow(null)
     setAssetUrls({})
+    setExpedienteOpen(false)
+    setResultTab('validacion')
     setProgress({
       pct: 1,
       step_label: 'Iniciando detección…',
@@ -289,6 +316,7 @@ export default function DeteccionPage() {
     setRunning(true)
     setCancelling(false)
     setRunStartedAt(Date.now())
+    skipAutoAlignOpenRef.current = false
     try {
       const payload = {
         year_ref: Number(yearRef),
@@ -357,18 +385,29 @@ export default function DeteccionPage() {
       alignLevel === 'bad' ||
       alignLevel === 'warn')
   )
+  const alignFailed = alignLevel === 'poor' || alignLevel === 'bad'
   const alignAlertType =
     alignLevel === 'good' || alignLevel === 'ok'
       ? 'success'
-      : needsAlign
+      : alignFailed
         ? 'warning'
-        : 'info'
+        : needsAlign
+          ? 'warning'
+          : 'info'
+  const alignTitle = alignFailed
+    ? 'Alineación insuficiente — debe corregirla'
+    : 'Confiabilidad de la alineación'
+  const alignCtaLabel = alignFailed
+    ? 'Volver a alinear (puntos de control)'
+    : needsAlign
+      ? 'Abrir alineación manual'
+      : 'Revisar alineación'
   const polygonReady = !!(polygon && polygon.length >= 4)
   const gpuCount = Array.isArray(health?.engine?.gpus) ? health.engine.gpus.length : 0
   const canStart = health?.reachable && polygonReady && yearRef && yearMov && !running
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <DetectionProgressModal
         open={running}
         progress={progress}
@@ -377,49 +416,42 @@ export default function DeteccionPage() {
         onCancel={handleCancel}
       />
 
-      {/* Header compacto */}
-      <header className="rounded-3xl border border-white/70 bg-white/80 px-5 py-4 shadow-[0_8px_28px_rgba(100,116,139,0.10)] backdrop-blur-md sm:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      {/* 1 · Encabezado */}
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-800 text-white">
+            <Building2 className="h-5 w-5" aria-hidden="true" />
+          </span>
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-800 text-white shadow-md shadow-brand-800/25">
-                <Building2 className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-accent-600">
-                  Inteligencia fiscal · G.A.M.C.
-                </p>
-                <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
-                  Detección de construcciones
-                </h1>
-              </div>
-            </div>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-              Compare ortofotos, detecte cambios y valide hallazgos con predios y SISCAT.
+            <h1 className="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
+              Detección de construcciones
+            </h1>
+            <p className="truncate text-xs text-slate-500">
+              Compare ortofotos · detecte cambios · valide con SISCAT
             </p>
           </div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {loadingMeta ? (
-              <Badge variant="neutral">
-                <Spinner className="h-3 w-3" /> Sincronizando…
-              </Badge>
-            ) : health?.reachable ? (
-              <Badge variant="success" dot dotPulse>
-                Motor GPU{gpuCount ? ` · ${gpuCount}` : ''}
-              </Badge>
-            ) : (
-              <Badge variant="danger" dot>
-                Motor no disponible
-              </Badge>
-            )}
-            <Badge variant={polygonReady ? 'accent' : 'neutral'} dot>
-              {polygonReady ? 'Área lista' : 'Sin área'}
+        <div className="flex flex-wrap items-center gap-2">
+          {loadingMeta ? (
+            <Badge variant="neutral">
+              <Spinner className="h-3 w-3" /> Sincronizando…
             </Badge>
-            <Button variant="secondary" size="sm" onClick={loadMeta} disabled={loadingMeta} icon={RefreshCw}>
-              Actualizar
-            </Button>
-          </div>
+          ) : health?.reachable ? (
+            <Badge variant="success" dot>
+              Motor GPU{gpuCount ? ` · ${gpuCount}` : ''}
+            </Badge>
+          ) : (
+            <Badge variant="danger" dot>
+              Motor no disponible
+            </Badge>
+          )}
+          <Badge variant={polygonReady ? 'accent' : 'neutral'} dot>
+            {polygonReady ? 'Área lista' : 'Sin área'}
+          </Badge>
+          <Button variant="secondary" size="sm" onClick={loadMeta} disabled={loadingMeta} icon={RefreshCw}>
+            Actualizar
+          </Button>
         </div>
       </header>
 
@@ -442,112 +474,118 @@ export default function DeteccionPage() {
         />
       )}
 
-      {/* Banco de trabajo: parámetros | mapa */}
-      <div className="grid gap-5 xl:grid-cols-[340px_minmax(0,1fr)] xl:items-start">
-        <aside className="xl:sticky xl:top-4">
+      {/* 2 · Configurar y detectar */}
+      <section className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
+        <aside className="space-y-3 xl:sticky xl:top-3">
           <Card glass={false} className="!p-0 overflow-hidden">
-            <div className="border-b border-slate-100 bg-gradient-to-r from-brand-800 to-brand-600 px-5 py-4 text-white">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/70">
-                Configuración
-              </p>
-              <h2 className="mt-0.5 text-base font-bold">Parámetros de análisis</h2>
-            </div>
-
-            <div className="space-y-5 p-5">
-              <FieldGroup title="Periodo">
-                <Select label="Año A · referencia" value={yearRef} onChange={(e) => setYearRef(e.target.value)}>
-                  <option value="">Seleccione…</option>
-                  {yearOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  label="Año B · comparación"
-                  value={yearMov}
-                  onChange={(e) => setYearMov(e.target.value)}
-                >
-                  <option value="">Seleccione…</option>
-                  {yearOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-              </FieldGroup>
-
-              <FieldGroup title="Calidad y filtro">
+            <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-brand-700" />
                 <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-slate-700">Nitidez (GSD)</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowGsdHelp((v) => !v)}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent-600 hover:text-accent-500"
-                    >
-                      <Info className="h-3.5 w-3.5" />
-                      {showGsdHelp ? 'Ocultar' : 'Ayuda'}
-                    </button>
-                  </div>
-                  <Select value={targetGsd} onChange={(e) => setTargetGsd(e.target.value)}>
-                    <option value="0.25">0,25 m/px · máxima</option>
-                    <option value="0.30">0,30 m/px · recomendada</option>
-                    <option value="0.35">0,35 m/px · áreas extensas</option>
-                  </Select>
-                  {showGsdHelp && (
-                    <p className="mt-2 rounded-xl bg-accent-50 px-3 py-2 text-[11px] leading-relaxed text-slate-700 ring-1 ring-accent-200">
-                      El GSD es la resolución de descarga de las ortofotos (no el zoom del mapa).
-                      Conserve 0,30 m/px salvo áreas muy extensas. El motor divide automáticamente
-                      áreas grandes en bloques.
-                    </p>
-                  )}
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Paso 1
+                  </p>
+                  <h2 className="text-sm font-bold text-slate-900">Parámetros</h2>
                 </div>
-                <Select
-                  label="Probabilidad mínima"
-                  value={minProb}
-                  onChange={(e) => setMinProb(e.target.value)}
-                >
-                  <option value="0">Todas (≥ 0 %)</option>
-                  <option value="40">≥ 40 %</option>
-                  <option value="50">≥ 50 %</option>
-                  <option value="60">≥ 60 %</option>
-                  <option value="70">≥ 70 %</option>
-                  <option value="80">≥ 80 %</option>
-                </Select>
-              </FieldGroup>
-
-              <FieldGroup title="Cruce e infraestructura">
-                <Select
-                  label="Buffer predios"
-                  value={prediosBuffer}
-                  onChange={(e) => setPrediosBuffer(e.target.value)}
-                >
-                  {[0, 5, 10, 15, 20, 30].map((n) => (
-                    <option key={n} value={String(n)}>
-                      {n} m
-                    </option>
-                  ))}
-                </Select>
-                <Select
-                  label="GPU detector BTC"
-                  value={String(gpu)}
-                  onChange={(e) => setGpu(Number(e.target.value))}
-                >
-                  <option value="0">GPU 0</option>
-                  <option value="1">GPU 1</option>
-                </Select>
-                <p className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-500">
-                  <Cpu className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                  Las sombras SARU emplean ambas GPUs. Esta opción solo elige la tarjeta del detector.
-                </p>
-              </FieldGroup>
+              </div>
             </div>
 
-            <div className="space-y-3 border-t border-slate-100 bg-slate-50/80 p-5">
+            <div className="space-y-3 p-4">
+              <Select label="Año A · referencia" value={yearRef} onChange={(e) => setYearRef(e.target.value)}>
+                <option value="">Seleccione…</option>
+                {yearOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Año B · comparación"
+                value={yearMov}
+                onChange={(e) => setYearMov(e.target.value)}
+              >
+                <option value="">Seleccione…</option>
+                {yearOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Probabilidad mínima"
+                value={minProb}
+                onChange={(e) => setMinProb(e.target.value)}
+              >
+                <option value="0">Todas (≥ 0 %)</option>
+                <option value="40">≥ 40 %</option>
+                <option value="50">≥ 50 %</option>
+                <option value="60">≥ 60 %</option>
+                <option value="70">≥ 70 %</option>
+                <option value="80">≥ 80 %</option>
+              </Select>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <span>Opciones avanzadas</span>
+                {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+
+              {showAdvanced && (
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-slate-700">Nitidez (GSD)</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowGsdHelp((v) => !v)}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent-600 hover:text-accent-500"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                        {showGsdHelp ? 'Ocultar' : 'Ayuda'}
+                      </button>
+                    </div>
+                    <Select value={targetGsd} onChange={(e) => setTargetGsd(e.target.value)}>
+                      <option value="0.25">0,25 m/px · máxima</option>
+                      <option value="0.30">0,30 m/px · recomendada</option>
+                      <option value="0.35">0,35 m/px · áreas extensas</option>
+                    </Select>
+                    {showGsdHelp && (
+                      <p className="mt-2 rounded-lg bg-white px-2.5 py-2 text-[11px] leading-relaxed text-slate-600 ring-1 ring-slate-200">
+                        Resolución de descarga de ortofotos. Conserve 0,30 m/px salvo áreas muy
+                        extensas.
+                      </p>
+                    )}
+                  </div>
+                  <Select
+                    label="Buffer predios"
+                    value={prediosBuffer}
+                    onChange={(e) => setPrediosBuffer(e.target.value)}
+                  >
+                    {[0, 5, 10, 15, 20, 30].map((n) => (
+                      <option key={n} value={String(n)}>
+                        {n} m
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    label="GPU detector BTC"
+                    value={String(gpu)}
+                    onChange={(e) => setGpu(Number(e.target.value))}
+                  >
+                    <option value="0">GPU 0</option>
+                    <option value="1">GPU 1</option>
+                  </Select>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2 border-t border-slate-100 bg-white p-4">
               {!polygonReady && (
-                <p className="rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2 text-[11px] leading-relaxed text-slate-600">
-                  Dibuje un polígono en el mapa (mínimo 3 vértices) para habilitar la detección.
+                <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+                  Dibuje un polígono en el mapa para habilitar la detección.
                 </p>
               )}
               <Button
@@ -559,35 +597,29 @@ export default function DeteccionPage() {
               >
                 Detectar cambios
               </Button>
-              <p className="text-[11px] leading-relaxed text-slate-500">
-                Al iniciar, se abrirá un panel de progreso. La pantalla quedará bloqueada hasta
-                finalizar o detener el proceso.
-              </p>
             </div>
           </Card>
         </aside>
 
         <Card glass={false} className="!p-0 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-                <MapPinned className="h-4 w-4" />
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <MapPinned className="h-4 w-4 text-accent-600" />
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                  Área de trabajo
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  Paso 2
                 </p>
-                <h2 className="text-sm font-bold text-slate-900">Mapa WMS Catastro</h2>
+                <h2 className="text-sm font-bold text-slate-900">Área en el mapa</h2>
               </div>
             </div>
             <Badge variant={polygonReady ? 'success' : 'neutral'}>
               {polygonReady ? 'Polígono definido' : 'Pulse el mapa para dibujar'}
             </Badge>
           </div>
-          <div className="p-3 sm:p-4">
+          <div className="p-3">
             <Suspense
               fallback={
-                <div className="flex h-[520px] items-center justify-center rounded-2xl bg-slate-50">
+                <div className="flex h-[480px] items-center justify-center rounded-xl bg-slate-50">
                   <EmptyState
                     icon={Loader2}
                     title="Cargando mapa"
@@ -603,20 +635,48 @@ export default function DeteccionPage() {
                 hosts={wmsMeta.hosts}
                 basemapYear={basemapYear}
                 onBasemapYearChange={setBasemapYear}
-                height={560}
+                height={520}
               />
             </Suspense>
           </div>
         </Card>
-      </div>
+      </section>
 
-      {/* Resultados */}
+      {/* 3 · Resultados (solo tras detección) */}
       {result && (
-        <div ref={resultsRef} className="space-y-5">
-          <Alert type={alignAlertType} title="Confiabilidad de la alineación">
-            <p className="mt-1 leading-relaxed text-slate-800">{alignMsg}</p>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-700">
-              {alignLevel ? <Badge variant={needsAlign ? 'warning' : 'success'}>Nivel: {alignLevel}</Badge> : null}
+        <section ref={resultsRef} className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Paso 3</p>
+              <h2 className="text-base font-bold text-slate-900">
+                Banco de validación fiscal
+              </h2>
+              <p className="mt-0.5 max-w-2xl text-[11px] text-slate-500">
+                Contraste lo detectado en imagen con lo declarado en SISCAT. El porcentaje es un
+                indicador operativo, no certeza legal.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="success">Nuevas {result.n_nueva ?? '—'}</Badge>
+              <Badge variant="danger">Eliminadas {result.n_eliminada ?? '—'}</Badge>
+              <Badge variant="warning">Cambio {result.n_cambio ?? '—'}</Badge>
+            </div>
+          </div>
+
+          <Alert type={alignAlertType} title={alignTitle}>
+            <p className="mt-1 text-sm leading-relaxed text-slate-800">{alignMsg}</p>
+            {alignFailed && (
+              <p className="mt-2 text-sm font-semibold text-amber-900">
+                Los hallazgos pueden no ser fiables hasta corregir la alineación. Marque de nuevo
+                los puntos de control (mín. 3, recomendado 6) y pulse «Aplicar y re-detectar».
+              </p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {alignLevel ? (
+                <Badge variant={alignFailed || needsAlign ? 'warning' : 'success'}>
+                  Nivel: {alignLevel}
+                </Badge>
+              ) : null}
               {residualM != null ? (
                 <Badge variant="neutral">Residual ≈ {Number(residualM).toFixed(2)} m</Badge>
               ) : null}
@@ -624,17 +684,17 @@ export default function DeteccionPage() {
                 <Badge variant="success">Confirmadas: {rc.n_confirmadas}</Badge>
               ) : null}
               {rc.n_revisar_manual != null ? (
-                <Badge variant="warning">Revisión manual: {rc.n_revisar_manual}</Badge>
+                <Badge variant="warning">Revisión: {rc.n_revisar_manual}</Badge>
               ) : null}
-              {rc.n_rechazadas_total != null ? (
-                <Badge variant="danger">Rechazadas: {rc.n_rechazadas_total}</Badge>
-              ) : null}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" variant={needsAlign ? 'warning' : 'secondary'} onClick={() => setAlignOpen(true)}>
-                {needsAlign
-                  ? 'Abrir alineación manual con puntos de control'
-                  : 'Revisar / corregir alineación manual'}
+              <Button
+                size="sm"
+                variant={alignFailed || needsAlign ? 'warning' : 'secondary'}
+                onClick={() => setAlignOpen(true)}
+              >
+                {alignCtaLabel}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setResultTab('chequeo')}>
+                Chequeo A|B
               </Button>
             </div>
           </Alert>
@@ -651,143 +711,202 @@ export default function DeteccionPage() {
               setAlignOpen(false)
               setResult(null)
               setSelectedRow(null)
+              // Si tras re-detectar sigue poor/bad, finishWithResult abrirá de nuevo el aviso/modal
+              skipAutoAlignOpenRef.current = false
               const id = data.job_id || jobId || result.job_id
               if (id) startPolling(id)
             }}
           />
 
-          <div className="grid gap-5 xl:grid-cols-12">
-            <Card glass={false} className="space-y-4 xl:col-span-7 !p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-                    <Table2 className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                      Resultados
+          <Card glass={false} className="!p-0 overflow-hidden">
+            <div className="flex flex-wrap gap-1 border-b border-slate-200 bg-slate-50 px-2 pt-2">
+              {RESULT_TABS.map((tab) => {
+                const Icon = tab.icon
+                const active = resultTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setResultTab(tab.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-t-lg px-3.5 py-2.5 text-sm font-semibold transition-colors ${
+                      active
+                        ? 'bg-white text-brand-800 shadow-[0_-1px_0_0_white] ring-1 ring-slate-200 ring-b-white'
+                        : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="p-3 sm:p-4">
+              {resultTab === 'validacion' && (
+                <div className="grid gap-3 xl:grid-cols-12 xl:items-start">
+                  {/* Cola de casos */}
+                  <div className="space-y-2 xl:col-span-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="text-sm font-bold text-slate-900">Hallazgos</h3>
+                      <span className="text-[11px] tabular-nums text-slate-500">
+                        {reportRows.length}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Seleccione un caso para ver imagen y ficha SISCAT.
                     </p>
-                    <h2 className="text-sm font-bold text-slate-900">Reporte para el arquitecto</h2>
+                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                      <div className="max-h-[min(70vh,640px)] overflow-auto">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="sticky top-0 z-10 bg-brand-800 text-[10px] font-bold uppercase tracking-wider text-white">
+                            <tr>
+                              <th className="px-2 py-2">#</th>
+                              <th className="px-2 py-2">Tipo</th>
+                              <th className="px-2 py-2">%</th>
+                              <th className="px-2 py-2">Código</th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white">
+                            {reportRows.length === 0 ? (
+                              <tr>
+                                <td colSpan={4} className="px-3 py-8">
+                                  <EmptyState
+                                    title="Sin hallazgos"
+                                    subtitle={`No hay filas ≥ ${minProb} %.`}
+                                  />
+                                </td>
+                              </tr>
+                            ) : (
+                              reportRows.map((row, idx) => {
+                                const selected =
+                                  selectedRow &&
+                                  selectedRow.codigo_catastral === row.codigo_catastral &&
+                                  selectedRow.prob_pct === row.prob_pct &&
+                                  (selectedRow.tipo || selectedRow.tipo_cambio) ===
+                                    (row.tipo || row.tipo_cambio)
+                                const tipo = row.tipo || row.tipo_cambio || '—'
+                                return (
+                                  <tr
+                                    key={`${row.codigo_catastral}-${idx}`}
+                                    className={`cursor-pointer border-t border-slate-100 transition-colors ${
+                                      selected
+                                        ? 'bg-accent-50 ring-1 ring-inset ring-accent-200'
+                                        : 'hover:bg-slate-50'
+                                    }`}
+                                    onClick={() => handleRowClick(row)}
+                                  >
+                                    <td className="px-2 py-2 text-slate-500">
+                                      {row.nro ?? idx + 1}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <Badge variant={tipoBadgeVariant(tipo)}>{tipo}</Badge>
+                                    </td>
+                                    <td className="px-2 py-2 font-semibold tabular-nums text-slate-900">
+                                      {row.prob_pct != null ? row.prob_pct : '—'}
+                                    </td>
+                                    <td className="max-w-[7.5rem] truncate px-2 py-2 font-medium text-slate-900">
+                                      {row.codigo_catastral || '—'}
+                                    </td>
+                                  </tr>
+                                )
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Evidencia visual */}
+                  <div className="space-y-2 xl:col-span-5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">Evidencia visual</h3>
+                        <p className="text-[11px] text-slate-500">
+                          Zoom A|B + capas predios / vías / manzanas
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setResultTab('chequeo')}
+                        className="text-[11px] font-semibold text-accent-600 hover:underline"
+                      >
+                        Tablero / detecciones
+                      </button>
+                    </div>
+                    {result.img_bbox?.length === 4 ? (
+                      <ValidateEvidenceMaps
+                        row={selectedRow}
+                        yearA={yearRef}
+                        yearB={yearMov}
+                        imageUrlA={assetUrls.aligned_a || assetUrls.orto_ref}
+                        imageUrlB={assetUrls.aligned_b || assetUrls.orto_mov}
+                        resultadoUrl={assetUrls.resultado}
+                        imgBbox={result.img_bbox}
+                        imgWidth={result.img_width}
+                        imgHeight={result.img_height}
+                        hosts={wmsMeta.hosts}
+                      />
+                    ) : (
+                      <CompareZoomPanel
+                        row={selectedRow}
+                        yearA={yearRef}
+                        yearB={yearMov}
+                        imageUrlA={assetUrls.aligned_a || assetUrls.orto_ref}
+                        imageUrlB={assetUrls.aligned_b || assetUrls.orto_mov}
+                      />
+                    )}
+                  </div>
+
+                  {/* Ficha SISCAT */}
+                  <div className="xl:col-span-4 xl:sticky xl:top-3 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+                    <div className="mb-2">
+                      <h3 className="text-sm font-bold text-slate-900">Ficha SISCAT</h3>
+                      <p className="text-[11px] text-slate-500">
+                        Datos oficiales del predio para contrastar con la imagen.
+                      </p>
+                    </div>
+                    <PredioFiscalPanel
+                      row={selectedRow}
+                      onOpenFullExpediente={() => setExpedienteOpen(true)}
+                    />
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge variant="success">Nuevas {result.n_nueva ?? '—'}</Badge>
-                  <Badge variant="danger">Eliminadas {result.n_eliminada ?? '—'}</Badge>
-                  <Badge variant="warning">Cambio {result.n_cambio ?? '—'}</Badge>
-                </div>
-              </div>
+              )}
 
-              <p className="text-[11px] leading-relaxed text-slate-500">
-                Seleccione una fila para validar en la comparación ampliada y consultar SISCAT. El
-                porcentaje es un indicador operativo, no certeza legal.
-              </p>
+              {resultTab === 'chequeo' && (
+                <AlignReviewPanel
+                  yearA={yearRef}
+                  yearB={yearMov}
+                  alignCheckUrl={assetUrls.align_check}
+                  imageUrlA={assetUrls.aligned_a || assetUrls.orto_ref}
+                  imageUrlB={assetUrls.aligned_b || assetUrls.orto_mov}
+                  resultadoUrl={assetUrls.resultado}
+                  panelUrl={assetUrls.panel_resultado}
+                  defaultMode={
+                    assetUrls.align_check ? 'tablero' : assetUrls.resultado ? 'resultado' : 'lado'
+                  }
+                />
+              )}
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200">
-                <div className="max-h-[420px] overflow-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="sticky top-0 z-10 bg-brand-800 text-[10px] font-bold uppercase tracking-wider text-white">
-                      <tr>
-                        <th className="px-3 py-2.5">N.º</th>
-                        <th className="px-3 py-2.5">Tipo</th>
-                        <th className="px-3 py-2.5">Prob.</th>
-                        <th className="px-3 py-2.5">Código</th>
-                        <th className="px-3 py-2.5">Cruce</th>
-                        <th className="px-3 py-2.5">Asientos</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white">
-                      {reportRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-3 py-10">
-                            <EmptyState
-                              title="Sin hallazgos en el umbral actual"
-                              subtitle={`No hay filas ≥ ${minProb} %. Ajuste el filtro si corresponde.`}
-                            />
-                          </td>
-                        </tr>
-                      ) : (
-                        reportRows.map((row, idx) => {
-                          const asientos =
-                            row.asientos_catastro || row.asientos_fields?.asientos_catastro
-                          const nAsientos =
-                            asientos?.n_registros ?? (asientos?.registros || []).length
-                          const selected =
-                            selectedRow &&
-                            selectedRow.codigo_catastral === row.codigo_catastral &&
-                            selectedRow.prob_pct === row.prob_pct &&
-                            (selectedRow.tipo || selectedRow.tipo_cambio) ===
-                              (row.tipo || row.tipo_cambio)
-                          const tipo = row.tipo || row.tipo_cambio || '—'
-                          return (
-                            <tr
-                              key={`${row.codigo_catastral}-${idx}`}
-                              className={`cursor-pointer border-t border-slate-100 transition-colors ${
-                                selected
-                                  ? 'bg-accent-50 ring-1 ring-inset ring-accent-200'
-                                  : 'hover:bg-slate-50'
-                              }`}
-                              onClick={() => handleRowClick(row)}
-                            >
-                              <td className="px-3 py-2.5 text-slate-600">{row.nro ?? idx + 1}</td>
-                              <td className="px-3 py-2.5">
-                                <Badge variant={tipoBadgeVariant(tipo)}>{tipo}</Badge>
-                              </td>
-                              <td className="px-3 py-2.5 font-semibold tabular-nums text-slate-900">
-                                {row.prob_pct != null ? `${row.prob_pct}%` : '—'}
-                              </td>
-                              <td className="px-3 py-2.5 font-medium text-slate-900">
-                                {row.codigo_catastral || '—'}
-                              </td>
-                              <td className="max-w-[140px] truncate px-3 py-2.5 text-slate-600">
-                                {row.confianza_cruce || row.confianza || '—'}
-                              </td>
-                              <td className="px-3 py-2.5 text-slate-600">
-                                {asientos?.disponible === false ? 'Error' : nAsientos || '—'}
-                              </td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </Card>
-
-            <Card glass={false} className="space-y-3 xl:col-span-5 !p-5">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-                  <Images className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
-                    Validación
-                  </p>
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Comparación A · {yearRef || '—'} | B · {yearMov || '—'}
-                  </h2>
-                </div>
-              </div>
-              <CompareZoomPanel
-                row={selectedRow}
-                yearA={yearRef}
-                yearB={yearMov}
-                imageUrlA={assetUrls.aligned_a}
-                imageUrlB={assetUrls.aligned_b}
-              />
-            </Card>
-          </div>
-
-          <Card glass={false} className="!p-5">
-            <AsientosPanel row={selectedRow} />
+              {resultTab === 'evidencias' &&
+                (Object.keys(assetUrls).length > 0 ? (
+                  <ResultGallery assetUrls={assetUrls} compact />
+                ) : (
+                  <EmptyState
+                    title="Sin evidencias visuales"
+                    subtitle="Este trabajo no devolvió imágenes de resultado."
+                  />
+                ))}
+            </div>
           </Card>
 
-          {Object.keys(assetUrls).length > 0 && (
-            <Card glass={false} className="!p-5">
-              <ResultGallery assetUrls={assetUrls} />
-            </Card>
-          )}
-        </div>
+          <ExpedienteSiscatModal
+            open={expedienteOpen}
+            row={selectedRow}
+            onClose={() => setExpedienteOpen(false)}
+          />
+        </section>
       )}
     </div>
   )

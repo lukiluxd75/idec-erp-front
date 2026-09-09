@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EmptyState } from '@/shared/ui'
 import { MousePointerClick } from 'lucide-react'
 
@@ -47,15 +47,17 @@ function drawZoomPane(canvas, img, detBbox, cropBox, labelColor) {
   const ox = (out - dw) / 2
   const oy = (out - dh) / 2
   ctx.drawImage(img, cx0, cy0, cw, ch, ox, oy, dw, dh)
-  const [dx0, dy0, dx1, dy1] = detBbox.map(Number)
   ctx.strokeStyle = labelColor || '#efbe00'
   ctx.lineWidth = 3
-  ctx.strokeRect(ox + (dx0 - cx0) * scale, oy + (dy0 - cy0) * scale, (dx1 - dx0) * scale, (dy1 - dy0) * scale)
-  ctx.fillStyle = 'rgba(10,13,18,.72)'
-  ctx.fillRect(8, 8, 148, 24)
-  ctx.fillStyle = '#ffffff'
-  ctx.font = '600 12px Poppins, sans-serif'
-  ctx.fillText('Cambio detectado', 14, 24)
+  const [dx0, dy0, dx1, dy1] = detBbox.map(Number)
+  if (dx1 > dx0 && dy1 > dy0) {
+    ctx.strokeRect(ox + (dx0 - cx0) * scale, oy + (dy0 - cy0) * scale, (dx1 - dx0) * scale, (dy1 - dy0) * scale)
+    ctx.fillStyle = 'rgba(10,13,18,.72)'
+    ctx.fillRect(8, 8, 148, 24)
+    ctx.fillStyle = '#ffffff'
+    ctx.font = '600 12px Poppins, sans-serif'
+    ctx.fillText('Cambio detectado', 14, 24)
+  }
 }
 
 function loadImage(url) {
@@ -69,31 +71,34 @@ function loadImage(url) {
 
 /**
  * Architect validation: zoom year A | year B around a detection bbox.
+ * If there is no bbox, shows full aligned frames so the user can still compare.
  */
 export default function CompareZoomPanel({ row, yearA, yearB, imageUrlA, imageUrlB }) {
   const canvasA = useRef(null)
   const canvasB = useRef(null)
+  const [mode, setMode] = useState('zoom') // zoom | full
 
   useEffect(() => {
     let cancelled = false
     async function paint() {
       if (!row || !imageUrlA || !imageUrlB) return
       const bbox = row.bbox_px || row.bbox
-      if (!bbox || bbox.length < 4) return
       try {
         const [imgA, imgB] = await Promise.all([loadImage(imageUrlA), loadImage(imageUrlB)])
         if (cancelled) return
         const w = Math.min(imgA.naturalWidth || imgA.width, imgB.naturalWidth || imgB.width)
         const h = Math.min(imgA.naturalHeight || imgA.height, imgB.naturalHeight || imgB.height)
-        const crop = expandBbox(bbox, w, h)
         const color =
           row.tipo === 'nueva' || row.tipo_cambio === 'nueva'
             ? '#72ae17'
             : row.tipo === 'eliminada' || row.tipo_cambio === 'eliminada'
               ? '#d60035'
               : '#efbe00'
-        drawZoomPane(canvasA.current, imgA, bbox, crop, color)
-        drawZoomPane(canvasB.current, imgB, bbox, crop, color)
+        const useFull = mode === 'full' || !bbox || bbox.length < 4
+        const crop = useFull ? [0, 0, w, h] : expandBbox(bbox, w, h)
+        const det = bbox && bbox.length >= 4 ? bbox : [0, 0, 1, 1]
+        drawZoomPane(canvasA.current, imgA, useFull ? [0, 0, 0, 0] : det, crop, color)
+        drawZoomPane(canvasB.current, imgB, useFull ? [0, 0, 0, 0] : det, crop, color)
       } catch {
         /* ignore paint errors */
       }
@@ -102,7 +107,7 @@ export default function CompareZoomPanel({ row, yearA, yearB, imageUrlA, imageUr
     return () => {
       cancelled = true
     }
-  }, [row, imageUrlA, imageUrlB])
+  }, [row, imageUrlA, imageUrlB, mode])
 
   if (!row) {
     return (
@@ -111,6 +116,17 @@ export default function CompareZoomPanel({ row, yearA, yearB, imageUrlA, imageUr
           icon={MousePointerClick}
           title="Sin fila seleccionada"
           subtitle="Seleccione un hallazgo del reporte para comparar el año A y el año B."
+        />
+      </div>
+    )
+  }
+
+  if (!imageUrlA || !imageUrlB) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10">
+        <EmptyState
+          title="Ortofotos no disponibles"
+          subtitle="Abra la pestaña «Chequeo A|B» para ver el tablero y el resultado completo."
         />
       </div>
     )
@@ -127,7 +143,23 @@ export default function CompareZoomPanel({ row, yearA, yearB, imageUrlA, imageUr
           <span className="font-semibold tabular-nums text-slate-900">{row.prob_pct}%</span>
         )}
         <span className="font-medium text-slate-900">{row.codigo_catastral || 'Sin código'}</span>
-        {!bbox && <span className="text-state-amber">Sin recorte</span>}
+        {!bbox && <span className="text-amber-700">Sin recorte · vista completa</span>}
+        <div className="ml-auto flex gap-1">
+          <button
+            type="button"
+            onClick={() => setMode('zoom')}
+            className={`rounded px-2 py-0.5 text-[10px] font-bold ${mode === 'zoom' ? 'bg-brand-800 text-white' : 'bg-white ring-1 ring-slate-200'}`}
+          >
+            Zoom
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('full')}
+            className={`rounded px-2 py-0.5 text-[10px] font-bold ${mode === 'full' ? 'bg-brand-800 text-white' : 'bg-white ring-1 ring-slate-200'}`}
+          >
+            Completo
+          </button>
+        </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-graphite-950">
@@ -145,6 +177,10 @@ export default function CompareZoomPanel({ row, yearA, yearB, imageUrlA, imageUr
           <canvas ref={canvasB} className="mx-auto block w-full" />
         </div>
       </div>
+      <p className="text-[11px] text-slate-500">
+        Compare A (antes) con B (después) en la misma zona. Si no ve diferencia clara, revise también
+        la pestaña «Chequeo A|B» → Detecciones.
+      </p>
     </div>
   )
 }
