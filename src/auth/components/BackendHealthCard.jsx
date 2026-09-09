@@ -54,7 +54,7 @@ export function BackendHealthCard({
         ) : (
           <div className="flex items-center gap-2 rounded-2xl border border-slate-200/70 bg-white/60 p-4 text-xs text-slate-600 backdrop-blur-sm">
             <Sparkles className="h-4 w-4 text-accent-500" />
-            <span>Haz clic en &quot;Verificar Conexión&quot; para comprobar la comunicación con FastAPI.</span>
+            <span>Pulse &quot;Verificar conexión&quot; para comprobar la comunicación con FastAPI.</span>
           </div>
         )}
       </div>

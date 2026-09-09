@@ -43,8 +43,8 @@ export function AppShell() {
           onToggleSidebar={isInsideModule ? () => setSidebarOpen((prev) => !prev) : undefined}
         />
 
-        <main className="flex-1 overflow-y-auto px-4 py-8 sm:px-8">
-          <div className={`mx-auto space-y-6 ${isWideRoute(location.pathname) ? 'max-w-[1600px]' : 'max-w-4xl'}`}>
+        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
+          <div className={`mx-auto space-y-6 ${isWideRoute(location.pathname) ? 'max-w-[1600px]' : 'max-w-5xl'}`}>
             <Outlet />
           </div>
         </main>

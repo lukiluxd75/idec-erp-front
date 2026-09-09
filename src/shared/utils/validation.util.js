@@ -7,11 +7,11 @@ export function validateLoginForm(values) {
   const errors = {}
 
   if (!values?.username || !values.username.trim()) {
-    errors.username = 'Ingresa tu nombre de usuario o correo.'
+    errors.username = 'Ingrese su nombre de usuario o correo.'
   }
 
   if (!values?.password) {
-    errors.password = 'Ingresa tu contraseña.'
+    errors.password = 'Ingrese su contraseña.'
   }
 
   return errors
@@ -26,11 +26,11 @@ export function validateChangePasswordForm(values) {
   const errors = {}
 
   if (!values?.currentPassword) {
-    errors.currentPassword = 'Ingresa tu contraseña actual.'
+    errors.currentPassword = 'Ingrese su contraseña actual.'
   }
 
   if (!values?.newPassword) {
-    errors.newPassword = 'Ingresa una nueva contraseña.'
+    errors.newPassword = 'Ingrese una nueva contraseña.'
   } else if (values.newPassword.length < 8) {
     errors.newPassword = 'Debe tener al menos 8 caracteres.'
   } else if (values.newPassword === values.currentPassword) {
@@ -38,7 +38,7 @@ export function validateChangePasswordForm(values) {
   }
 
   if (!values?.confirmPassword) {
-    errors.confirmPassword = 'Confirma la nueva contraseña.'
+    errors.confirmPassword = 'Confirme la nueva contraseña.'
   } else if (values.confirmPassword !== values.newPassword) {
     errors.confirmPassword = 'Las contraseñas no coinciden.'
   }

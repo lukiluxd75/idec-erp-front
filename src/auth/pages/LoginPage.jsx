@@ -23,7 +23,7 @@ export function LoginPage() {
               {ENV.APP_NAME}
             </h1>
             <p className="mt-2 text-sm text-slate-500">
-              Inicia sesión con tu usuario y contraseña
+              Inicie sesión con su usuario y contraseña
             </p>
           </div>
 
