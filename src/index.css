@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@theme {
+  /* Tipografía y colores oficiales GAMC — Manual de Uso de Marca "Yo Amo Cocha" 2025
+     (paleta primaria y secundaria verificadas 1:1 contra los valores RGB del manual;
+     coincide con la paleta ya usada de https://github.com/FranciscoZambranaG/Dise-oGeneralGAMC) */
+  --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Tipografía de acento — SOLO para resaltar una palabra/mensaje puntual (nunca cuerpo
+     de texto ni títulos completos, ver manual §Tipografía). Hello Bunny es de pago para
+     uso institucional/comercial (gratis solo para uso personal) y no está en Google Fonts:
+     hasta conseguir la licencia y el archivo real, se usa Caveat (Google Fonts, misma
+     familia manuscrita) como reemplazo visualmente equivalente. */
+  --font-display: "Hello Bunny", "Caveat", cursive;
+
+  --color-graphite-950: #0a0d12;
+
+  --color-haze-300: #a8b8cc;
+  --color-haze-400: #8fa3ba;
+
+  /* Marca principal (Paleta de Colores · Primarios) — botones primarios y estado activo de navegación */
+  --color-brand-900: #26154a;
+  --color-brand-800: #341a67; /* R52 G26 B103 */
+  --color-brand-600: #584291; /* R88 G66 B145 */
+
+  /* Acento (Paleta de Colores · Primarios) — íconos, focos, resaltados.
+     accent-50/accent-200 son tintes derivados del mismo celeste (el manual solo define
+     un tono por color); se usaban ya en varios componentes (fondos suaves de íconos)
+     pero faltaba definirlos, así que esas clases no pintaban nada. */
+  --color-accent-50: #edf8fd;
+  --color-accent-200: #c4e7f4;
+  --color-accent-300: #a8daed; /* R168 G218 B237 */
+  --color-accent-400: #47b4d8; /* R71 G180 B216 */
+  --color-accent-500: #009ed0; /* R0 G158 B208 */
+  --color-accent-600: #007ea6;
+
+  /* Estados (Paleta de Colores · Secundarios) — SOLO badges/indicadores, nunca estructural.
+     Las 4 en uso ya son valores oficiales del manual; se agregan las 5 restantes de la
+     misma paleta secundaria para cuando un dominio necesite más categorías de badge. */
+  --color-state-success: #72ae17; /* R114 G174 B23 */
+  --color-state-success-soft: #9ac040; /* R154 G192 B64 */
+  --color-state-warning: #efbe00; /* R239 G190 B0 */
+  --color-state-amber: #eb8f00; /* R235 G143 B0 */
+  --color-state-orange: #df491f; /* R223 G73 B31 */
+  --color-state-orange-deep: #e67012; /* R230 G112 B18 */
+  --color-state-lime: #bdcc00; /* R189 G204 B0 */
+  --color-state-danger: #d60035; /* R214 G0 B53 */
+  --color-state-magenta: #a60054; /* R166 G0 B84 */
+}
+
+@utility animate-card-in {
+  animation: card-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility animate-field-shake {
+  animation: field-shake 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@utility animate-slide-down {
+  animation: slide-down 300ms ease-out both;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes field-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:root {
+  /* react-toastify — se pisan sus colores por defecto con la paleta GAMC (ver §4 CLAUDE.md) */
+  --toastify-color-success: var(--color-state-success);
+  --toastify-color-warning: var(--color-state-warning);
+  --toastify-color-error: var(--color-state-danger);
+  --toastify-color-info: var(--color-accent-500);
+  --toastify-font-family: var(--font-sans);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-accent-400);
+  background-image: linear-gradient(
+    135deg,
+    var(--color-accent-300),
+    var(--color-accent-500)
+  );
+}
+
+/* react-image-crop fija max-width:100% en .ReactCrop y en el <img> de su child-wrapper
+   (pensado para encajar en el contenedor, sin zoom) — se pisa con más especificidad para
+   permitir agrandar la imagen más allá de eso al hacer zoom (ver CapturaPage.jsx, dominio
+   geoextraccion). */
+.zoomable-crop.ReactCrop,
+.zoomable-crop .ReactCrop__child-wrapper,
+.zoomable-crop .ReactCrop__child-wrapper > img {
+  max-width: none;
+}
+
+.zoomable-crop .ReactCrop__child-wrapper {
+  overflow: visible;
+}
