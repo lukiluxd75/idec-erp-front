@@ -7,8 +7,14 @@
 import { geoextraccionRoutes } from './geoextraccion/routes'
 import { seguridadRoutes } from './seguridad/routes'
 import { deteccionRoutes } from './deteccion/routes'
+import { resolucionesRoutes } from './resoluciones/routes'
 
-export const DOMAIN_ROUTES = [...geoextraccionRoutes, ...seguridadRoutes, ...deteccionRoutes]
+export const DOMAIN_ROUTES = [
+  ...geoextraccionRoutes,
+  ...seguridadRoutes,
+  ...deteccionRoutes,
+  ...resolucionesRoutes,
+]
 
 /** true si la ruta activa pidió el contenedor ancho de AppShell en vez del max-w-4xl por defecto. */
 export function isWideRoute(pathname) {

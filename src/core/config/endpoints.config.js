@@ -28,6 +28,12 @@ export const API_ENDPOINTS = {
     USUARIO_ASIGNACION: (usuarioId) => `/api/seguridad/usuarios/${usuarioId}/asignacion`,
     USUARIO_ESTADO: (usuarioId) => `/api/seguridad/usuarios/${usuarioId}/estado`,
   },
+  RESOLUCIONES: {
+    BASE: '/api/resoluciones',
+    ONE: (id) => `/api/resoluciones/${id}`,
+    PAGINA: (id, orden) => `/api/resoluciones/${id}/paginas/${orden}`,
+    TABLA: (id) => `/api/resoluciones/${id}/tabla`,
+  },
   DETECCION: {
     SALUD: '/api/deteccion/salud',
     WMS_CAPAS: '/api/deteccion/wms/capas',
