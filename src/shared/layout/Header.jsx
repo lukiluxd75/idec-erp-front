@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { LogOut, Menu, User } from 'lucide-react'
 import { BRAND } from '@/shared/branding'
 import { ENV } from '@/core/config/env.config'
@@ -8,6 +9,7 @@ import { PerfilModal } from './PerfilModal'
  * Barra superior del ERP: ancha, alineada y con acciones de usuario compactas.
  */
 export function Header({ onLogout, onToggleSidebar, user }) {
+  const navigate = useNavigate()
   const [perfilOpen, setPerfilOpen] = useState(false)
   const displayName = user?.username || 'Usuario'
   const initial = String(displayName).charAt(0).toUpperCase()
@@ -29,19 +31,24 @@ export function Header({ onLogout, onToggleSidebar, user }) {
             <span className="hidden h-10 w-10 shrink-0 sm:block" aria-hidden="true" />
           )}
 
-          <div className="flex min-w-0 items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard')}
+            aria-label="Ir al inicio"
+            className="flex min-w-0 cursor-pointer items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80"
+          >
             <img
               src={BRAND.logoSrc}
               alt={BRAND.logoAlt}
               className="h-8 w-auto shrink-0 sm:h-9"
             />
-            <div className="hidden min-w-0 border-l border-slate-200 pl-2.5 sm:block">
+            <div className="hidden min-w-0 border-l border-slate-200 pl-2.5 text-left sm:block">
               <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-accent-600">
                 {ENV.ORGANIZATION}
               </p>
               <p className="truncate text-sm font-bold text-slate-900">{ENV.APP_NAME}</p>
             </div>
-          </div>
+          </button>
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
