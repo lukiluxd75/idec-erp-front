@@ -9,7 +9,6 @@ function getAsientosPayload(row) {
 
 const RC_FIELDS = [
   ['asiento', 'Asiento'],
-  ['idRegistroCatastral', 'Id. registro'],
   ['codigoCatastral', 'Código catastral'],
   ['nroInscripcion', 'N.º inscripción'],
   ['nroRegistro', 'N.º registro'],
@@ -30,6 +29,17 @@ const RC_FIELDS = [
   ['sitio', 'Sitio'],
 ]
 
+/** Claves técnicas / PK de tablas: no mostrar en UI. */
+function isInternalIdKey(key) {
+  const k = String(key || '')
+  if (!k) return true
+  if (k === 'id' || k === 'uuid' || k === 'guid') return true
+  if (/_id$/i.test(k) || /Id$/.test(k)) return true
+  if (/^id[A-Z_]/.test(k)) return true
+  if (/^id_/i.test(k)) return true
+  return false
+}
+
 function humanizeKey(key) {
   return String(key)
     .replace(/_/g, ' ')
@@ -41,10 +51,11 @@ function KvGrid({ obj, fields }) {
   if (!obj || typeof obj !== 'object') return null
   const entries = fields
     ? fields
+        .filter(([k]) => !isInternalIdKey(k))
         .map(([k, label]) => [k, label, obj[k]])
         .filter(([, , v]) => v != null && v !== '')
     : Object.entries(obj)
-        .filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
+        .filter(([k, v]) => !isInternalIdKey(k) && v != null && v !== '' && typeof v !== 'object')
         .map(([k, v]) => [k, humanizeKey(k), v])
 
   if (!entries.length) {
@@ -65,9 +76,10 @@ function KvGrid({ obj, fields }) {
 
 function DataTable({ rows, columns }) {
   if (!rows?.length) return <p className="text-xs text-slate-500">Sin registros.</p>
-  const cols =
-    columns ||
-    Object.keys(rows[0] || {}).filter((k) => {
+  const cols = (columns || Object.keys(rows[0] || {}))
+    .filter((k) => !isInternalIdKey(k))
+    .filter((k) => {
+      if (columns) return true
       const v = rows[0][k]
       return v == null || typeof v !== 'object'
     })
@@ -322,7 +334,6 @@ export default function AsientosPanel({ row }) {
                     <KvGrid
                       obj={il}
                       fields={[
-                        ['idInformeLegal', 'Id. informe'],
                         ['nroInformeLegal', 'N.º informe'],
                         ['gestionInformeLegal', 'Gestión'],
                         ['fechaInformeLegal', 'Fecha'],
@@ -377,7 +388,6 @@ export default function AsientosPanel({ row }) {
                     <KvGrid
                       obj={it}
                       fields={[
-                        ['idInformeTecnico', 'Id. informe'],
                         ['nroInformeTecnico', 'N.º informe'],
                         ['gestionInformeTecnico', 'Gestión'],
                         ['fechaInformeTecnico', 'Fecha'],
