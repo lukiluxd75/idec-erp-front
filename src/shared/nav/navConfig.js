@@ -60,6 +60,17 @@ export const NAV_SECTIONS = [
 export const DOMAIN_SECTIONS = NAV_SECTIONS.filter((section) => section.children?.length)
 
 /**
+ * Ruta de entrada al módulo desde el catálogo.
+ * Si solo hay una función, abre esa pantalla directo (evita DomainHome redundante).
+ */
+export function getModuleEntryPath(section) {
+  if (!section) return '/dashboard'
+  const kids = section.children || []
+  if (kids.length === 1 && kids[0]?.path) return kids[0].path
+  return section.path
+}
+
+/**
  * Versión aplanada de todas las rutas hoja que todavía no tienen pantalla real,
  * usada para generar sus <Route> y para que ModulePlaceholder sepa qué título mostrar.
  */

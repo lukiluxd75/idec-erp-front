@@ -233,6 +233,14 @@ export default function DeteccionPage() {
       setResultTab('validacion')
       toast.success('Detección lista. Valide hallazgos contrastando imagen y SISCAT.')
     }
+    const vg = res?.view_geometry || {}
+    if (vg.warned || res?.view_geometry_warned) {
+      toast.warn(
+        vg.level === 'high'
+          ? 'Posible oblicuidad fuerte en las ortofotos. Revise el aviso y el chequeo A|B.'
+          : 'Indicios de oblicuidad entre A y B. Revise el aviso antes de confiar en los cambios.'
+      )
+    }
     requestAnimationFrame(() => {
       resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
@@ -366,6 +374,14 @@ export default function DeteccionPage() {
     setSelectedRow({ ...row, bbox_px: bbox || row.bbox_px || row.bbox })
   }
 
+  const viewGeom = result?.view_geometry || {}
+  const viewWarned = !!(result?.view_geometry_warned || viewGeom.warned)
+  const viewLevel = String(viewGeom.level || '').toLowerCase()
+  const viewMsg =
+    viewGeom.message ||
+    (viewWarned
+      ? 'Se detectaron indicios de oblicuidad o geometría distinta entre las ortofotos A y B.'
+      : '')
   const alignLevel = String(
     result?.align_quality?.level || result?.resumen_confiabilidad?.align_level || ''
   ).toLowerCase()
@@ -708,6 +724,42 @@ export default function DeteccionPage() {
               </Button>
             </div>
           </Alert>
+
+          {viewWarned && (
+            <Alert
+              type={viewLevel === 'high' ? 'error' : 'warning'}
+              title={
+                viewLevel === 'high'
+                  ? 'Posible oblicuidad fuerte en las ortofotos'
+                  : 'Advertencia de geometría de vista (oblicuidad)'
+              }
+            >
+              <p className="mt-1 text-sm leading-relaxed text-slate-800">{viewMsg}</p>
+              <p className="mt-2 text-sm text-slate-700">
+                Si en un año se ven paredes/fachadas y en el otro solo techos, no confíe en las
+                detecciones automáticas. Prefiera capas nadir del mismo tipo de vuelo y valide en
+                el chequeo A|B.
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {viewGeom.score_a != null ? (
+                  <Badge variant="neutral">
+                    Índice A ≈ {Number(viewGeom.score_a).toFixed(2)}
+                  </Badge>
+                ) : null}
+                {viewGeom.score_b != null ? (
+                  <Badge variant="neutral">
+                    Índice B ≈ {Number(viewGeom.score_b).toFixed(2)}
+                  </Badge>
+                ) : null}
+                {viewGeom.mismatch ? (
+                  <Badge variant="warning">Geometría A≠B</Badge>
+                ) : null}
+                <Button size="sm" variant="secondary" onClick={() => setResultTab('chequeo')}>
+                  Ver chequeo A|B
+                </Button>
+              </div>
+            </Alert>
+          )}
 
           <ManualAlignPanel
             open={alignOpen}

@@ -6,7 +6,7 @@ import { Alert, Button } from '@/shared/ui'
 
 const DEFAULT_CENTER = [-17.39325, -66.15625]
 const DEFAULT_ZOOM = 17
-const GIS_HOSTS = ['http://192.168.105.219:6080', 'http://172.16.67.110:6080']
+const GIS_HOSTS = ['https://gs.catastrocbba.com', 'http://192.168.105.219:6080', 'http://172.16.67.110:6080']
 
 const OVERLAY_DEFS = [
   { key: 'predios', label: 'Predios', path: 'catastro/predios_cba', defaultOn: true },
