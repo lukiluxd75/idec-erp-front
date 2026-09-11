@@ -50,8 +50,17 @@ export function parseNumero(texto) {
   // revisar esa fila a mano, en vez de llevarse un numero que no es de nadie.
   const partes = bruto.split(/\s+/).filter((p) => /\d/.test(p))
   if (partes.length > 1) return null
-  const limpio = bruto.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '')
-  const n = parseFloat(limpio)
+
+  // Si trae coma, esa es la decimal real (formato boliviano) y el punto es de
+  // miles -> se borra. Si NO trae coma, el OCR probablemente escribio el
+  // punto donde iba una coma (visto en fotos reales: "7.19" en vez de "7,19")
+  // -- no hay forma de distinguirlo de un separador de miles mirando solo el
+  // texto, pero en esta tabla las superficies de fila SIEMPRE son < 1000 m²,
+  // asi que un punto de miles genuino practicamente no aparece. Se asume
+  // decimal (tal cual lo entiende parseFloat) en vez de borrarlo: borrarlo
+  // multiplicaba el valor por 100-1000 ("7.19" -> 719, "41.44" -> 4144).
+  const limpio = bruto.includes(',') ? bruto.replace(/\./g, '').replace(',', '.') : bruto
+  const n = parseFloat(limpio.replace(/[^\d.-]/g, ''))
   return Number.isNaN(n) ? null : n
 }
 

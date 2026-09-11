@@ -67,8 +67,14 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   if (lineYs.length >= 3) {
     const alturas = []
     for (let i = 0; i < lineYs.length - 1; i++) alturas.push(lineYs[i + 1] - lineYs[i])
+    // Mediana real (promedia las 2 del medio si `alturas.length` es par) --
+    // con `ordenadas[Math.floor(length/2)]` a secas, un caso comun de solo 2
+    // bandas (una pagina de un piso con pocas filas reales) siempre devolvia
+    // la banda MAS GRANDE como "tipica", volviendo imposible que superase su
+    // propio umbral (1.6x) y dejando pasar bandas gigantes sin re-partir.
     const ordenadas = [...alturas].sort((a, b) => a - b)
-    const alturaTipica = ordenadas[Math.floor(ordenadas.length / 2)]
+    const mid = Math.floor(ordenadas.length / 2)
+    const alturaTipica = ordenadas.length % 2 ? ordenadas[mid] : (ordenadas[mid - 1] + ordenadas[mid]) / 2
 
     const bandas = lineYs.slice(0, -1).map(() => [])
     const bandaDe = (y) => {
@@ -285,7 +291,7 @@ const RESUMEN_RE = /(RESUMEN\s*GENERAL|CUADRO\s*GENERAL)/
  */
 export function parseSuperficiesPage(blocks, opts = {}) {
   const grid = buildGrid(blocks, { lineYs: opts.lineYs || [] })
-  if (grid.columnCount === 0) return { columnCount: 0, columnRoles: [], rows: [] }
+  if (grid.columnCount === 0) return { columnCount: 0, columnRoles: [], rows: [], filaTotal: null }
   grid.rows = grid.rows.filter((row) => !isNoiseRow(row))
 
   // Filas de encabezado = las primeras consecutivas que parecen encabezado.
@@ -411,8 +417,38 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     .filter((i) => i >= 0)
   const rowTieneNumero = (cells) => surfaceIdxs.some((i) => hasDigits(cells[i]?.text || ''))
 
+  // A veces "SUPERFICIE TOTAL"/"RESUMEN GENERAL" queda en su PROPIA fila, sin
+  // sus numeros: por deriva del OCR el texto cae en una columna vecina (no la
+  // de ambiente) y por eso el agrupamiento por Y la separa de la fila que
+  // trae los valores. Sin fusionarlas antes de clasificar, el TOTAL_RE de mas
+  // abajo nunca ve la fila de numeros (esta en la fila de al lado) y esos
+  // numeros se cuelan como si fueran una fila de datos real.
+  //
+  // Se fusiona SOLO cuando la fila anterior no tiene su propio texto de
+  // ambiente (ya es una fila "huerfana" de solo-numeros, el mismo patron que
+  // arma `fragmentoPendiente` mas abajo) -- si la anterior es una fila real
+  // con su ambiente propio (p.ej. "Departamento C"), no se toca: la marca de
+  // TOTAL aislada simplemente se descarta sola, sin numeros, mas abajo.
+  for (let i = 1; i < grid.rows.length; i++) {
+    const fila = grid.rows[i]
+    const anterior = grid.rows[i - 1]
+    // No exige que `fila` este sin numeros propios: a veces el reparto de
+    // linea corta la fila de TOTAL justo por el medio y cada mitad se queda
+    // con ALGUNOS de sus valores (ni la de arriba ni la de abajo quedan en
+    // cero) -- alcanza con que sea reconocible como marca de TOTAL/RESUMEN.
+    const filaEsMarca = fila.cells.some((c) => TOTAL_RE.test(norm(c.text)) || RESUMEN_RE.test(norm(c.text)))
+    const anteriorSinAmbientePropio = !(anterior.cells[ambienteIdx]?.text || '').trim()
+    if (!filaEsMarca || !anteriorSinAmbientePropio) continue
+    fila.cells = fila.cells.map((c, idx) => (c.text ? c : anterior.cells[idx] || c))
+    anterior.cells = anterior.cells.map((c) => ({ ...c, text: '' }))
+  }
+
   const rows = []
   let plantaActual = ''
+  // Fila "SUPERFICIE TOTAL" de la tabla: no se manda al Excel (son formulas
+  // que la plantilla ya calcula solas), pero se guarda aparte para mostrarla
+  // de referencia en la web (comparar a ojo contra el papel).
+  let filaTotal = null
   let fragmentoPendiente = '' // texto de fila(s) sin numeros, a la espera de la fila con datos
 
   // Pega el fragmento pendiente (si hay) al ambiente de la ultima fila ya
@@ -436,14 +472,21 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     const soloPrimera =
       cells.filter((c, i) => i !== ambienteIdx && c.text.trim()).length === 0
 
-    if (RESUMEN_RE.test(primeraTxt)) {
+    // Se revisan TODAS las celdas de la fila (no solo la de "ambiente"): la
+    // etiqueta "SUPERFICIE TOTAL"/"RESUMEN GENERAL" a veces cae, por deriva
+    // del OCR, en una columna vecina (p.ej. la de Planta) en vez de la de
+    // ambiente -- si solo se mirara esa columna, la fila de totales se
+    // colaria como si fuera una fila de datos real (visto con una foto real:
+    // "SHAFT+GRADA" en Ambiente + los numeros de la fila de TOTAL del piso).
+    if (cells.some((c) => RESUMEN_RE.test(norm(c.text)))) {
       // Bloque "RESUMEN GENERAL": se ignora el resto de la tabla.
       flushFragmentoAFilaAnterior()
       break
     }
-    if (TOTAL_RE.test(primeraTxt)) {
+    if (cells.some((c) => TOTAL_RE.test(norm(c.text)))) {
       flushFragmentoAFilaAnterior()
-      continue // fila de totales -> se descarta
+      filaTotal = { cells: cells.map((c) => ({ ...c })) }
+      continue // fila de totales -> no se manda al Excel (ver `filaTotal`)
     }
 
     // Encabezado de una tabla siguiente (2da, 3ra... NIVEL/PLANTA en la misma
@@ -476,19 +519,27 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     }
 
     const ambienteTxt = (cells[ambienteIdx >= 0 ? ambienteIdx : 0]?.text || '').trim()
-    if (!ambienteTxt) continue // fila vacia
+    const tieneNumero = rowTieneNumero(cells)
+    if (!ambienteTxt && !tieneNumero) continue // fila realmente vacia (sin texto ni numeros)
 
     // Fila-fragmento: una celda de ambiente escrita en varias lineas (p.ej.
     // "HALL + ASCENSOR + GRADA + SHAFT + BAÑOS H y M") se corta en varias filas
     // por posicion vertical. Si esta fila no trae NINGUN numero de superficie,
     // no es una fila de datos propia: se guarda su texto y se pega a la
     // proxima fila que si traiga numeros.
-    if (!rowTieneNumero(cells)) {
+    if (!tieneNumero) {
       fragmentoPendiente = fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt
       continue
     }
 
-    const ambienteFinal = fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt
+    // Esta fila SI trae numeros de superficie -- siempre se conserva como fila
+    // de datos, aun si su propia celda de ambiente vino vacia (pasa cuando el
+    // texto de una celda fusionada partida en varias lineas cae en una banda
+    // distinta a la de sus propios numeros: sin este caso, la fila entera se
+    // descartaba mas arriba por "fila vacia" y sus numeros se perdian sin
+    // dejar rastro -- visto con una foto real, la superficie comun de un
+    // "GRADA+ASCENSOR+..." desaparecia del todo).
+    const ambienteFinal = (fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt).trim()
     fragmentoPendiente = ''
 
     rows.push({
@@ -504,7 +555,7 @@ export function parseSuperficiesPage(blocks, opts = {}) {
   }
   flushFragmentoAFilaAnterior()
 
-  return { columnCount: grid.columnCount, columnRoles, rows }
+  return { columnCount: grid.columnCount, columnRoles, rows, filaTotal }
 }
 
 export const ROLES = [

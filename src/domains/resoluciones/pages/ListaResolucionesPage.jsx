@@ -1,10 +1,11 @@
-import { FileText, FolderOpen, RefreshCw } from 'lucide-react'
+import { FileText, FolderOpen } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { resolucionesApi } from '@/domains/resoluciones/api/resoluciones.api'
 import { EstadoBadge } from '@/domains/resoluciones/components/EstadoBadge'
-import { Alert, Button, Card, EmptyState, SectionHeader, Spinner } from '@/shared/ui'
+import { useResolucionesUpdates } from '@/domains/resoluciones/utils/useResolucionesUpdates'
+import { Alert, Card, EmptyState, SectionHeader, Spinner } from '@/shared/ui'
 
 function fecha(iso) {
   if (!iso) return ''
@@ -22,29 +23,28 @@ function fecha(iso) {
 export default function ListaResolucionesPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [refrescando, setRefrescando] = useState(false)
   const [error, setError] = useState(null)
 
-  // `mostrarSpinnerCompleto` solo para la primera carga: al refrescar a mano
-  // se deja la lista actual visible (con el botón en "loading") en vez de
-  // taparla con el spinner grande, para no perder el scroll/contexto.
+  // `mostrarSpinnerCompleto` solo para la primera carga: las actualizaciones
+  // que llegan por websocket (alguien subio algo desde el celular) refrescan
+  // en silencio, sin tapar la lista actual con el spinner grande.
   const cargar = useCallback((mostrarSpinnerCompleto) => {
     if (mostrarSpinnerCompleto) setLoading(true)
-    else setRefrescando(true)
     setError(null)
     return resolucionesApi
       .listar()
       .then((data) => setItems(data))
       .catch((e) => setError(e.message))
       .finally(() => {
-        setLoading(false)
-        setRefrescando(false)
+        if (mostrarSpinnerCompleto) setLoading(false)
       })
   }, [])
 
   useEffect(() => {
     cargar(true)
   }, [cargar])
+
+  useResolucionesUpdates(useCallback(() => cargar(false), [cargar]))
 
   return (
     <Card className="animate-card-in">
@@ -53,11 +53,6 @@ export default function ListaResolucionesPage() {
         eyebrow="Módulo Resoluciones"
         title="Mis resoluciones"
         subtitle="Se escanean desde la app móvil. Acá extraés la tabla de superficies y generás el excel."
-        actions={
-          <Button variant="secondary" size="sm" icon={RefreshCw} loading={refrescando} onClick={() => cargar(false)}>
-            Actualizar
-          </Button>
-        }
       />
 
       {loading ? (
