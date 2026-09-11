@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import '../styles/deteccion-precision-cursor.css'
 import { toast } from 'react-toastify'
 import { Alert, Button, Select, Spinner } from '@/shared/ui'
 import { deteccionApi } from '../api/deteccion.api'
@@ -234,6 +235,11 @@ export default function ManualAlignPanel({
     const mapB = L.map(mapBNode.current, opts)
     mapARef.current = mapA
     mapBRef.current = mapB
+    ;[mapA, mapB].forEach((m) => {
+      m.getContainer().classList.add('deteccion-precision-cursor')
+      m.getContainer().style.cursor = 'crosshair'
+      m.getContainer().title = 'Clic para marcar el punto de control'
+    })
     marksARef.current = L.layerGroup().addTo(mapA)
     marksBRef.current = L.layerGroup().addTo(mapB)
 
@@ -456,7 +462,12 @@ export default function ManualAlignPanel({
                       {waitingB ? 'Punto A listo' : '1 · seleccione aquí'}
                     </span>
                   </div>
-                  <div ref={mapANode} className="h-[400px] w-full cursor-crosshair" />
+                  <div
+                    ref={mapANode}
+                    className="deteccion-precision-cursor h-[400px] w-full"
+                    style={{ cursor: 'crosshair' }}
+                    title="Clic para marcar el punto de control en A"
+                  />
                 </div>
                 <div
                   className={`overflow-hidden rounded-2xl border-2 bg-slate-950 ${
@@ -469,7 +480,12 @@ export default function ManualAlignPanel({
                       {waitingB ? '2 · seleccione aquí ahora' : '2 · luego aquí'}
                     </span>
                   </div>
-                  <div ref={mapBNode} className="h-[400px] w-full cursor-crosshair" />
+                  <div
+                    ref={mapBNode}
+                    className="deteccion-precision-cursor h-[400px] w-full"
+                    style={{ cursor: 'crosshair' }}
+                    title="Clic para marcar el punto de control en B"
+                  />
                 </div>
               </div>
 

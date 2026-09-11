@@ -12,7 +12,7 @@ const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 /**
  * Sidebar contextual: contraste alto sobre fondo blanco (legible sobre el celeste del ERP).
  */
-export function Sidebar({ open = true }) {
+export function Sidebar({ open = true, onNavigate }) {
   const { pathname } = useLocation()
   const currentDomain = getCurrentDomain(pathname)
 
@@ -22,11 +22,15 @@ export function Sidebar({ open = true }) {
 
   return (
     <div
-      className={`shrink-0 overflow-hidden transition-[width] duration-200 ease-out will-change-[width] ${
+      className={`shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out will-change-[width] ${
         open ? 'w-64' : 'w-0'
       }`}
     >
-      <aside className="flex h-dvh w-64 flex-col border-r border-slate-200/90 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.06)]">
+      <aside
+        className={`flex h-dvh w-64 flex-col border-r border-slate-200/90 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.06)] transition-opacity duration-200 ease-in-out ${
+          open ? 'opacity-100 delay-100' : 'opacity-0'
+        }`}
+      >
         <div className="border-b border-slate-100 px-4 py-4">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Navegación</p>
           <div className="mt-2 flex items-center gap-2.5">
@@ -61,6 +65,7 @@ export function Sidebar({ open = true }) {
               <NavLink
                 key={child.path}
                 to={child.path}
+                onClick={onNavigate}
                 className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
               >
                 <ChildIcon className="h-[18px] w-[18px] shrink-0" />

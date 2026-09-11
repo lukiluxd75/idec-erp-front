@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Badge, EmptyState, SectionHeader, Spinner } from '@/shared/ui'
+import { Alert, Badge, EmptyState, Spinner } from '@/shared/ui'
 import { FileSearch } from 'lucide-react'
 import { deteccionApi } from '../api/deteccion.api'
 
@@ -8,7 +8,7 @@ function getAsientosPayload(row) {
 }
 
 const RC_FIELDS = [
-  ['idRegistroCatastral', 'Id. registro'],
+  ['asiento', 'Asiento'],
   ['codigoCatastral', 'Código catastral'],
   ['nroInscripcion', 'N.º inscripción'],
   ['nroRegistro', 'N.º registro'],
@@ -29,6 +29,17 @@ const RC_FIELDS = [
   ['sitio', 'Sitio'],
 ]
 
+/** Claves técnicas / PK de tablas: no mostrar en UI. */
+function isInternalIdKey(key) {
+  const k = String(key || '')
+  if (!k) return true
+  if (k === 'id' || k === 'uuid' || k === 'guid') return true
+  if (/_id$/i.test(k) || /Id$/.test(k)) return true
+  if (/^id[A-Z_]/.test(k)) return true
+  if (/^id_/i.test(k)) return true
+  return false
+}
+
 function humanizeKey(key) {
   return String(key)
     .replace(/_/g, ' ')
@@ -40,10 +51,11 @@ function KvGrid({ obj, fields }) {
   if (!obj || typeof obj !== 'object') return null
   const entries = fields
     ? fields
+        .filter(([k]) => !isInternalIdKey(k))
         .map(([k, label]) => [k, label, obj[k]])
         .filter(([, , v]) => v != null && v !== '')
     : Object.entries(obj)
-        .filter(([, v]) => v != null && v !== '' && typeof v !== 'object')
+        .filter(([k, v]) => !isInternalIdKey(k) && v != null && v !== '' && typeof v !== 'object')
         .map(([k, v]) => [k, humanizeKey(k), v])
 
   if (!entries.length) {
@@ -64,9 +76,10 @@ function KvGrid({ obj, fields }) {
 
 function DataTable({ rows, columns }) {
   if (!rows?.length) return <p className="text-xs text-slate-500">Sin registros.</p>
-  const cols =
-    columns ||
-    Object.keys(rows[0] || {}).filter((k) => {
+  const cols = (columns || Object.keys(rows[0] || {}))
+    .filter((k) => !isInternalIdKey(k))
+    .filter((k) => {
+      if (columns) return true
       const v = rows[0][k]
       return v == null || typeof v !== 'object'
     })
@@ -127,15 +140,12 @@ export default function AsientosPanel({ row }) {
 
   if (!row) {
     return (
-      <div className="space-y-3">
-        <SectionHeader icon={FileSearch} eyebrow="SISCAT" title="Asientos catastrales" className="mb-0" />
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8">
-          <EmptyState
-            icon={FileSearch}
-            title="Sin fila seleccionada"
-            subtitle="Seleccione un hallazgo del reporte para consultar asientos SISCAT."
-          />
-        </div>
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8">
+        <EmptyState
+          icon={FileSearch}
+          title="Sin fila seleccionada"
+          subtitle="Vuelva a Hallazgos, seleccione un registro y abra esta pestaña."
+        />
       </div>
     )
   }
@@ -143,19 +153,16 @@ export default function AsientosPanel({ row }) {
   const p = getAsientosPayload(row)
   if (!p) {
     return (
-      <div className="space-y-3">
-        <SectionHeader icon={FileSearch} eyebrow="SISCAT" title="Asientos catastrales" className="mb-0" />
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8">
-          <EmptyState
-            icon={FileSearch}
-            title="Sin datos SISCAT"
-            subtitle={
-              row.codigo_catastral
-                ? `No hay asientos asociados al código ${row.codigo_catastral}.`
-                : 'La fila seleccionada no incluye código catastral.'
-            }
-          />
-        </div>
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8">
+        <EmptyState
+          icon={FileSearch}
+          title="Sin datos SISCAT"
+          subtitle={
+            row.codigo_catastral
+              ? `No hay asientos asociados al código ${row.codigo_catastral}.`
+              : 'La fila seleccionada no incluye código catastral.'
+          }
+        />
       </div>
     )
   }
@@ -190,13 +197,16 @@ export default function AsientosPanel({ row }) {
 
   return (
     <div className="space-y-4">
-      <SectionHeader icon={FileSearch} eyebrow="SISCAT" title="Asientos catastrales" className="mb-0" />
-      <p className="text-xs leading-relaxed text-slate-700">
-        {(row.tipo || row.tipo_cambio || 'Hallazgo') +
-          ` · código ${row.codigo_catastral || p.codigo_catastral || '—'}`}
-        {p.resumen ? ` · ${p.resumen}` : ''}
-        {' · Seleccione una inscripción para abrir el expediente completo.'}
-      </p>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+        <p className="text-sm font-semibold text-slate-900">
+          {(row.tipo || row.tipo_cambio || 'Hallazgo') +
+            ` · ${row.codigo_catastral || p.codigo_catastral || '—'}`}
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-600">
+          {(p.resumen ? `${p.resumen} · ` : '') +
+            'Seleccione un asiento (A-1, A-2…) para abrir el expediente.'}
+        </p>
+      </div>
 
       {!p.disponible ? (
         <Alert
@@ -209,8 +219,8 @@ export default function AsientosPanel({ row }) {
           <table className="min-w-full text-left text-xs">
             <thead className="bg-brand-800 text-[10px] font-bold uppercase tracking-wider text-white">
               <tr>
+                <th className="px-3 py-2">Asiento</th>
                 <th className="px-3 py-2">N.º inscripción</th>
-                <th className="px-3 py-2">N.º registro</th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2">Fecha emisión</th>
                 <th className="px-3 py-2">Resolución</th>
@@ -220,30 +230,31 @@ export default function AsientosPanel({ row }) {
               {regs.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-3 py-4 text-slate-600">
-                    No hay inscripciones registradas para este código.
+                    No hay asientos registrados para este código.
                   </td>
                 </tr>
               ) : (
                 regs.map((r) => {
                   const id = r.idRegistroCatastral
                   const selected = selectedId === id
+                  const asientoLabel = r.asiento || '—'
                   return (
                     <tr
-                      key={id || `${r.nroInscripcion}-${r.nroRegistro}`}
+                      key={id || `${r.asiento}-${r.nroInscripcion}-${r.nroRegistro}`}
                       className={`cursor-pointer border-t border-slate-100 transition-colors hover:bg-accent-50 ${
                         r.vigente ? 'bg-state-success/5' : ''
                       } ${selected ? 'bg-accent-50 ring-1 ring-inset ring-accent-300' : ''}`}
                       onClick={() => openRegistro(id)}
                       title="Seleccione para ver el expediente completo"
                     >
-                      <td className="px-3 py-2 font-medium text-slate-900">
+                      <td className="px-3 py-2 font-semibold text-slate-900">
                         <span className="inline-flex flex-wrap items-center gap-1.5">
-                          {r.nroInscripcion ?? '—'}
+                          {asientoLabel}
                           {r.vigente ? <Badge variant="success">Vigente</Badge> : null}
                           {loadingId === id ? <Spinner className="h-3.5 w-3.5" /> : null}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-slate-700">{r.nroRegistro ?? '—'}</td>
+                      <td className="px-3 py-2 text-slate-700">{r.nroInscripcion ?? '—'}</td>
                       <td className="px-3 py-2 text-slate-700">{r.estado || r.estadoActual || '—'}</td>
                       <td className="px-3 py-2 text-slate-700">{r.fechaEmision || '—'}</td>
                       <td className="px-3 py-2 text-slate-700">
@@ -284,10 +295,16 @@ export default function AsientosPanel({ row }) {
         >
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              Expediente · inscripción {rc.nroInscripcion ?? '—'}
+              Expediente · asiento {detalle.asiento || rc.asiento || '—'}
             </h3>
             <p className="mt-1 text-xs text-slate-600">
-              {[detalle.codigo_catastral, detalle.resumen, detalle.es_ph ? 'PH' : null]
+              {[
+                detalle.codigo_catastral,
+                (detalle.asiento || rc.asiento) && `asiento ${detalle.asiento || rc.asiento}`,
+                rc.nroInscripcion != null ? `inscripción ${rc.nroInscripcion}` : null,
+                detalle.resumen,
+                detalle.es_ph ? 'PH' : null,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
@@ -317,7 +334,6 @@ export default function AsientosPanel({ row }) {
                     <KvGrid
                       obj={il}
                       fields={[
-                        ['idInformeLegal', 'Id. informe'],
                         ['nroInformeLegal', 'N.º informe'],
                         ['gestionInformeLegal', 'Gestión'],
                         ['fechaInformeLegal', 'Fecha'],
@@ -372,7 +388,6 @@ export default function AsientosPanel({ row }) {
                     <KvGrid
                       obj={it}
                       fields={[
-                        ['idInformeTecnico', 'Id. informe'],
                         ['nroInformeTecnico', 'N.º informe'],
                         ['gestionInformeTecnico', 'Gestión'],
                         ['fechaInformeTecnico', 'Fecha'],
