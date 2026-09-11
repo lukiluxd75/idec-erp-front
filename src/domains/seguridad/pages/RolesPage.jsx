@@ -87,7 +87,7 @@ export default function RolesPage() {
             <EmptyState
               icon={KeyRound}
               title="Todavía no hay roles"
-              subtitle="Creá el primero con el botón de arriba."
+              subtitle="Cree el primero con el botón de arriba."
             />
           ) : (
             <ul className="space-y-2.5">
@@ -143,7 +143,7 @@ export default function RolesPage() {
             <EmptyState
               icon={Building2}
               title="Todavía no hay áreas"
-              subtitle="Creá la primera con el botón de arriba."
+              subtitle="Cree la primera con el botón de arriba."
             />
           ) : (
             <ul className="space-y-2.5">

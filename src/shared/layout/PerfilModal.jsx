@@ -53,7 +53,7 @@ export function PerfilModal({ open, onClose, user }) {
     if (Object.keys(errors).length > 0) return
 
     if (!user?.username) {
-      setFormError('No se pudo determinar el usuario de la sesión. Volvé a iniciar sesión e intentá de nuevo.')
+      setFormError('No se pudo determinar el usuario de la sesión. Vuelva a iniciar sesión e intente de nuevo.')
       return
     }
 

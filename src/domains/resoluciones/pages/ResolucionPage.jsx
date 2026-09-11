@@ -104,7 +104,7 @@ export default function ResolucionPage() {
       }
       setPaginasTabla(out)
       setDiagnosticoOcr(diag)
-      toast.success('OCR terminado. Revisá las columnas y las celdas en rojo.')
+      toast.success('OCR terminado. Revise las columnas y las celdas en rojo.')
     } catch (e) {
       setOcrError(
         `${e.message}. Si es un problema de CORS del servicio OCR, hay que habilitarlo ` +
@@ -187,7 +187,7 @@ export default function ResolucionPage() {
   const generarExcel = async () => {
     const filas = construirFilas(paginasTabla)
     if (filas.length === 0) {
-      toast.error('Asigná la columna "Ambiente" y revisá que haya al menos una fila con datos.')
+      toast.error('Asigne la columna "Ambiente" y revise que haya al menos una fila con datos.')
       return
     }
     setGenerando(true)
@@ -311,7 +311,7 @@ export default function ResolucionPage() {
             icon={Table2}
             eyebrow="Hoja2"
             title="Tabla de superficies"
-            subtitle="Asigná qué es cada columna, corregí lo que el OCR haya leído mal (rojo) y completá la Planta."
+            subtitle="Asigne qué es cada columna, corrija lo que el OCR haya leído mal (rojo) y complete la Planta."
           />
           <div className="-mx-2 overflow-x-auto px-2">
             <TablaSuperficies
