@@ -47,7 +47,7 @@ export const NAV_SECTIONS = [
     ],
   },
   {
-    label: 'Resoluciones',
+    label: 'Lector OCR de Resoluciones P.H.',
     icon: FileSpreadsheet,
     path: '/resoluciones',
   },

@@ -140,7 +140,7 @@ class HttpClient {
           return this._retryAfterRefresh(endpoint, options)
         }
         this._handleUnauthorized()
-        throw new ApiError('Tu sesión expiró. Vuelve a iniciar sesión.', 401, responseData)
+        throw new ApiError('Su sesión expiró. Vuelva a iniciar sesión.', 401, responseData)
       }
 
       const errorMessage =
@@ -164,7 +164,7 @@ class HttpClient {
       return this.request(endpoint, { ...options, token: newToken, _isRetry: true })
     } catch {
       this._handleUnauthorized()
-      throw new ApiError('Tu sesión expiró. Vuelve a iniciar sesión.', 401)
+      throw new ApiError('Su sesión expiró. Vuelva a iniciar sesión.', 401)
     }
   }
 

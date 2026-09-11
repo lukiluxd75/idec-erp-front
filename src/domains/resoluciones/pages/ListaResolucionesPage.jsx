@@ -50,9 +50,9 @@ export default function ListaResolucionesPage() {
     <Card className="animate-card-in">
       <SectionHeader
         icon={FolderOpen}
-        eyebrow="Módulo Resoluciones"
+        eyebrow="Lector OCR de Resoluciones P.H."
         title="Mis resoluciones"
-        subtitle="Se escanean desde la app móvil. Acá extraés la tabla de superficies y generás el excel."
+        subtitle="Se escanean desde la app móvil. Aquí extrae la tabla de superficies y genera el excel."
       />
 
       {loading ? (
@@ -65,7 +65,7 @@ export default function ListaResolucionesPage() {
         <EmptyState
           icon={FileText}
           title="Todavía no hay resoluciones"
-          subtitle="Subí una desde el apartado Resoluciones de la aplicacion movil y va a aparecer acá."
+          subtitle="Suba una desde el apartado Resoluciones de la aplicación móvil y va a aparecer aquí."
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">

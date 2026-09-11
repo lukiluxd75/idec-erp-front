@@ -186,7 +186,7 @@ export default function CapturaPage() {
 
   const processOCR = async (append = false) => {
     if (!imageSrc) {
-      toast.error('Carga una imagen')
+      toast.error('Cargue una imagen')
       return
     }
 

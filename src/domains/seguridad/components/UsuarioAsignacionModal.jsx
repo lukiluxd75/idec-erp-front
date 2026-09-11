@@ -28,7 +28,7 @@ export function UsuarioAsignacionModal({ open, onClose, usuario, roles, areas })
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (incompleto) {
-      toast.warn(rolIds.length > 0 ? 'Elegí también un área para guardar.' : 'Marcá también un rol para guardar.')
+      toast.warn(rolIds.length > 0 ? 'Elija también un área para guardar.' : 'Marque también un rol para guardar.')
       return
     }
 
@@ -100,7 +100,7 @@ export function UsuarioAsignacionModal({ open, onClose, usuario, roles, areas })
 
         {incompleto && (
           <p className="text-xs text-amber-600">
-            {rolIds.length > 0 ? 'Elegí también un área para guardar.' : 'Marcá también un rol para guardar.'}
+            {rolIds.length > 0 ? 'Elija también un área para guardar.' : 'Marque también un rol para guardar.'}
           </p>
         )}
 
