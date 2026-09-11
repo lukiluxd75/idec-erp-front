@@ -13,7 +13,9 @@
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@techstark/opencv-js": "^5.0.0-release.1",
     "clsx": "^2.1.1",
+    "jszip": "^3.10.2",
     "lucide-react": "^1.33.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",

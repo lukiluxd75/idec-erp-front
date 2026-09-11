@@ -53,9 +53,11 @@ export function Sidebar({ open = true, onNavigate }) {
             <span>Volver a Inicio</span>
           </NavLink>
 
-          <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-            Funciones
-          </p>
+          {currentDomain.children?.length > 0 && (
+            <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+              Funciones
+            </p>
+          )}
 
           {currentDomain.children?.map((child) => {
             const ChildIcon = child.icon

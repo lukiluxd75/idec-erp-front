@@ -8,6 +8,7 @@ import {
   KeyRound,
   Building2,
   ScanSearch,
+  FileSpreadsheet,
 } from 'lucide-react'
 
 /**
@@ -44,6 +45,11 @@ export const NAV_SECTIONS = [
     children: [
       { label: 'Mapa y detección', path: '/deteccion/mapa', icon: ScanSearch },
     ],
+  },
+  {
+    label: 'Resoluciones',
+    icon: FileSpreadsheet,
+    path: '/resoluciones',
   },
   {
     label: 'Seguridad',
