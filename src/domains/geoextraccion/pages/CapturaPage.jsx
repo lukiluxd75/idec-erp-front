@@ -172,9 +172,17 @@ export default function CapturaPage() {
     refrescarCapturasMoviles()
   }, [refrescarCapturasMoviles])
 
-  // Se refresca solo cuando el backend avisa por WS que llegó/se descartó una
-  // captura (desde este navegador u otra pestaña) — sin polling.
+  // El WS avisa al instante, pero solo si el navegador quedó conectado al mismo
+  // worker del backend que recibió el cambio (el backend corre con varios
+  // workers y cada uno tiene su propio registro de sockets — ver
+  // CapturasConnectionManager). Como respaldo, un polling cada 10s garantiza que
+  // en el peor caso la lista se pone al día sola sin depender de a qué worker cayó
+  // cada conexión, en vez de quedar pegada hasta que alguien recargue la página.
   useCapturasUpdates(refrescarCapturasMoviles)
+  useEffect(() => {
+    const intervalo = setInterval(refrescarCapturasMoviles, 10000)
+    return () => clearInterval(intervalo)
+  }, [refrescarCapturasMoviles])
 
   const cargarCapturaMovil = async (id) => {
     if (results.length > 0 && !confirm('Cambiar imagen perderá los datos actuales de la tabla. ¿Continuar?')) {
