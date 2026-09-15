@@ -41,8 +41,8 @@ function SubsystemCard({ label, path, icon: Icon }) {
 }
 
 /**
- * Pantalla de entrada a un dominio: funciones en tarjetas cuadradas.
- * Si el módulo solo tiene una función, redirige directo a ella.
+ * Domain entry screen: functions in square cards.
+ * If the module has only one function, redirects straight to it.
  */
 export function DomainHome() {
   const { pathname } = useLocation()

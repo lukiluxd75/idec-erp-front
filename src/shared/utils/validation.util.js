@@ -1,5 +1,5 @@
 /**
- * Valida los campos del formulario de inicio de sesión
+ * Validates login form fields
  * @param {{ username?: string, password?: string }} values
  * @returns {Record<string, string>}
  */
@@ -18,7 +18,7 @@ export function validateLoginForm(values) {
 }
 
 /**
- * Valida los campos del formulario de cambio de contraseña (pantalla Perfil).
+ * Validates change-password form fields (Profile screen).
  * @param {{ currentPassword?: string, newPassword?: string, confirmPassword?: string }} values
  * @returns {Record<string, string>}
  */

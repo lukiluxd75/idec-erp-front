@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { ArrowUpRight, LayoutGrid, UserRound } from 'lucide-react'
 import { Card, EmptyState } from '@/shared/ui'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { NAV_SECTIONS, getModuleEntryPath, puedeVerModulo } from '@/shared/nav'
+import { NAV_SECTIONS, getModuleEntryPath, canViewModule } from '@/shared/nav'
 
 function ModuleCard({ label, path, icon: Icon, children }) {
   const entryPath = getModuleEntryPath({ path, children })
@@ -50,14 +50,14 @@ function ModuleCard({ label, path, icon: Icon, children }) {
 }
 
 /**
- * Home del ERP: bienvenida y catálogo de módulos en tarjetas cuadradas.
+ * ERP home: welcome and module catalog in square cards.
  */
 export function DashboardPage() {
   const { user } = useAuth()
 
   const displayName = user?.username || 'Usuario'
   const modules = NAV_SECTIONS.filter(
-    (section) => section.path !== '/dashboard' && puedeVerModulo(user?.permisos, section)
+    (section) => section.path !== '/dashboard' && canViewModule(user?.permisos, section)
   )
 
   return (

@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 /**
- * Modal genérico del design system (ver CLAUDE.md §3 — shared/ para piezas sin dominio).
- * Cierra con Escape o clic fuera del panel.
+ * Generic design-system modal (see CLAUDE.md §3 — shared/ for domain-agnostic pieces).
+ * Closes on Escape or click outside the panel.
  */
 export function Modal({ open, onClose, title, icon: Icon, children, className = '' }) {
   useEffect(() => {

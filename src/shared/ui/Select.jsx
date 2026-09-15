@@ -1,6 +1,6 @@
 import { cn } from '@/shared/utils'
 
-/** Select estilizado a juego con Input — usado donde el valor debe salir de una lista cerrada (ej. asignar rol/área existentes). */
+/** Styled select matching Input — used when the value must come from a closed list (e.g. assign existing role/area). */
 export function Select({
   id,
   name,

@@ -1,5 +1,5 @@
 /**
- * Catálogo de endpoints de la API (Arquitectura orientada a servicios)
+ * API endpoint catalog (service-oriented architecture).
  */
 export const API_ENDPOINTS = {
   AUTH: {
@@ -9,45 +9,45 @@ export const API_ENDPOINTS = {
   USER: {
     PRIVATE_PROFILE: '/api/private',
     CHANGE_PASSWORD: '/api/change-password',
-    CHANGE_PASSWORD_INSTITUCIONAL: '/api/change-password-institucional',
+    CHANGE_PASSWORD_INSTITUTIONAL: '/api/change-password-institutional',
   },
   SYSTEM: {
     PUBLIC_HEALTH: '/api/public',
   },
-  GEOEXTRACCION: {
-    GENERAR_SHAPEFILE: '/api/geoextraccion/shapefiles',
-    FUSIONAR_SHAPEFILES: '/api/geoextraccion/shapefiles/fusiones',
-    CAPTURAS: '/api/geoextraccion/capturas',
-    CAPTURA: (id) => `/api/geoextraccion/capturas/${id}`,
-    CAPTURA_IMAGEN: (id) => `/api/geoextraccion/capturas/${id}/imagen`,
-    CAPTURAS_WS: '/api/geoextraccion/capturas/ws',
+  GEOEXTRACTION: {
+    GENERATE_SHAPEFILE: '/api/geoextraction/shapefiles',
+    MERGE_SHAPEFILES: '/api/geoextraction/shapefiles/merges',
+    CAPTURES: '/api/geoextraction/captures',
+    CAPTURE: (id) => `/api/geoextraction/captures/${id}`,
+    CAPTURE_IMAGE: (id) => `/api/geoextraction/captures/${id}/image`,
+    CAPTURES_WS: '/api/geoextraction/captures/ws',
   },
-  SEGURIDAD: {
-    ROLES: '/api/seguridad/roles',
-    ROL_PERMISOS: (rolId) => `/api/seguridad/roles/${rolId}/permisos`,
-    ROL: (rolId) => `/api/seguridad/roles/${rolId}`,
-    AREAS: '/api/seguridad/areas',
-    AREA: (areaId) => `/api/seguridad/areas/${areaId}`,
-    USUARIOS: '/api/seguridad/usuarios',
-    USUARIO_ASIGNACION: (usuarioId) => `/api/seguridad/usuarios/${usuarioId}/asignacion`,
-    USUARIO_ESTADO: (usuarioId) => `/api/seguridad/usuarios/${usuarioId}/estado`,
+  SECURITY: {
+    ROLES: '/api/security/roles',
+    ROLE_PERMISSIONS: (roleId) => `/api/security/roles/${roleId}/permissions`,
+    ROLE: (roleId) => `/api/security/roles/${roleId}`,
+    AREAS: '/api/security/areas',
+    AREA: (areaId) => `/api/security/areas/${areaId}`,
+    USERS: '/api/security/users',
+    USER_ASSIGNMENT: (userId) => `/api/security/users/${userId}/assignment`,
+    USER_STATUS: (userId) => `/api/security/users/${userId}/status`,
   },
-  RESOLUCIONES: {
-    BASE: '/api/resoluciones',
-    ONE: (id) => `/api/resoluciones/${id}`,
-    PAGINA: (id, orden) => `/api/resoluciones/${id}/paginas/${orden}`,
-    TABLA: (id) => `/api/resoluciones/${id}/tabla`,
+  RESOLUTIONS: {
+    BASE: '/api/resolutions',
+    ONE: (id) => `/api/resolutions/${id}`,
+    PAGE: (id, order) => `/api/resolutions/${id}/pages/${order}`,
+    TABLE: (id) => `/api/resolutions/${id}/table`,
   },
-  DETECCION: {
-    SALUD: '/api/deteccion/salud',
-    WMS_CAPAS: '/api/deteccion/wms/capas',
-    DETECTAR_WMS: '/api/deteccion/trabajos/detectar-wms',
-    PROGRESO: (jobId) => `/api/deteccion/trabajos/${jobId}/progreso`,
-    RESULTADO: (jobId) => `/api/deteccion/trabajos/${jobId}/resultado`,
-    CANCELAR: (jobId) => `/api/deteccion/trabajos/${jobId}/cancelar`,
-    ALINEACION: (jobId) => `/api/deteccion/trabajos/${jobId}/alineacion-manual`,
-    ALINEACION_PREVIEW: (jobId) => `/api/deteccion/trabajos/${jobId}/alineacion-manual/vista-previa`,
-    ALINEACION_APLICAR: (jobId) => `/api/deteccion/trabajos/${jobId}/alineacion-manual/aplicar`,
-    REGISTRO_CATASTRAL: (id) => `/api/deteccion/catastro/registro-catastral/${id}`,
+  DETECTION: {
+    HEALTH: '/api/detection/health',
+    WMS_LAYERS: '/api/detection/wms/layers',
+    DETECT_WMS: '/api/detection/jobs/detect-wms',
+    PROGRESS: (jobId) => `/api/detection/jobs/${jobId}/progress`,
+    RESULT: (jobId) => `/api/detection/jobs/${jobId}/result`,
+    CANCEL: (jobId) => `/api/detection/jobs/${jobId}/cancel`,
+    MANUAL_ALIGN: (jobId) => `/api/detection/jobs/${jobId}/manual-align`,
+    MANUAL_ALIGN_PREVIEW: (jobId) => `/api/detection/jobs/${jobId}/manual-align/preview`,
+    MANUAL_ALIGN_APPLY: (jobId) => `/api/detection/jobs/${jobId}/manual-align/apply`,
+    CADASTRAL_RECORD: (id) => `/api/detection/cadastre/cadastral-record/${id}`,
   },
 }

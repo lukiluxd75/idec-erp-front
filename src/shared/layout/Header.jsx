@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { LogOut, Menu, User } from 'lucide-react'
 import { BRAND } from '@/shared/branding'
 import { ENV } from '@/core/config/env.config'
-import { PerfilModal } from './PerfilModal'
+import { ProfileModal } from './ProfileModal'
 
 /**
- * Barra superior del ERP: ancha, alineada y con acciones de usuario compactas.
+ * ERP top bar: wide, aligned, with compact user actions.
  */
 export function Header({ onLogout, onToggleSidebar, user }) {
   const navigate = useNavigate()
-  const [perfilOpen, setPerfilOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const displayName = user?.username || 'Usuario'
   const initial = String(displayName).charAt(0).toUpperCase()
 
@@ -54,7 +54,7 @@ export function Header({ onLogout, onToggleSidebar, user }) {
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <button
             type="button"
-            onClick={() => setPerfilOpen(true)}
+            onClick={() => setProfileOpen(true)}
             className="flex max-w-[220px] cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-left transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-2.5"
             aria-label="Abrir perfil"
           >
@@ -83,7 +83,7 @@ export function Header({ onLogout, onToggleSidebar, user }) {
         </div>
       </div>
 
-      <PerfilModal open={perfilOpen} onClose={() => setPerfilOpen(false)} user={user} />
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} user={user} />
     </header>
   )
 }

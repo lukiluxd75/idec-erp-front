@@ -4,8 +4,8 @@ import { ApiError } from '@/core/errors/ApiError'
 import { storageService } from '@/core/storage/storageService'
 
 /**
- * Cliente HTTP base para comunicación con servicios Backend y Keycloak
- * Encapsula la configuración de cabeceras, interceptores de autenticación, refresh silencioso de sesión y manejo estándar de errores
+ * Base HTTP client for Backend and Keycloak services.
+ * Encapsulates header setup, auth interceptors, silent session refresh, and standard error handling.
  */
 class HttpClient {
   constructor(baseUrl = ENV.API_BASE_URL) {
@@ -14,10 +14,10 @@ class HttpClient {
   }
 
   /**
-   * Solicita un nuevo access_token con el refresh_token almacenado.
-   * Deduplica llamadas concurrentes: si ya hay un refresh en curso, todas las
-   * peticiones que reciben un 401 al mismo tiempo esperan la misma promesa.
-   * @returns {Promise<string>} el nuevo access_token
+   * Requests a new access_token using the stored refresh_token.
+   * Deduplicates concurrent calls: if a refresh is already in progress, all
+   * requests that get a 401 at the same time await the same promise.
+   * @returns {Promise<string>} the new access_token
    */
   _refreshAccessToken() {
     if (!this._refreshPromise) {
@@ -57,8 +57,8 @@ class HttpClient {
   }
 
   /**
-   * Realiza una petición HTTP genérica
-   * @param {string} endpoint - Ruta relativa o URL absoluta
+   * Performs a generic HTTP request
+   * @param {string} endpoint - Relative path or absolute URL
    * @param {RequestInit & { requiresAuth?: boolean, token?: string, _isRetry?: boolean }} [options]
    * @returns {Promise<any>}
    */
@@ -73,7 +73,7 @@ class HttpClient {
       requestHeaders.set('Content-Type', 'application/json')
     }
 
-    // Inyección de token de autenticación
+    // Inject authentication token
     if (requiresAuth) {
       const authToken = token || storageService.getToken()
       if (authToken) {
@@ -101,7 +101,7 @@ class HttpClient {
       )
     }
 
-    // Respuesta binaria (ej. descarga de un ZIP/Shapefile) — no se intenta parsear como JSON/texto
+    // Binary response (e.g. ZIP/Shapefile download) — do not parse as JSON/text
     if (responseType === 'blob') {
       if (!response.ok) {
         if (response.status === 401 && requiresAuth && !_isRetry) {
@@ -113,7 +113,7 @@ class HttpClient {
       return response.blob()
     }
 
-    // Procesar respuesta JSON o texto
+    // Process JSON or text response
     let responseData
     const contentType = response.headers.get('content-type')
     if (contentType && contentType.includes('application/json')) {
@@ -130,11 +130,11 @@ class HttpClient {
       }
     }
 
-    // Manejo de errores HTTP
+    // HTTP error handling
     if (!response.ok) {
-      // Access token ausente/expirado: se intenta una renovación silenciosa con el
-      // refresh_token y se reintenta la misma petición una sola vez (_isRetry evita loops).
-      // Solo si el refresh también falla (refresh_token inválido/expirado) se cierra la sesión.
+      // Missing/expired access token: try a silent refresh with the refresh_token and
+      // retry the same request once (_isRetry avoids loops). Only if refresh also fails
+      // (invalid/expired refresh_token) is the session closed.
       if (response.status === 401 && requiresAuth) {
         if (!_isRetry) {
           return this._retryAfterRefresh(endpoint, options)
@@ -155,8 +155,8 @@ class HttpClient {
   }
 
   /**
-   * Intenta renovar el access_token y reintenta la petición original una vez.
-   * Si el refresh falla (refresh_token inválido/expirado), cierra la sesión.
+   * Tries to renew the access_token and retries the original request once.
+   * If refresh fails (invalid/expired refresh_token), closes the session.
    */
   async _retryAfterRefresh(endpoint, options) {
     try {
@@ -168,7 +168,7 @@ class HttpClient {
     }
   }
 
-  /** Limpia la sesión inválida y redirige a Login (cuando el refresh_token también expiró). */
+  /** Clears the invalid session and redirects to Login (when refresh_token also expired). */
   _handleUnauthorized() {
     storageService.clearAuth()
     if (typeof window !== 'undefined' && window.location.pathname !== '/') {

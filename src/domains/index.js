@@ -1,22 +1,21 @@
 /**
- * Único lugar que conoce todos los dominios del ERP con pantallas reales — equivalente
- * frontend de backend/app/registry.py. Para agregar un dominio nuevo: crear su carpeta acá
- * al lado (con su propio routes.jsx) y sumar su import a DOMAIN_ROUTES — no hace falta tocar
- * ningún otro dominio existente ni el router raíz más allá de esta línea.
+ * Single place that knows every ERP domain with real screens — frontend equivalent of
+ * backend/app/registry.py. To add a domain: create its folder here (with its own
+ * routes.jsx) and add its import to DOMAIN_ROUTES.
  */
-import { geoextraccionRoutes } from './geoextraccion/routes'
-import { seguridadRoutes } from './seguridad/routes'
-import { deteccionRoutes } from './deteccion/routes'
-import { resolucionesRoutes } from './resoluciones/routes'
+import { geoextractionRoutes } from './geoextraction/routes'
+import { securityRoutes } from './security/routes'
+import { detectionRoutes } from './detection/routes'
+import { resolutionsRoutes } from './resolutions/routes'
 
 export const DOMAIN_ROUTES = [
-  ...geoextraccionRoutes,
-  ...seguridadRoutes,
-  ...deteccionRoutes,
-  ...resolucionesRoutes,
+  ...geoextractionRoutes,
+  ...securityRoutes,
+  ...detectionRoutes,
+  ...resolutionsRoutes,
 ]
 
-/** true si la ruta activa pidió el contenedor ancho de AppShell en vez del max-w-4xl por defecto. */
+/** true if the active route requested AppShell's wide container instead of max-w-4xl. */
 export function isWideRoute(pathname) {
   return DOMAIN_ROUTES.some((route) => route.path === pathname && route.wide)
 }

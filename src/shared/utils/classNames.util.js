@@ -3,7 +3,7 @@ import { twMerge } from 'tailwind-merge'
 
 /**
  * Combina clases condicionales (clsx) y resuelve conflictos de utilidades Tailwind (twMerge).
- * Útil en componentes con muchas variantes de estilo condicional.
+ * Useful in components with many conditional style variants.
  */
 export function cn(...inputs) {
   return twMerge(clsx(inputs))

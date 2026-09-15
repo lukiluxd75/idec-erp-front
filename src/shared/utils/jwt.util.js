@@ -1,7 +1,7 @@
 import { ENV } from '@/core/config/env.config'
 
 /**
- * Decodifica de forma segura el payload de un token JWT
+ * Safely decodes a JWT token payload
  * @param {string} token
  * @returns {object|null}
  */
@@ -25,7 +25,7 @@ export function parseJwt(token) {
 }
 
 /**
- * Verifica si un token JWT ha expirado
+ * Checks whether a JWT token has expired
  * @param {string} token
  * @returns {boolean}
  */
@@ -37,7 +37,7 @@ export function isTokenExpired(token) {
 }
 
 /**
- * Extrae la información normalizada de usuario a partir del token JWT
+ * Extracts normalized user info from a JWT token
  * @param {string} token
  * @param {string} [fallbackUsername]
  * @returns {object|null}

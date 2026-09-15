@@ -13,7 +13,7 @@ const PRESETS = {
   },
 }
 
-/** Bloque centrado ícono + título + subtítulo para estados vacíos (zonas de carga, tablas pendientes). */
+/** Centered icon + title + subtitle block for empty states (upload zones, pending tables). */
 export function EmptyState({
   icon: Icon,
   title,

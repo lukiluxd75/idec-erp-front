@@ -6,7 +6,7 @@ const TONES = {
   dangerActive: 'text-state-danger/70 hover:text-state-danger',
 }
 
-/** Botón de solo ícono (zoom, eliminar fila/columna, cerrar) con tono consistente en toda la app. */
+/** Icon-only button (zoom, delete row/column, close) with consistent tone across the app. */
 export function IconButton({
   icon: Icon,
   size = 16,

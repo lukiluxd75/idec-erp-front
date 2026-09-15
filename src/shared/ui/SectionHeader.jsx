@@ -1,9 +1,9 @@
 import { cn } from '@/shared/utils'
 
 /**
- * Encabezado ícono + eyebrow + título usado al inicio de cards de sección (DomainHome,
- * páginas de dominio). `subtitle` y `actions` son opcionales (ej. un botón de refrescar a
- * la derecha) — ver domains/resoluciones para un uso con ambos.
+ * Icon + eyebrow + title header used at the top of section cards (DomainHome,
+ * domain pages). `subtitle` and `actions` are optional (e.g. a refresh button on the
+ * right) — see domains/resolutions for a usage with both.
  */
 export function SectionHeader({ icon: Icon, eyebrow, title, subtitle, actions, className = '' }) {
   return (

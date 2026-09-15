@@ -5,17 +5,17 @@ import { userService } from '@/auth/services/user.service'
 import { storageService } from '@/core/storage/storageService'
 import { parseJwt } from '@/shared/utils/jwt.util'
 
-// Margen antes del `exp` del access_token para disparar el refresh silencioso
+// Margin before access_token `exp` to trigger silent refresh
 const REFRESH_MARGIN_MS = 60_000
-// Piso de seguridad: nunca reintentar más seguido que esto (evita loops si expires_in es muy corto)
+// Safety floor: never retry more often than this (avoids loops if expires_in is very short)
 const MIN_REFRESH_DELAY_MS = 5_000
 
 /**
- * Arma el objeto `user` completo (incluidos los `permisos` RBAC) pidiéndoselo al backend
- * (/api/private) — el JWT de Keycloak por sí solo (ver extractUserFromToken) no trae
- * `permisos`, esos solo los resuelve el backend contra usuario_rol_area/rol_permiso. Se usa
- * tanto al montar como después de un login o de un refresh de token, para que `permisos`
- * nunca quede desactualizado ni pisado por la versión "liviana" derivada del JWT.
+ * Builds the full `user` object (including RBAC `permisos`) by asking the backend
+ * (/api/private) — the Keycloak JWT alone (see extractUserFromToken) does not carry
+ * `permisos`; those are resolved by the backend against usuario_rol_area/rol_permiso.
+ * Used on mount and after login or token refresh so `permisos` never goes stale or gets
+ * overwritten by the lightweight JWT-derived version.
  */
 async function fetchUserProfile(token, fallbackUsername) {
   const profile = await userService.getProfile(token)
@@ -25,9 +25,9 @@ async function fetchUserProfile(token, fallbackUsername) {
     roles: profile.roles || [],
     clientId: profile.client_id || 'app-idec',
     idUsuario: profile.id_usuario || null,
-    // Permisos RBAC internos (rol_interno -> rol_permiso -> permiso), no confundir
-    // con `roles` de arriba (roles de Keycloak — nunca deciden autorización de
-    // negocio directamente, CLAUDE.md §5).
+    // Internal RBAC permissions (rol_interno -> rol_permiso -> permiso); do not confuse
+    // with `roles` above (Keycloak roles — they never decide business authorization
+    // directly, CLAUDE.md §5).
     permisos: profile.permisos || [],
   }
 }
@@ -37,8 +37,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => authService.getCurrentSession().user)
   const [isLoading, setIsLoading] = useState(true)
   const refreshTimerRef = useRef(null)
-  // Contiene la última versión de scheduleSilentRefresh para poder invocarla
-  // recursivamente desde dentro del propio setTimeout sin una referencia circular.
+  // Holds the latest scheduleSilentRefresh so it can be invoked recursively from
+  // inside the setTimeout without a circular reference.
   const scheduleSilentRefreshRef = useRef(() => {})
 
   const clearRefreshTimer = useCallback(() => {
@@ -48,9 +48,8 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  // Programa una renovación silenciosa del access_token un poco antes de que expire,
-  // para que sesiones largas sin llamadas al backend (ej. digitalizando polígonos)
-  // no terminen expulsando al usuario a mitad de camino.
+  // Schedules a silent access_token renewal shortly before expiry so long sessions
+  // with no backend calls (e.g. digitizing polygons) do not kick the user mid-work.
   const scheduleSilentRefresh = useCallback(
     (currentToken) => {
       clearRefreshTimer()
@@ -68,14 +67,14 @@ export function AuthProvider({ children }) {
           try {
             setUser(await fetchUserProfile(result.access_token, result.user?.username))
           } catch {
-            // El perfil no se pudo repedir (ej. backend caído un instante): se mantiene
-            // el usuario actual en vez de pisarlo con la versión sin `permisos` del JWT.
+            // Profile could not be re-fetched (e.g. backend briefly down): keep the
+            // current user instead of overwriting with the JWT version without `permisos`.
             setUser((prev) => prev || result.user)
           }
           scheduleSilentRefreshRef.current(result.access_token)
         } catch {
-          // El refresh_token también expiró o no hay conectividad: se deja que la
-          // próxima petición real al backend dispare el flujo reactivo de httpClient.
+          // refresh_token also expired or no connectivity: let the next real backend
+          // request trigger httpClient's reactive flow.
         }
       }, delay)
     },
@@ -86,15 +85,15 @@ export function AuthProvider({ children }) {
     scheduleSilentRefreshRef.current = scheduleSilentRefresh
   }, [scheduleSilentRefresh])
 
-  // Sincronizar estado inicial y validar token con el backend al montar
+  // Sync initial state and validate token with the backend on mount
   useEffect(() => {
     let isMounted = true
 
     async function initAuth() {
       let session = authService.getCurrentSession()
 
-      // El access_token expiró (ej. la pestaña estuvo cerrada/inactiva) pero puede
-      // que el refresh_token siga vigente: se intenta restaurar la sesión sin pedir login.
+      // access_token expired (e.g. tab was closed/inactive) but refresh_token may still
+      // be valid: try restoring the session without asking for login.
       if (!session.isValid && storageService.getRefreshToken()) {
         try {
           const result = await authService.refreshSession()
@@ -155,9 +154,9 @@ export function AuthProvider({ children }) {
       try {
         setUser(await fetchUserProfile(result.access_token, result.user?.username))
       } catch {
-        // El perfil (con `permisos`) no se pudo pedir todavía: se usa el usuario liviano
-        // derivado del JWT como antes — sin `permisos`, no verá ningún módulo hasta que
-        // el próximo refresh silencioso (o un reload) logre traer el perfil completo.
+        // Profile (with `permisos`) could not be fetched yet: use the lightweight
+        // JWT-derived user as before — without `permisos`, no modules are visible until
+        // the next silent refresh (or a reload) brings the full profile.
         setUser(result.user)
       }
       scheduleSilentRefresh(result.access_token)

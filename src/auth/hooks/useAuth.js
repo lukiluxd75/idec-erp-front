@@ -2,7 +2,7 @@ import { useContext } from 'react'
 import { AuthContext } from '@/auth/context/AuthContext'
 
 /**
- * Hook para acceder al contexto y operaciones de autenticación de la aplicación
+ * Hook to access the app authentication context and operations
  * @returns {{
  *   user: object | null,
  *   token: string | null,

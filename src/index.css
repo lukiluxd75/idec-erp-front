@@ -117,7 +117,7 @@ body {
 /* react-image-crop fija max-width:100% en .ReactCrop y en el <img> de su child-wrapper
    (pensado para encajar en el contenedor, sin zoom) — se pisa con más especificidad para
    permitir agrandar la imagen más allá de eso al hacer zoom (ver CapturaPage.jsx, dominio
-   geoextraccion). */
+   geoextraction). */
 .zoomable-crop.ReactCrop,
 .zoomable-crop .ReactCrop__child-wrapper,
 .zoomable-crop .ReactCrop__child-wrapper > img {

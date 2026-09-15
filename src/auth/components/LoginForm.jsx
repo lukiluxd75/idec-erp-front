@@ -61,7 +61,7 @@ export function LoginForm() {
       })
       setSuccessMessage(result.message || 'Autenticación exitosa')
 
-      // Redirigir al dashboard tras confirmación
+      // Redirect to dashboard after confirmation
       setTimeout(() => {
         navigate('/dashboard', { replace: true })
       }, 500)
@@ -94,7 +94,7 @@ export function LoginForm() {
           placeholder="Ej. operador o admin"
         />
 
-        {/* Campo Contraseña */}
+        {/* Password field */}
         <Input
           id="password"
           name="password"
@@ -125,11 +125,11 @@ export function LoginForm() {
         />
       </div>
 
-      {/* Alertas de error o éxito */}
+      {/* Error or success alerts */}
       {formError && <Alert type="error" message={formError} />}
       {successMessage && <Alert type="success" message={successMessage} />}
 
-      {/* Botón de Iniciar Sesión */}
+      {/* Sign-in button */}
       <Button
         type="submit"
         variant="primary"

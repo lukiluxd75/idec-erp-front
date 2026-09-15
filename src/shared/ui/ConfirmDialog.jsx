@@ -3,9 +3,9 @@ import { Modal } from './Modal'
 import { Button } from './Button'
 
 /**
- * Diálogo de confirmación genérico del design system. Se usa antes de cualquier acción
- * destructiva (borrar un registro, descartar datos). El padre controla `open` y pasa
- * `onConfirm` con la acción real; este componente solo pregunta y cierra.
+ * Generic design-system confirmation dialog. Used before any destructive action
+ * (delete a record, discard data). Parent controls `open` and passes `onConfirm`
+ * with the real action; this component only asks and closes.
  */
 export function ConfirmDialog({
   open,

@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
 
 /**
- * Hook reutilizable para ejecutar servicios asíncronos con manejo de estados
- * @param {Function} asyncFunction - Función asíncrona a ejecutar
+ * Reusable hook to run async services with state handling
+ * @param {Function} asyncFunction - Async function to run
  * @param {boolean} [immediate=false] - Si debe ejecutarse de inmediato
  */
 export function useAsync(asyncFunction, immediate = false) {

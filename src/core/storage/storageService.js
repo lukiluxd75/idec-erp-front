@@ -2,11 +2,11 @@ import { STORAGE_KEYS } from '@/core/config/storage.config'
 
 /**
  * Servicio de almacenamiento local (Storage Service)
- * Encapsula el acceso directo a localStorage permitiendo desacoplamiento y testing
+ * Encapsulates direct localStorage access for decoupling and testing
  */
 export const storageService = {
   /**
-   * Guarda el token de autenticación
+   * Stores the authentication token
    * @param {string} token
    */
   setToken(token) {
@@ -16,7 +16,7 @@ export const storageService = {
   },
 
   /**
-   * Obtiene el token de autenticación
+   * Gets the authentication token
    * @returns {string|null}
    */
   getToken() {
@@ -24,7 +24,7 @@ export const storageService = {
   },
 
   /**
-   * Guarda el refresh_token de la sesión
+   * Stores the session refresh_token
    * @param {string} refreshToken
    */
   setRefreshToken(refreshToken) {
@@ -34,7 +34,7 @@ export const storageService = {
   },
 
   /**
-   * Obtiene el refresh_token de la sesión
+   * Gets the session refresh_token
    * @returns {string|null}
    */
   getRefreshToken() {
@@ -42,7 +42,7 @@ export const storageService = {
   },
 
   /**
-   * Guarda el nombre de usuario de la sesión
+   * Stores the session username
    * @param {string} username
    */
   setUsername(username) {
@@ -52,7 +52,7 @@ export const storageService = {
   },
 
   /**
-   * Obtiene el nombre de usuario guardado
+   * Gets the stored username
    * @returns {string|null}
    */
   getUsername() {
@@ -60,7 +60,7 @@ export const storageService = {
   },
 
   /**
-   * Limpia todos los datos de sesión almacenados
+   * Clears all stored session data
    */
   clearAuth() {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)

@@ -10,7 +10,7 @@ const linkActive = 'bg-brand-800 text-white shadow-sm shadow-brand-800/20'
 const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 
 /**
- * Sidebar contextual: contraste alto sobre fondo blanco (legible sobre el celeste del ERP).
+ * Contextual sidebar: high contrast on white (readable over the ERP light-blue background).
  */
 export function Sidebar({ open = true, onNavigate }) {
   const { pathname } = useLocation()

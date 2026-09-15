@@ -2,37 +2,37 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '@/auth/pages'
 import { ProtectedRoute, PublicRoute } from '@/auth/guards'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { PLACEHOLDER_ROUTES, DOMAIN_SECTIONS, getCurrentDomain, puedeVerModulo } from '@/shared/nav'
+import { PLACEHOLDER_ROUTES, DOMAIN_SECTIONS, getCurrentDomain, canViewModule } from '@/shared/nav'
 import { DOMAIN_ROUTES } from '@/domains'
 import { AppShell } from './layout'
 import { DashboardPage, DomainHome, ModulePlaceholder } from './pages'
 
-// Paths con pantalla real (ver src/domains/index.js) — se excluyen del placeholder genérico.
+// Paths with a real screen (see src/domains/index.js) — excluded from the generic placeholder.
 const IMPLEMENTED_PATHS = new Set(DOMAIN_ROUTES.map((route) => route.path))
 
 /**
- * Bloquea la entrada por URL directa a un módulo que `permisos` no habilita (ocultar el
- * link en el sidebar/dashboard no alcanza — sin esto alguien podía escribir la ruta a
- * mano). `section` es la entrada de NAV_SECTIONS dueña de la ruta (ver getCurrentDomain).
+ * Blocks direct URL entry into a module that `permisos` does not allow (hiding the
+ * sidebar/dashboard link is not enough — without this someone could type the path
+ * by hand). `section` is the NAV_SECTIONS entry that owns the route (see getCurrentDomain).
  */
 function ModuleGuard({ section, children }) {
   const { user } = useAuth()
-  if (!puedeVerModulo(user?.permisos, section)) {
+  if (!canViewModule(user?.permisos, section)) {
     return <Navigate to="/dashboard" replace />
   }
   return children
 }
 
 /**
- * Enrutador principal de la aplicación con separación de rutas públicas y protegidas.
- * Toda ruta protegida se monta dentro de <AppShell/> (sidebar + header), que expone
- * el resto del árbol vía <Outlet/>.
+ * Main app router with public vs protected route separation.
+ * Every protected route mounts inside <AppShell/> (sidebar + header), which exposes
+ * the rest of the tree via <Outlet/>.
  */
 export function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta pública de Login (si ya está autenticado, redirige a /dashboard) */}
+        {/* Public Login route (if already authenticated, redirects to /dashboard) */}
         <Route
           path="/"
           element={
@@ -42,7 +42,7 @@ export function AppRoutes() {
           }
         />
 
-        {/* Área protegida: requiere token válido de Keycloak, se navega desde el sidebar */}
+        {/* Protected area: requires a valid Keycloak token; navigated from the sidebar */}
         <Route
           element={
             <ProtectedRoute>
@@ -52,7 +52,7 @@ export function AppRoutes() {
         >
           <Route path="dashboard" element={<DashboardPage />} />
 
-          {/* Entrada a cada dominio: muestra sus subsistemas como botones grandes */}
+          {/* Domain entry: shows its subsystems as large buttons */}
           {DOMAIN_SECTIONS.map((domain) => (
             <Route
               key={domain.path}
@@ -65,7 +65,7 @@ export function AppRoutes() {
             />
           ))}
 
-          {/* Dominios con pantalla real (ver src/domains/index.js) */}
+          {/* Domains with a real screen (see src/domains/index.js) */}
           {DOMAIN_ROUTES.map((route) => (
             <Route
               key={route.path}
@@ -74,7 +74,7 @@ export function AppRoutes() {
             />
           ))}
 
-          {/* Módulos del ERP sin funcionalidad real todavía (ver shared/nav/navConfig.js) */}
+          {/* ERP modules without real functionality yet (see shared/nav/navConfig.js) */}
           {PLACEHOLDER_ROUTES.filter((route) => !IMPLEMENTED_PATHS.has(route.path)).map((route) => (
             <Route
               key={route.path}
@@ -88,7 +88,7 @@ export function AppRoutes() {
           ))}
         </Route>
 
-        {/* Redirección para cualquier otra ruta no reconocida */}
+        {/* Redirect for any unrecognized route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

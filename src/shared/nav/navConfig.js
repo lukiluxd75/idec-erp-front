@@ -12,16 +12,10 @@ import {
 } from 'lucide-react'
 
 /**
- * Árbol de navegación del ERP — fuente única de verdad para la grilla de módulos del home
- * (app/pages/DashboardPage), el sidebar contextual (app/layout/Sidebar) y las pantallas de
- * entrada a cada dominio (app/pages/DomainHome). Vive en shared/ porque estos consumidores no
- * deben depender unos de otros directamente.
- *
- * Patrón de navegación: el home muestra todos los dominios como botones grandes; al entrar a
- * uno (su `path`), el sidebar aparece mostrando solo los subapartados de ESE dominio (más un
- * link para volver a Inicio) — antes de entrar a un dominio el sidebar no se muestra. Por ahora
- * el único dominio con pantallas reales es Geo-Extract; los demás dominios del ERP (Catastro,
- * Administración, ...) se suman acá cuando existan (ver docs/COMO_AGREGAR_UN_DOMINIO.md).
+ * ERP navigation tree — single source of truth for the home module grid
+ * (app/pages/DashboardPage), the contextual sidebar (app/layout/Sidebar) and domain
+ * entry screens (app/pages/DomainHome). Lives in shared/ so those consumers do not
+ * depend on each other directly.
  */
 export const NAV_SECTIONS = [
   {
@@ -32,42 +26,42 @@ export const NAV_SECTIONS = [
   {
     label: 'Geo-Extract',
     icon: Map,
-    path: '/geoextraccion',
+    path: '/geoextraction',
     children: [
-      { label: 'Captura OCR', path: '/geoextraccion/captura', icon: Camera },
-      { label: 'Fusión de Shapefiles', path: '/geoextraccion/fusion', icon: Layers },
+      { label: 'Captura OCR', path: '/geoextraction/capture', icon: Camera },
+      { label: 'Fusión de Shapefiles', path: '/geoextraction/merge', icon: Layers },
     ],
   },
   {
     label: 'Detección de construcciones',
     icon: Building2,
-    path: '/deteccion',
+    path: '/detection',
     children: [
-      { label: 'Mapa y detección', path: '/deteccion/mapa', icon: ScanSearch },
+      { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
     ],
   },
   {
     label: 'Lector OCR de Resoluciones P.H.',
     icon: FileSpreadsheet,
-    path: '/resoluciones',
+    path: '/resolutions',
   },
   {
     label: 'Seguridad',
     icon: ShieldCheck,
-    path: '/seguridad',
+    path: '/security',
     children: [
-      { label: 'Usuarios', path: '/seguridad/usuarios', icon: Users },
-      { label: 'Roles', path: '/seguridad/roles', icon: KeyRound },
+      { label: 'Usuarios', path: '/security/users', icon: Users },
+      { label: 'Roles', path: '/security/roles', icon: KeyRound },
     ],
   },
 ]
 
-/** Dominios con subsistemas propios — cada uno tiene su página de entrada (DomainHome). */
+/** Domains with their own subsystems — each has an entry page (DomainHome). */
 export const DOMAIN_SECTIONS = NAV_SECTIONS.filter((section) => section.children?.length)
 
 /**
- * Ruta de entrada al módulo desde el catálogo.
- * Si solo hay una función, abre esa pantalla directo (evita DomainHome redundante).
+ * Entry path into a module from the catalog.
+ * If there is only one feature, open that screen directly (avoids redundant DomainHome).
  */
 export function getModuleEntryPath(section) {
   if (!section) return '/dashboard'
@@ -77,8 +71,8 @@ export function getModuleEntryPath(section) {
 }
 
 /**
- * Versión aplanada de todas las rutas hoja que todavía no tienen pantalla real,
- * usada para generar sus <Route> y para que ModulePlaceholder sepa qué título mostrar.
+ * Flattened leaf routes that still lack a real screen, used to generate <Route>s and
+ * so ModulePlaceholder knows which title to show.
  */
 export const PLACEHOLDER_ROUTES = NAV_SECTIONS.flatMap((section) => {
   if (section.children) {
@@ -89,9 +83,8 @@ export const PLACEHOLDER_ROUTES = NAV_SECTIONS.flatMap((section) => {
 })
 
 /**
- * Dado un pathname, devuelve el dominio de NAV_SECTIONS al que pertenece (su `path` o
- * cualquiera de sus `children`), o null si el pathname no está dentro de ningún dominio
- * (ej. /dashboard). Usado por el sidebar para saber si debe mostrarse y con qué contenido.
+ * Given a pathname, returns the NAV_SECTIONS domain it belongs to, or null if outside
+ * any domain (e.g. /dashboard). Used by the sidebar.
  */
 export function getCurrentDomain(pathname) {
   return (
@@ -104,15 +97,12 @@ export function getCurrentDomain(pathname) {
 }
 
 /**
- * True si `permisos` (códigos 'modulo.accion' del usuario autenticado, ver
- * AuthProvider — vienen de seguridad.usuario_rol_area -> rol_permiso -> permiso) habilita
- * el módulo de `section`. El id de módulo es `section.path` sin la barra inicial — el
- * mismo criterio que ya usa el checklist de permisos de un rol
- * (domains/seguridad/data/catalogoModulos.js) para no desincronizarse con él. Un usuario
- * sin ningún rol asignado tiene `permisos: []` y por lo tanto no puede ver ningún módulo.
+ * True if `permissions` (codes 'module.action' from the authenticated user) enable the
+ * module in `section`. Module id is `section.path` without the leading slash — same
+ * criterion as the role permission checklist (domains/security/data/moduleCatalog.js).
  */
-export function puedeVerModulo(permisos, section) {
+export function canViewModule(permissions, section) {
   if (!section) return false
-  const moduloId = section.path.replace('/', '')
-  return (permisos || []).some((codigo) => codigo.startsWith(`${moduloId}.`))
+  const moduleId = section.path.replace('/', '')
+  return (permissions || []).some((code) => code.startsWith(`${moduleId}.`))
 }

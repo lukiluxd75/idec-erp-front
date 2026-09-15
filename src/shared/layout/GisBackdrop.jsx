@@ -1,8 +1,8 @@
 import watermarkCocha from '@/assets/watermark/cocha-skyline-color.png'
 
-// Ruido fractal muy fino en SVG — técnica estándar para dar grano/textura a un fondo de
-// gradiente plano sin cargar una imagen. encodeURIComponent evita tener que escapar a mano
-// los caracteres especiales (#, %) del data URI.
+// Very fine fractal noise in SVG — standard technique to add grain/texture to a flat
+// gradient background without loading an image. encodeURIComponent avoids hand-escaping
+// special characters (#, %) in the data URI.
 const NOISE_SVG = `
 <svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'>
   <filter id='n'>
@@ -13,13 +13,13 @@ const NOISE_SVG = `
 const NOISE_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(NOISE_SVG)}`
 
 /**
- * Fondo fijo de toda la app: gradiente institucional + textura sutil para dar perspectiva.
- * Capas por encima del gradiente, todas pointer-events-none y muy tenues para no competir
- * con las cards de vidrio (glass) que se apoyan encima:
- *  - grano fino (ruido) — quita la planitud del gradiente liso
- *  - retícula — guiño cartográfico (dominio GIS) y da profundidad de "papel cuadriculado"
- *  - skyline de Cochabamba pegado abajo — marca de agua a modo de "suelo", apenas visible
- *  - viñeta radial — oscurece apenas las esquinas, sensación de foco/perspectiva
+ * Fixed app-wide backdrop: institutional gradient + subtle texture for depth.
+ * Layers above the gradient, all pointer-events-none and very faint so they do not compete
+ * with the glass cards on top:
+ *  - fine grain (noise) — removes the flatness of a smooth gradient
+ *  - grid — cartographic nod (GIS domain) and "graph paper" depth
+ *  - Cochabamba skyline pinned at the bottom — watermark as "ground", barely visible
+ *  - radial vignette — slightly darkens corners for focus/perspective
  */
 export function GisBackdrop() {
   return (

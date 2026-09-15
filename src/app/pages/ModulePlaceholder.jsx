@@ -4,8 +4,8 @@ import { Card, Badge } from '@/shared/ui'
 import { PLACEHOLDER_ROUTES } from '@/shared/nav'
 
 /**
- * Pantalla genérica para los módulos del ERP que todavía no tienen funcionalidad real.
- * Su único propósito es mostrar la forma completa de la navegación en este dashboard de prueba.
+ * Generic screen for ERP modules that do not have real functionality yet.
+ * Its only purpose is to show the full navigation shape in this trial dashboard.
  */
 export function ModulePlaceholder() {
   const { pathname } = useLocation()

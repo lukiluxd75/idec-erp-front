@@ -4,12 +4,12 @@ import { storageService } from '@/core/storage/storageService'
 import { extractUserFromToken, isTokenExpired } from '@/shared/utils/jwt.util'
 
 /**
- * Servicio de Autenticación (Auth Domain Service)
- * Encapsula la lógica de negocio para autenticación, inicio de sesión y gestión de sesiones OIDC/Keycloak
+ * Authentication service (Auth Domain Service)
+ * Encapsulates business logic for authentication, login, and OIDC/Keycloak session management
  */
 export const authService = {
   /**
-   * Autentica al usuario contra el backend y Keycloak
+   * Authenticates the user against the backend and Keycloak
    * @param {{ username: string, password: string }} credentials
    * @returns {Promise<{ access_token: string, token_type?: string, expires_in?: number, message?: string, user: object }>}
    */
@@ -31,7 +31,7 @@ export const authService = {
       throw new Error('No se recibió el token de acceso desde el servidor de autenticación.')
     }
 
-    // Persistir token, refresh_token y username
+    // Persist token, refresh_token, and username
     storageService.setToken(accessToken)
     if (data.refresh_token) {
       storageService.setRefreshToken(data.refresh_token)
@@ -49,8 +49,8 @@ export const authService = {
   },
 
   /**
-   * Renueva la sesión silenciosamente usando el refresh_token almacenado,
-   * sin requerir que el usuario vuelva a ingresar credenciales.
+   * Silently renews the session using the stored refresh_token,
+   * without requiring the user to enter credentials again.
    * @returns {Promise<{ access_token: string, refresh_token?: string, user: object }>}
    */
   async refreshSession() {
@@ -87,14 +87,14 @@ export const authService = {
   },
 
   /**
-   * Cierra la sesión activa y elimina las credenciales locales
+   * Closes the active session and clears local credentials
    */
   logout() {
     storageService.clearAuth()
   },
 
   /**
-   * Obtiene y valida la sesión almacenada actualmente
+   * Gets and validates the currently stored session
    * @returns {{ token: string | null, user: object | null, isValid: boolean }}
    */
   getCurrentSession() {
@@ -102,9 +102,9 @@ export const authService = {
     const savedUsername = storageService.getUsername()
 
     if (!token || isTokenExpired(token)) {
-      // No se limpia el refresh_token acá: si el access_token expiró mientras la pestaña
-      // estaba cerrada/inactiva, AuthProvider intenta restaurar la sesión con él antes
-      // de forzar el login (ver AuthProvider.initAuth).
+      // Do not clear refresh_token here: if access_token expired while the tab was
+      // closed/inactive, AuthProvider tries to restore the session with it before
+      // forcing login (see AuthProvider.initAuth).
       return { token: null, user: null, isValid: false }
     }
 
@@ -113,7 +113,7 @@ export const authService = {
   },
 
   /**
-   * Verifica si existe un token y no ha expirado
+   * Checks whether a token exists and has not expired
    * @returns {boolean}
    */
   isAuthenticated() {
