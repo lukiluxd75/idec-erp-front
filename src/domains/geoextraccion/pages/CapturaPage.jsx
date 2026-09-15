@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   FileUp, Trash2, XCircle, FileSpreadsheet,
   Save, ScanLine, ZoomIn, ZoomOut, RotateCcw,
@@ -12,6 +12,8 @@ import { cn } from '@/shared/utils'
 import { geoextraccionApi } from '../api/geoextraccion.api'
 import { TablaCoordenadas } from '../components/TablaCoordenadas'
 import { ColaPoligonos } from '../components/ColaPoligonos'
+import { CapturasMoviles } from '../components/CapturasMoviles'
+import { useCapturasUpdates } from '../utils/useCapturasUpdates'
 
 /** Empaqueta los terrenos (forma interna de la página) al formato que espera el backend. */
 function toTerrenosPayload(terrenos) {
@@ -60,6 +62,8 @@ export default function CapturaPage() {
   const [newRowIds, setNewRowIds] = useState([])
   const [lastAppendCount, setLastAppendCount] = useState(0)
   const [isAppendMode, setIsAppendMode] = useState(false)
+  const [capturasMoviles, setCapturasMoviles] = useState([])
+  const [cargandoCapturaId, setCargandoCapturaId] = useState(null)
 
   const getShortTS = () => {
     const d = new Date()
@@ -154,6 +158,49 @@ export default function CapturaPage() {
   }
 
   const zoomReset = () => setZoom(ZOOM_MIN)
+
+  const refrescarCapturasMoviles = useCallback(async () => {
+    try {
+      setCapturasMoviles(await geoextraccionApi.listarCapturas())
+    } catch {
+      // Silencioso: si el listado falla (backend caído, red), el resto de la
+      // pantalla sigue funcionando igual que antes de tener capturas móviles.
+    }
+  }, [])
+
+  useEffect(() => {
+    refrescarCapturasMoviles()
+  }, [refrescarCapturasMoviles])
+
+  // Se refresca solo cuando el backend avisa por WS que llegó/se descartó una
+  // captura (desde este navegador u otra pestaña) — sin polling.
+  useCapturasUpdates(refrescarCapturasMoviles)
+
+  const cargarCapturaMovil = async (id) => {
+    if (results.length > 0 && !confirm('Cambiar imagen perderá los datos actuales de la tabla. ¿Continuar?')) {
+      return
+    }
+    setCargandoCapturaId(id)
+    try {
+      const blob = await geoextraccionApi.capturaBlob(id)
+      processFile(new File([blob], `captura_movil_${id}.jpg`, { type: blob.type || 'image/jpeg' }))
+      await geoextraccionApi.descartarCaptura(id)
+      setCapturasMoviles((prev) => prev.filter((c) => c.id_captura !== id))
+    } catch (err) {
+      toast.error(err.message || 'No se pudo cargar la foto del celular.')
+    } finally {
+      setCargandoCapturaId(null)
+    }
+  }
+
+  const descartarCapturaMovil = async (id) => {
+    try {
+      await geoextraccionApi.descartarCaptura(id)
+      setCapturasMoviles((prev) => prev.filter((c) => c.id_captura !== id))
+    } catch (err) {
+      toast.error(err.message || 'No se pudo descartar la foto.')
+    }
+  }
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -462,6 +509,12 @@ export default function CapturaPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-widest">
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-slate-400">Visor Documental</span>
+              <CapturasMoviles
+                capturas={capturasMoviles}
+                cargandoId={cargandoCapturaId}
+                onCargar={cargarCapturaMovil}
+                onDescartar={descartarCapturaMovil}
+              />
               {imageSrc && (
                 <div className="flex items-center gap-1.5 normal-case">
                   <IconButton

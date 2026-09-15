@@ -39,6 +39,113 @@ function clusterByGap(items, rowGapY) {
   return rows
 }
 
+// `tableLineDetector.js` SOLO corrige rotacion, no perspectiva (ver su
+// docstring: buscar las 4 esquinas reales es fragil y puede perder columnas).
+// Una foto real con el celular apenas inclinado respecto a la hoja deja un
+// corrimiento vertical residual que CRECE con X dentro de cada fila -- no es
+// ruido chico: probado contra una foto real de GAMC, la celda mas a la
+// derecha de una fila cae hasta ~30-60px mas abajo que su propia celda de
+// Ambiente, una diferencia comparable a la separacion ENTRE filas (~35-40px).
+// Sin corregir esto, el agrupamiento por Y (banda de linea o gap, da igual)
+// arranca sistematicamente desfasado una fila entera: el Ambiente de la fila
+// N queda pegado a los numeros de la fila N-1 en TODA la tabla, no solo en
+// alguna fila suelta.
+//
+// Se estima una unica pendiente global (px de Y por px de X) comparando el
+// Y del i-esimo item de columnas NUMERICAS bien pobladas (incluye solo
+// columnas con parecida cantidad de items, para no mezclar encabezado/totales
+// con filas de datos) -- el orden DENTRO de una misma columna nunca se
+// confunde por la inclinacion (siempre se compara al mismo X), asi que
+// comparar la posicion del mismo indice entre dos columnas distintas da la
+// pendiente real sin depender de que las filas ya esten bien armadas. La
+// mediana de esas pendientes tolera el ruido de celdas sueltas del OCR.
+// Se descarta (pendiente 0, sin corregir nada) si no hay muestras
+// suficientes o si da una pendiente inverosimil (>11 grados aprox.: mas que
+// eso ya es sospecha de columnas mal agrupadas, no inclinacion real).
+function estimateRowSlope(items, columnGapX) {
+  const xCenterOf = (it) => (it.xStart + it.xEnd) / 2
+  const sorted = [...items].sort((a, b) => xCenterOf(a) - xCenterOf(b))
+  const anchors = []
+  sorted.forEach((it) => {
+    const x = xCenterOf(it)
+    const last = anchors[anchors.length - 1]
+    if (!last || x - last.x > columnGapX) {
+      anchors.push({ x, items: [it] })
+    } else {
+      last.items.push(it)
+      last.x = x
+    }
+  })
+  const maxLen = anchors.reduce((m, a) => Math.max(m, a.items.length), 0)
+  const minLen = Math.max(4, Math.round(maxLen * 0.6))
+  const columns = anchors
+    .filter((a) => a.items.length >= minLen)
+    .map((a) => ({
+      x: a.items.reduce((sum, it) => sum + xCenterOf(it), 0) / a.items.length,
+      items: [...a.items].sort((p, q) => p.y - q.y),
+    }))
+
+  const slopes = []
+  for (let i = 0; i < columns.length; i++) {
+    for (let j = i + 1; j < columns.length; j++) {
+      const a = columns[i]
+      const b = columns[j]
+      if (a.items.length !== b.items.length) continue
+      const dx = b.x - a.x
+      if (Math.abs(dx) < 150) continue
+      for (let k = 0; k < a.items.length; k++) slopes.push((b.items[k].y - a.items[k].y) / dx)
+    }
+  }
+  if (slopes.length < 5) return 0
+  slopes.sort((a, b) => a - b)
+  const mid = Math.floor(slopes.length / 2)
+  const slope = slopes.length % 2 ? slopes[mid] : (slopes[mid - 1] + slopes[mid]) / 2
+  return Math.abs(slope) <= 0.2 ? slope : 0
+}
+
+// El comentario de mas abajo (donde se usan los anchors) explica por que se
+// ancla por CENTRO del texto y no por borde izquierdo: encabezado corto vs
+// dato largo. Pero el centro tampoco es perfecto -- probado contra una foto
+// real de GAMC, el encabezado corto de una columna ("Construlda", ~90px de
+// ancho) y sus propios numeros de dato ("17,21", ~55px de ancho) cayeron a
+// solo ~45px de distancia en X, el mismo orden de magnitud que columnGapX
+// -- alcanza para que el agrupador (que compara cada item SOLO contra el
+// ULTIMO anchor aceptado, no contra el mas cercano) los separe en dos
+// columnas. El resultado real fue mucho peor que una columna de mas: la
+// columna con los NUMEROS quedaba sin encabezado propio (el texto "PRIV" +
+// "CONSTR" cayo en la otra), asi que la deteccion de rol por texto nunca la
+// reconocia como "Priv. Construida" y le asignaba cualquier otra cosa (se
+// vio "Ideal" repetido en 3 columnas de la tabla real, cada una arrastrando
+// el rol de la anterior por el fallback de texto/posicion) -- y la columna
+// que SI tenia el encabezado quedaba vacia de datos. Mismo patron con la
+// columna de "Ambiente" (nombre corto "Baulera1" vs largo "Parqueo
+// Doble5+Baulera9").
+//
+// Fusiona anchors consecutivos cuyo hueco es chico COMPARADO CON LOS DEMAS
+// huecos de columna de esta misma foto (no un pixel fijo -- el ancho de
+// columna cambia mucho segun que tan cerca este el celular de la hoja). Se
+// usa la mediana de los huecos reales como vara: un hueco de menos de la
+// mitad de la mediana es "ruido de ancho de texto dentro de la misma
+// columna", no una columna nueva. Sin lineas de columna reales para
+// comparar (como si hay con `lineYs` para filas), es la mejor señal
+// disponible.
+function fusionarAnchorsFragmentados(anchors) {
+  if (anchors.length < 3) return anchors
+  const huecos = []
+  for (let i = 1; i < anchors.length; i++) huecos.push(anchors[i] - anchors[i - 1])
+  const ordenados = [...huecos].sort((a, b) => a - b)
+  const mid = Math.floor(ordenados.length / 2)
+  const huecoTipico = ordenados.length % 2 ? ordenados[mid] : (ordenados[mid - 1] + ordenados[mid]) / 2
+  const umbral = huecoTipico * 0.5
+
+  const merged = [anchors[0]]
+  for (let i = 1; i < anchors.length; i++) {
+    if (anchors[i] - merged[merged.length - 1] < umbral) continue
+    merged.push(anchors[i])
+  }
+  return merged
+}
+
 // rowGapY=3.5 (el valor original) parte una sola fila visual en varias
 // "micro-filas": en fotos reales los numeros de una misma fila no caen
 // exactamente a la misma altura (inclinacion/ruido del OCR, mas notorio
@@ -61,7 +168,19 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
       xEnd: xEndOf(b.points),
     }))
     .filter((b) => b.text)
-    .sort((a, b) => a.y - b.y)
+
+  // Corrige la inclinacion residual ANTES de agrupar por fila (ver
+  // `estimateRowSlope`) -- afecta solo el Y usado para agrupar, no toca X
+  // (la deteccion de columnas, mas abajo, sigue igual).
+  const slope = estimateRowSlope(items, columnGapX)
+  if (slope) {
+    const xCenterOf = (it) => (it.xStart + it.xEnd) / 2
+    const xRef = items.reduce((sum, it) => sum + xCenterOf(it), 0) / items.length
+    items.forEach((it) => {
+      it.y -= slope * (xCenterOf(it) - xRef)
+    })
+  }
+  items.sort((a, b) => a.y - b.y)
 
   let rows = []
   if (lineYs.length >= 3) {
@@ -132,10 +251,11 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   const allX = []
   rows.forEach((row) => row.items.forEach((it) => allX.push(xCenterOf(it))))
   allX.sort((a, b) => a - b)
-  const anchors = []
+  let anchors = []
   allX.forEach((x) => {
     if (anchors.length === 0 || x - anchors[anchors.length - 1] > columnGapX) anchors.push(x)
   })
+  anchors = fusionarAnchorsFragmentados(anchors)
 
   rows.forEach((row) => {
     const aligned = anchors.map(() => ({ text: '', confidence: 1 }))

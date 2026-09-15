@@ -58,9 +58,29 @@ async function esperarResultadoOCR(jobId) {
   throw new ApiError('Tiempo agotado esperando el resultado del OCR.')
 }
 
+/**
+ * Capturas mandadas desde la app móvil (geoextract móvil: solo saca la foto y la
+ * manda acá — el recorte y el OCR siguen siendo de esta página). Backend del ERP,
+ * guardadas en memoria del proceso, no en base de datos: la lista es efímera.
+ */
+function listarCapturas() {
+  return httpClient.get(API_ENDPOINTS.GEOEXTRACCION.CAPTURAS)
+}
+
+function capturaBlob(id) {
+  return httpClient.get(API_ENDPOINTS.GEOEXTRACCION.CAPTURA_IMAGEN(id), { responseType: 'blob' })
+}
+
+function descartarCaptura(id) {
+  return httpClient.delete(API_ENDPOINTS.GEOEXTRACCION.CAPTURA(id))
+}
+
 export const geoextraccionApi = {
   generarShapefile,
   fusionarShapefiles,
   subirImagenOCR,
   esperarResultadoOCR,
+  listarCapturas,
+  capturaBlob,
+  descartarCaptura,
 }

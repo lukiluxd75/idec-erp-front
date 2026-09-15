@@ -17,6 +17,10 @@ export const API_ENDPOINTS = {
   GEOEXTRACCION: {
     GENERAR_SHAPEFILE: '/api/geoextraccion/shapefiles',
     FUSIONAR_SHAPEFILES: '/api/geoextraccion/shapefiles/fusiones',
+    CAPTURAS: '/api/geoextraccion/capturas',
+    CAPTURA: (id) => `/api/geoextraccion/capturas/${id}`,
+    CAPTURA_IMAGEN: (id) => `/api/geoextraccion/capturas/${id}/imagen`,
+    CAPTURAS_WS: '/api/geoextraccion/capturas/ws',
   },
   SEGURIDAD: {
     ROLES: '/api/seguridad/roles',
