@@ -1,7 +1,8 @@
 import { NavLink, Navigate, useLocation } from 'react-router-dom'
 import { ArrowUpRight } from 'lucide-react'
+import { useAuth } from '@/auth/hooks/useAuth'
 import { Card, SectionHeader } from '@/shared/ui'
-import { DOMAIN_SECTIONS } from '@/shared/nav'
+import { DOMAIN_SECTIONS, canViewChild } from '@/shared/nav'
 
 function SubsystemCard({ label, path, icon: Icon }) {
   return (
@@ -46,12 +47,15 @@ function SubsystemCard({ label, path, icon: Icon }) {
  */
 export function DomainHome() {
   const { pathname } = useLocation()
+  const { user } = useAuth()
   const domain = DOMAIN_SECTIONS.find((section) => section.path === pathname)
 
   if (!domain) return null
 
-  if (domain.children?.length === 1) {
-    return <Navigate to={domain.children[0].path} replace />
+  const visibleChildren = (domain.children || []).filter((child) => canViewChild(user?.permisos, child))
+
+  if (visibleChildren.length === 1) {
+    return <Navigate to={visibleChildren[0].path} replace />
   }
 
   return (
@@ -59,7 +63,7 @@ export function DomainHome() {
       <SectionHeader icon={domain.icon} eyebrow="Módulo" title={domain.label} className="mb-0" />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-        {domain.children.map((item) => (
+        {visibleChildren.map((item) => (
           <SubsystemCard key={item.path} {...item} />
         ))}
       </div>

@@ -9,6 +9,11 @@ import {
   Building2,
   ScanSearch,
   FileSpreadsheet,
+  Bot,
+  MessageCircle,
+  ClipboardList,
+  ScanLine,
+  ThumbsUp,
 } from 'lucide-react'
 
 /**
@@ -52,6 +57,25 @@ export const NAV_SECTIONS = [
     children: [
       { label: 'Usuarios', path: '/security/users', icon: Users },
       { label: 'Roles', path: '/security/roles', icon: KeyRound },
+    ],
+  },
+  {
+    label: 'Asistente de Trámites',
+    icon: Bot,
+    path: '/chatbot',
+    // Acción extra sobre el par view/edit genérico (ver moduleCatalog.js) — separa
+    // "gestionar el catálogo de trámites/ingesta" (chatbot.edit) de "ver la
+    // retroalimentación de todos los usuarios" (chatbot.feedback), para que un rol
+    // como "Asistente" pueda tener uno sin el otro.
+    actions: [{ id: 'feedback', label: 'Ver retroalimentación' }],
+    children: [
+      { label: 'Asistente', path: '/chatbot/chat', icon: MessageCircle },
+      // El resto son pantallas de administración (ver canViewChild) — el back
+      // igual las rechaza con 403 sin el permiso, esto solo evita mostrar el
+      // enlace a quien no puede usarlas.
+      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
+      { label: 'Ingesta OCR', path: '/chatbot/ingest', icon: ScanLine, permission: 'chatbot.edit' },
+      { label: 'Retroalimentación', path: '/chatbot/feedback', icon: ThumbsUp, permission: 'chatbot.feedback' },
     ],
   },
 ]
@@ -105,4 +129,16 @@ export function canViewModule(permissions, section) {
   if (!section) return false
   const moduleId = section.path.replace('/', '')
   return (permissions || []).some((code) => code.startsWith(`${moduleId}.`))
+}
+
+/**
+ * True if `permissions` allow one specific child screen. Most children have no
+ * `permission` (any user who can see the module can see them — same as before
+ * this field existed); a child that sets one (e.g. an admin screen) is hidden
+ * unless the user holds that exact code. This only controls the link's
+ * visibility — the backend enforces the real check independently.
+ */
+export function canViewChild(permissions, child) {
+  if (!child?.permission) return true
+  return (permissions || []).includes(child.permission)
 }

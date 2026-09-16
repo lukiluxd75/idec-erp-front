@@ -50,4 +50,13 @@ export const API_ENDPOINTS = {
     MANUAL_ALIGN_APPLY: (jobId) => `/api/detection/jobs/${jobId}/manual-align/apply`,
     CADASTRAL_RECORD: (id) => `/api/detection/cadastre/cadastral-record/${id}`,
   },
+  CHATBOT: {
+    CHAT: '/api/chatbot/chat',
+    VISION: '/api/chatbot/vision',
+    FEEDBACK: '/api/chatbot/feedback',
+    PROCEDURES: '/api/chatbot/procedures',
+    PROCEDURE: (code) => `/api/chatbot/procedures/${code}`,
+    INGESTS: '/api/chatbot/ingests',
+    REINDEX_EMBEDDINGS: '/api/chatbot/embeddings/reindex',
+  },
 }
