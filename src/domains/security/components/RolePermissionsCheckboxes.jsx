@@ -1,4 +1,4 @@
-import { ERP_MODULES, ACTIONS } from '../data/moduleCatalog'
+import { ERP_MODULES } from '../data/moduleCatalog'
 
 /**
  * Permission checklist grouped by ERP module. This is the only way to assign permissions
@@ -19,7 +19,7 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
             {module.label}
           </p>
           <div className="flex flex-wrap gap-3">
-            {ACTIONS.map((action) => {
+            {module.actions.map((action) => {
               const key = `${module.id}.${action.id}`
               return (
                 <label key={key} className="flex items-center gap-1.5 text-sm text-slate-700">

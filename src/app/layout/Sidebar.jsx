@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { NAV_SECTIONS, getCurrentDomain } from '@/shared/nav'
+import { useAuth } from '@/auth/hooks/useAuth'
+import { NAV_SECTIONS, canViewChild, getCurrentDomain } from '@/shared/nav'
 
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
@@ -14,11 +15,13 @@ const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
  */
 export function Sidebar({ open = true, onNavigate }) {
   const { pathname } = useLocation()
+  const { user } = useAuth()
   const currentDomain = getCurrentDomain(pathname)
 
   if (!currentDomain) return null
 
   const DomainIcon = currentDomain.icon
+  const visibleChildren = (currentDomain.children || []).filter((child) => canViewChild(user?.permisos, child))
 
   return (
     <div
@@ -53,13 +56,13 @@ export function Sidebar({ open = true, onNavigate }) {
             <span>Volver a Inicio</span>
           </NavLink>
 
-          {currentDomain.children?.length > 0 && (
+          {visibleChildren.length > 0 && (
             <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
               Funciones
             </p>
           )}
 
-          {currentDomain.children?.map((child) => {
+          {visibleChildren.map((child) => {
             const ChildIcon = child.icon
             return (
               <NavLink
