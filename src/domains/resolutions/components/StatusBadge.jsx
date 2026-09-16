@@ -6,8 +6,8 @@ const MAP = {
   listo: { variant: 'success', label: 'Listo' },
 }
 
-export function StatusBadge({ estado }) {
-  const it = MAP[estado] || { variant: 'neutral', label: estado }
+export function StatusBadge({ status }) {
+  const it = MAP[status] || { variant: 'neutral', label: status }
   return (
     <Badge variant={it.variant} dot>
       {it.label}
