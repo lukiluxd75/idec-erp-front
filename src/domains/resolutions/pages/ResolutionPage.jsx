@@ -51,17 +51,17 @@ export default function ResolutionPage() {
         const detalle = await resolutionsApi.get(id)
         if (!alive) return
         setResolucion(detalle)
-        if (detalle.tabla?.paginas) setPaginasTabla(detalle.tabla.paginas)
-        if (detalle.tabla?.datosGenerales) {
-          setDatosGenerales({ ...DATOS_GENERALES_VACIO, ...detalle.tabla.datosGenerales })
+        if (detalle.table_data?.paginas) setPaginasTabla(detalle.table_data.paginas)
+        if (detalle.table_data?.datosGenerales) {
+          setDatosGenerales({ ...DATOS_GENERALES_VACIO, ...detalle.table_data.datosGenerales })
         }
 
         const imgs = []
-        for (const p of detalle.paginas) {
-          const blob = await resolutionsApi.pageBlob(id, p.orden)
+        for (const p of detalle.pages) {
+          const blob = await resolutionsApi.pageBlob(id, p.order_index)
           const url = URL.createObjectURL(blob)
           urls.push(url)
-          imgs.push({ orden: p.orden, url, blob })
+          imgs.push({ orden: p.order_index, url, blob })
         }
         if (alive) setPaginasImg(imgs)
       } catch (e) {
@@ -149,13 +149,17 @@ export default function ResolutionPage() {
 
   const downloadOcrDiagnostics = () => {
     const blob = new Blob([JSON.stringify(ocrDiagnostics, null, 2)], { type: 'application/json' })
-    downloadBlob(blob, `ocr_diagnostico_${resolucion.nro_resolucion.replace(/\W+/g, '_')}.json`)
+    downloadBlob(blob, `ocr_diagnostico_${resolucion.resolution_number.replace(/\W+/g, '_')}.json`)
   }
 
   const saveTable = async (estado) => {
     setSaving(true)
     try {
-      const actualizada = await resolutionsApi.saveTable(id, { paginas: paginasTabla, datosGenerales }, estado)
+      const actualizada = await resolutionsApi.saveTable(
+        id,
+        { paginas: paginasTabla, datosGenerales },
+        estado,
+      )
       setResolucion(actualizada)
       toast.success('Guardado.')
     } catch (e) {
@@ -171,7 +175,7 @@ export default function ResolutionPage() {
       const actualizada = await resolutionsApi.saveTable(
         id,
         { paginas: paginasTabla, datosGenerales },
-        resolucion.estado,
+        resolucion.status,
       )
       setResolucion(actualizada)
       toast.success('Datos generales guardados.')
@@ -195,7 +199,7 @@ export default function ResolutionPage() {
         return r.arrayBuffer()
       })
       const blob = await fillSheet2(buf, filas)
-      downloadBlob(blob, `hoja2_${resolucion.nro_resolucion.replace(/\W+/g, '_')}.xlsm`)
+      downloadBlob(blob, `hoja2_${resolucion.resolution_number.replace(/\W+/g, '_')}.xlsm`)
       await saveTable('listo')
     } catch (e) {
       toast.error(e.message)
@@ -232,12 +236,12 @@ export default function ResolutionPage() {
         </Link>
         <SectionHeader
           icon={FileSpreadsheet}
-          eyebrow={`N° ${resolucion.nro_resolucion}`}
-          title={resolucion.nombre}
-          subtitle={`${resolucion.total_paginas} ${
-            resolucion.total_paginas === 1 ? 'página escaneada' : 'páginas escaneadas'
+          eyebrow={`N° ${resolucion.resolution_number}`}
+          title={resolucion.name}
+          subtitle={`${resolucion.total_pages} ${
+            resolucion.total_pages === 1 ? 'página escaneada' : 'páginas escaneadas'
           }`}
-          actions={<StatusBadge estado={resolucion.estado} />}
+          actions={<StatusBadge status={resolucion.status} />}
         />
 
         <div className="flex flex-wrap gap-3">

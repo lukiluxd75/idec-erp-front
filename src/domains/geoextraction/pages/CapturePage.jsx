@@ -182,29 +182,38 @@ export default function CapturePage() {
     return () => clearInterval(interval)
   }, [refreshMobileCaptures])
 
+  // Both actions below remove the capture from the local list *before* calling
+  // the backend (optimistic): otherwise, while the request is in flight, the
+  // 10s poll or a WS notify from another tab can refetch the still-pending
+  // capture and let it be clicked a second time, so the second call 404s /
+  // "no hay ninguna captura pendiente" against an id already consumed by the
+  // first. If the backend call actually fails, refreshMobileCaptures()
+  // resyncs the list from the server instead of leaving it wrongly removed.
   const loadMobileCapture = async (id) => {
     if (results.length > 0 && !confirm('Cambiar imagen perderá los datos actuales de la tabla. ¿Continuar?')) {
       return
     }
     setLoadingCaptureId(id)
+    setMobileCaptures((prev) => prev.filter((c) => c.capture_id !== id))
     try {
       const blob = await geoextractionApi.captureBlob(id)
       processFile(new File([blob], `captura_movil_${id}.jpg`, { type: blob.type || 'image/jpeg' }))
       await geoextractionApi.discardCapture(id)
-      setMobileCaptures((prev) => prev.filter((c) => c.id_captura !== id))
     } catch (err) {
       toast.error(err.message || 'No se pudo cargar la foto del celular.')
+      refreshMobileCaptures()
     } finally {
       setLoadingCaptureId(null)
     }
   }
 
   const discardMobileCapture = async (id) => {
+    setMobileCaptures((prev) => prev.filter((c) => c.capture_id !== id))
     try {
       await geoextractionApi.discardCapture(id)
-      setMobileCaptures((prev) => prev.filter((c) => c.id_captura !== id))
     } catch (err) {
       toast.error(err.message || 'No se pudo descartar la foto.')
+      refreshMobileCaptures()
     }
   }
 
