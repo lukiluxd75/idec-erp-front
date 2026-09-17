@@ -19,9 +19,9 @@ import {
 
 /**
  * ERP navigation tree — single source of truth for the home module grid
- * (app/pages/DashboardPage), the contextual sidebar (app/layout/Sidebar) and domain
- * entry screens (app/pages/DomainHome). Lives in shared/ so those consumers do not
- * depend on each other directly.
+ * (app/pages/DashboardPage), the contextual sidebar (app/layout/Sidebar) and the
+ * domain entry redirect (app/pages/DomainHome). Lives in shared/ so those consumers
+ * do not depend on each other directly.
  */
 export const NAV_SECTIONS = [
   {
@@ -86,18 +86,18 @@ export const NAV_SECTIONS = [
   },
 ]
 
-/** Domains with their own subsystems — each has an entry page (DomainHome). */
+/** Domains with their own subsystems — each has an entry redirect (DomainHome). */
 export const DOMAIN_SECTIONS = NAV_SECTIONS.filter((section) => section.children?.length)
 
 /**
  * Entry path into a module from the catalog.
- * If there is only one feature, open that screen directly (avoids redundant DomainHome).
+ * Opens the module's first function directly — DomainHome no longer shows a
+ * function picker, so there is nothing to gain by landing on `section.path` first.
  */
 export function getModuleEntryPath(section) {
   if (!section) return '/dashboard'
   const kids = section.children || []
-  if (kids.length === 1 && kids[0]?.path) return kids[0].path
-  return section.path
+  return kids[0]?.path || section.path
 }
 
 /**

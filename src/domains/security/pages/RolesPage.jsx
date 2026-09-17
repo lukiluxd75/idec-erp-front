@@ -193,7 +193,7 @@ export default function RolesPage() {
         title="Eliminar rol"
         message={
           roleToDelete
-            ? `Se eliminará el rol "${roleToDelete.nombre}". Los usuarios que lo tengan asignado perderán ese rol (conservan los demás que tengan).`
+            ? `Se eliminará el rol "${roleToDelete.nombre}". Si hay usuarios con este rol asignado, no podrá eliminarse.`
             : ''
         }
       />
