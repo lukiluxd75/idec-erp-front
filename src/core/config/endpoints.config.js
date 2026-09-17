@@ -50,6 +50,14 @@ export const API_ENDPOINTS = {
     MANUAL_ALIGN_APPLY: (jobId) => `/api/detection/jobs/${jobId}/manual-align/apply`,
     CADASTRAL_RECORD: (id) => `/api/detection/cadastre/cadastral-record/${id}`,
   },
+  APPRAISAL_REVIEW: {
+    PENDING: '/api/appraisal-review/appraisals',
+    SEARCH: (formNumber) => `/api/appraisal-review/appraisals?form_number=${encodeURIComponent(formNumber)}`,
+    DETAIL: (formNumber) => `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}`,
+    OBSERVATIONS: (formNumber) =>
+      `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/observations`,
+    MIGRATE: (formNumber) => `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/migrate`,
+  },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
     VISION: '/api/chatbot/vision',

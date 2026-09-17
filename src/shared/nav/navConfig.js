@@ -14,6 +14,7 @@ import {
   ClipboardList,
   ScanLine,
   ThumbsUp,
+  ClipboardCheck,
 } from 'lucide-react'
 
 /**
@@ -49,6 +50,11 @@ export const NAV_SECTIONS = [
     label: 'Lector OCR de Resoluciones P.H.',
     icon: FileSpreadsheet,
     path: '/resolutions',
+  },
+  {
+    label: 'Revisión Avalúos',
+    icon: ClipboardCheck,
+    path: '/appraisal-review',
   },
   {
     label: 'Seguridad',
