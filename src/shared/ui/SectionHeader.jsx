@@ -1,8 +1,8 @@
 import { cn } from '@/shared/utils'
 
 /**
- * Icon + eyebrow + title header used at the top of section cards (DomainHome,
- * domain pages). `subtitle` and `actions` are optional (e.g. a refresh button on the
+ * Icon + eyebrow + title header used at the top of section cards (domain pages,
+ * DashboardPage). `subtitle` and `actions` are optional (e.g. a refresh button on the
  * right) — see domains/resolutions for a usage with both.
  */
 export function SectionHeader({ icon: Icon, eyebrow, title, subtitle, actions, className = '' }) {

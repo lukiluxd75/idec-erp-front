@@ -52,7 +52,7 @@ export function AppRoutes() {
         >
           <Route path="dashboard" element={<DashboardPage />} />
 
-          {/* Domain entry: shows its subsystems as large buttons */}
+          {/* Domain entry: redirects to the module's first accessible function */}
           {DOMAIN_SECTIONS.map((domain) => (
             <Route
               key={domain.path}
