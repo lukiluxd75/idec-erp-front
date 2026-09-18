@@ -5,6 +5,17 @@ pipeline {
         }
     }
     stages {
+        stage('Instalar Dependencias') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        stage('Ejecutar Pruebas') {
+            steps {
+                // Ejecuta los tests del frontend
+                sh 'npm test -- --watchAll=false' 
+            }
+        }
         stage('Desplegar ERP Front') {
             steps {
                 sh '''
