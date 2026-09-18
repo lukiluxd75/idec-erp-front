@@ -2,33 +2,27 @@ pipeline {
     agent any
 
     environment {
-        // Asignación de memoria y desactivación de hilos excesivos en Node/Vite para evitar el error 254
         NODE_OPTIONS = '--max-old-space-size=4096'
         UV_THREADPOOL_SIZE = '2'
     }
 
     stages {
-        stage('1. Limpieza') {
-            steps {
-                cleanWs()
-            }
-        }
-
-        stage('2. Instalar Dependencias') {
+        stage('1. Instalar Dependencias') {
             steps {
                 echo 'Instalando dependencias de Node.js...'
-                sh 'npm ci --prefer-offline || npm install'
+                // Si existe package-lock.json usa npm ci, si no, usa npm install
+                sh 'if [ -f package-lock.json ]; then npm ci --prefer-offline; else npm install; fi'
             }
         }
 
-        stage('3. Compilación (Build)') {
+        stage('2. Compilación (Build)') {
             steps {
                 echo 'Compilando Frontend con consumo controlado de RAM...'
                 sh 'NODE_OPTIONS="--max-old-space-size=4096" npm run build'
             }
         }
 
-        stage('4. Despliegue') {
+        stage('3. Despliegue') {
             steps {
                 echo 'Sincronizando archivos al servidor...'
                 sh 'rsync -avz --delete dist/ /var/www/html/idec-erp-front/'
@@ -38,6 +32,7 @@ pipeline {
 
     post {
         always {
+            // Limpia el entorno ÚNICAMENTE al finalizar todo el proceso
             cleanWs()
         }
         success {
