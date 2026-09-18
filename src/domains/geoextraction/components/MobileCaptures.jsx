@@ -25,21 +25,21 @@ export function MobileCaptures({ captures, loadingId, onLoad, onDiscard }) {
       </Badge>
       <div className="flex flex-wrap items-center gap-1.5">
         {captures.map((c) => (
-          <div key={c.id_captura} className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white/70 pl-2 pr-1 py-1">
+          <div key={c.capture_id} className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white/70 pl-2 pr-1 py-1">
             <button
-              onClick={() => onLoad(c.id_captura)}
+              onClick={() => onLoad(c.capture_id)}
               disabled={loadingId !== null}
               className="text-[10px] font-black uppercase tracking-wide text-brand-800 hover:text-brand-600 disabled:opacity-50"
             >
-              {loadingId === c.id_captura ? 'Cargando…' : `Cargar ${formatTime(c.fecha_creacion)}`}
+              {loadingId === c.capture_id ? 'Cargando…' : `Cargar ${formatTime(c.created_at)}`}
             </button>
             <IconButton
               icon={Trash2}
               size={12}
               className="p-0.5"
               tone="dangerActive"
-              disabled={loadingId !== null}
-              onClick={() => onDiscard(c.id_captura)}
+              disabled={loadingId === c.capture_id}
+              onClick={() => onDiscard(c.capture_id)}
               title="Descartar"
             />
           </div>

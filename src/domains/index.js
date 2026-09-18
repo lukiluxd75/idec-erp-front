@@ -7,12 +7,16 @@ import { geoextractionRoutes } from './geoextraction/routes'
 import { securityRoutes } from './security/routes'
 import { detectionRoutes } from './detection/routes'
 import { resolutionsRoutes } from './resolutions/routes'
+import { chatbotRoutes } from './chatbot/routes'
+import { appraisalReviewRoutes } from './appraisal-review/routes'
 
 export const DOMAIN_ROUTES = [
   ...geoextractionRoutes,
   ...securityRoutes,
   ...detectionRoutes,
   ...resolutionsRoutes,
+  ...chatbotRoutes,
+  ...appraisalReviewRoutes,
 ]
 
 /** true if the active route requested AppShell's wide container instead of max-w-4xl. */

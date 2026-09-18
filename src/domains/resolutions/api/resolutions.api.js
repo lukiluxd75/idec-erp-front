@@ -15,8 +15,8 @@ export const resolutionsApi = {
   pageBlob: (id, orden) =>
     httpClient.get(API_ENDPOINTS.RESOLUTIONS.PAGE(id, orden), { responseType: 'blob' }),
 
-  saveTable: (id, tabla, estado) =>
-    httpClient.put(API_ENDPOINTS.RESOLUTIONS.TABLE(id), { tabla, estado }),
+  saveTable: (id, tableData, status) =>
+    httpClient.put(API_ENDPOINTS.RESOLUTIONS.TABLE(id), { table_data: tableData, status }),
 
   remove: (id) => httpClient.delete(API_ENDPOINTS.RESOLUTIONS.ONE(id)),
 }

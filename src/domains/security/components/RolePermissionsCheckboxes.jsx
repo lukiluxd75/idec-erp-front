@@ -1,8 +1,9 @@
-import { ERP_MODULES, ACTIONS } from '../data/moduleCatalog'
+import { ACTIONS, ERP_MODULES } from '../data/moduleCatalog'
 
 /**
  * Permission matrix (modules × actions) for assigning permissions to a role.
  * Only catalog codes — never free text (IDEC guide §8 / §10).
+ * Extra module actions (e.g. chatbot.feedback) appear as additional columns.
  */
 export function RolePermissionsCheckboxes({ permissions, onChange }) {
   const selected = permissions || []
@@ -13,8 +14,10 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
     onChange(hasPermission(key) ? selected.filter((code) => code !== key) : [...selected, key])
   }
 
-  const setModuleAll = (moduleId, enabled) => {
-    const keys = ACTIONS.map((action) => `${moduleId}.${action.id}`)
+  const moduleActionKeys = (module) => module.actions.map((action) => `${module.id}.${action.id}`)
+
+  const setModuleAll = (module, enabled) => {
+    const keys = moduleActionKeys(module)
     if (enabled) {
       const merged = new Set([...selected, ...keys])
       onChange([...merged])
@@ -23,8 +26,11 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
     }
   }
 
-  const moduleFullySelected = (moduleId) =>
-    ACTIONS.every((action) => hasPermission(`${moduleId}.${action.id}`))
+  const moduleFullySelected = (module) =>
+    module.actions.every((action) => hasPermission(`${module.id}.${action.id}`))
+
+  const moduleHasAction = (module, actionId) =>
+    module.actions.some((action) => action.id === actionId)
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80">
@@ -43,7 +49,7 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {ERP_MODULES.map((module) => {
-              const allOn = moduleFullySelected(module.id)
+              const allOn = moduleFullySelected(module)
               return (
                 <tr key={module.id} className="hover:bg-slate-50/80">
                   <td className="px-3 py-2.5">
@@ -52,6 +58,13 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
                   </td>
                   {ACTIONS.map((action) => {
                     const key = `${module.id}.${action.id}`
+                    if (!moduleHasAction(module, action.id)) {
+                      return (
+                        <td key={key} className="px-3 py-2.5 text-center text-slate-200">
+                          —
+                        </td>
+                      )
+                    }
                     return (
                       <td key={key} className="px-3 py-2.5 text-center">
                         <input
@@ -68,7 +81,7 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
                     <input
                       type="checkbox"
                       checked={allOn}
-                      onChange={() => setModuleAll(module.id, !allOn)}
+                      onChange={() => setModuleAll(module, !allOn)}
                       aria-label={`Todos los permisos de ${module.label}`}
                       className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-400"
                     />

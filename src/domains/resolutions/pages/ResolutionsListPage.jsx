@@ -70,21 +70,21 @@ export default function ResolutionsListPage() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {items.map((r) => (
-            <Link key={r.id_resolucion} to={`/resolutions/${r.id_resolucion}`}>
+            <Link key={r.resolution_id} to={`/resolutions/${r.resolution_id}`}>
               <div className="flex h-full items-start gap-3 rounded-2xl border border-white/60 bg-white/70 p-4 shadow-xs transition hover:border-accent-300 hover:bg-white hover:shadow-md">
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-600 ring-1 ring-accent-200">
                   <FileText className="h-4.5 w-4.5" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate font-semibold text-slate-900">{r.nombre}</p>
-                    <StatusBadge estado={r.estado} />
+                    <p className="truncate font-semibold text-slate-900">{r.name}</p>
+                    <StatusBadge status={r.status} />
                   </div>
                   <p className="mt-0.5 text-sm text-slate-500">
-                    N° {r.nro_resolucion} · {r.total_paginas}{' '}
-                    {r.total_paginas === 1 ? 'página' : 'páginas'}
+                    N° {r.resolution_number} · {r.total_pages}{' '}
+                    {r.total_pages === 1 ? 'página' : 'páginas'}
                   </p>
-                  <p className="mt-1 text-xs text-slate-400">{formatDate(r.fecha_creacion)}</p>
+                  <p className="mt-1 text-xs text-slate-400">{formatDate(r.created_at)}</p>
                 </div>
               </div>
             </Link>

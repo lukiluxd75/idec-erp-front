@@ -5,21 +5,37 @@ import { NAV_SECTIONS } from '@/shared/nav'
  * (Home excluded — it is not a business module). Keeps the checklist aligned with
  * what exists in the menu instead of a hardcoded list that can drift.
  *
- * Phase-1 actions are the generic view/edit pair (guide §8). The backend receives
- * 'module.action' codes and creates resource/permission rows on first save.
+ * Every module gets the generic view/edit pair; a module can add its own extra
+ * actions via NAV_SECTIONS[i].actions (e.g. chatbot's `feedback`). The permission
+ * code is always `module.action`.
+ *
+ * The backend does NOT auto-create these — a module's `resources`/`permissions`
+ * rows have to be seeded before a role can be granted them here.
+ * This screen only ever offers what's in this catalog, never free text.
  */
+export const BASE_ACTIONS = [
+  { id: 'view', label: 'Ver' },
+  { id: 'edit', label: 'Editar' },
+]
 
 export const ERP_MODULES = NAV_SECTIONS.filter((section) => section.path !== '/dashboard').map(
   (section) => ({
     id: section.path.replace('/', ''),
     label: section.label,
+    actions: section.actions ? [...BASE_ACTIONS, ...section.actions] : BASE_ACTIONS,
   })
 )
 
-export const ACTIONS = [
-  { id: 'view', label: 'Ver' },
-  { id: 'edit', label: 'Editar' },
-]
+/** Unique action columns for the permission matrix (view/edit + any extras). */
+export const ACTIONS = (() => {
+  const seen = new Map()
+  for (const module of ERP_MODULES) {
+    for (const action of module.actions) {
+      if (!seen.has(action.id)) seen.set(action.id, action)
+    }
+  }
+  return [...seen.values()]
+})()
 
 /** Human-readable label for a permission code (e.g. detection.view → "Detección… · Ver"). */
 export function permissionLabel(code) {
@@ -27,7 +43,9 @@ export function permissionLabel(code) {
   const [moduleId, actionId, ...rest] = code.split('.')
   if (rest.length > 0 || !moduleId || !actionId) return code
   const module = ERP_MODULES.find((item) => item.id === moduleId)
-  const action = ACTIONS.find((item) => item.id === actionId)
+  const action =
+    module?.actions?.find((item) => item.id === actionId) ||
+    ACTIONS.find((item) => item.id === actionId)
   const moduleLabel = module?.label || moduleId
   const actionLabel = action?.label || actionId
   return `${moduleLabel} · ${actionLabel}`
