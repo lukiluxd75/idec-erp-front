@@ -11,7 +11,9 @@ const linkActive = 'bg-brand-800 text-white shadow-sm shadow-brand-800/20'
 const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 
 /**
- * Contextual sidebar: high contrast on white (readable over the ERP light-blue background).
+ * Contextual sidebar: frosted glass (misma familia "liquid glass" que el resto del ERP),
+ * pero con opacidad alta a propósito — es navegación densa de lectura constante, necesita
+ * más contraste que una tarjeta de contenido.
  */
 export function Sidebar({ open = true, onNavigate }) {
   const { pathname } = useLocation()
@@ -30,7 +32,7 @@ export function Sidebar({ open = true, onNavigate }) {
       }`}
     >
       <aside
-        className={`flex h-dvh w-64 flex-col border-r border-slate-200/90 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.06)] transition-opacity duration-200 ease-in-out ${
+        className={`liquid-glass-bar flex h-dvh w-64 flex-col border-r transition-opacity duration-200 ease-in-out ${
           open ? 'opacity-100 delay-100' : 'opacity-0'
         }`}
       >

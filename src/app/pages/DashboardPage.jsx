@@ -16,7 +16,7 @@ function ModuleCard({ label, path, icon: Icon, children }) {
   return (
     <NavLink
       to={entryPath}
-      className="group relative flex aspect-square flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-700/30 hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 sm:p-5"
+      className="liquid-glass-tile group relative flex aspect-square flex-col overflow-hidden rounded-2xl p-4 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 sm:p-5"
     >
       <span
         aria-hidden
@@ -62,8 +62,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <Card glass={false} className="!p-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-brand-800 to-brand-600 px-5 py-5 text-white sm:px-6">
+      <Card glass={false} className="liquid-glass-tint !p-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 text-white sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
               <UserRound className="h-5 w-5" />
@@ -81,16 +81,16 @@ export function DashboardPage() {
         </div>
       </Card>
 
-      <Card glass={false} className="space-y-5 !p-5 sm:!p-6">
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
+      <Card glass={false} className="liquid-glass space-y-5 !p-5 sm:!p-6">
+        <div className="flex items-center gap-2.5 border-b border-white/25 pb-4">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
             <LayoutGrid className="h-4 w-4" />
           </span>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
               Catálogo
             </p>
-            <h2 className="text-sm font-bold text-slate-900">Módulos del ERP</h2>
+            <h2 className="text-sm font-bold text-slate-900">Módulos del IDEC</h2>
           </div>
         </div>
 

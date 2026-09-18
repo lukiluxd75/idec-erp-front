@@ -32,8 +32,8 @@ export function CoordinatesTable({
   onAddToLayer,
 }) {
   return (
-    <div className="flex min-h-[550px] flex-1 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xs">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-200/70 bg-slate-50/60 px-4 py-3">
+    <div className="liquid-glass-panel flex min-h-[550px] flex-1 flex-col overflow-hidden rounded-3xl">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-white/40 bg-white/20 px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
           <span>Edición de Datos</span>
           <div className="flex flex-wrap gap-3 border-l border-slate-200 pl-4 font-bold lowercase text-accent-600">
@@ -55,7 +55,7 @@ export function CoordinatesTable({
 
       <div className="relative flex-1 overflow-auto">
         {loading && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/70 backdrop-blur-[1px]">
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white/25 backdrop-blur-md">
             <Loader2 className="mb-3 animate-spin text-accent-600" size={32} />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Digitalizando...</p>
           </div>
@@ -63,7 +63,7 @@ export function CoordinatesTable({
         {results.length > 0 ? (
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-slate-50 text-left text-[9px] font-bold uppercase tracking-widest text-slate-400">
+              <tr className="bg-white/25 text-left text-[9px] font-bold uppercase tracking-widest text-slate-500">
                 {[...Array(results[0].items.length)].map((_, i) => (
                   <th key={i} className="min-w-[140px] border-b border-slate-100 p-3">
                     <div className="flex flex-col gap-2">
@@ -88,7 +88,7 @@ export function CoordinatesTable({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {results.map((row) => (
-                <tr key={row.id} className={cn('transition-all duration-300 hover:bg-slate-50/50', newRowIds.includes(row.id) && 'animate-slide-down bg-state-success/10')}>
+                <tr key={row.id} className={cn('transition-all duration-300 hover:bg-white/20', newRowIds.includes(row.id) && 'animate-slide-down bg-state-success/10')}>
                   {row.items.map((cell) => (
                     <td key={cell.id} className="p-1 align-top">
                       <div className="flex flex-col gap-0.5">

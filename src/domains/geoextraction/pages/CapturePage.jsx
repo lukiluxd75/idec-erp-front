@@ -520,7 +520,7 @@ export default function CapturePage() {
       <p className="text-[10px] font-bold uppercase tracking-widest text-accent-600">Nota: Seleccione solo el área de números de las coordenadas</p>
 
       <div className={cn('grid grid-cols-1 gap-6', showTable && 'xl:grid-cols-12')}>
-        <Card glass={false} className={showTable ? 'xl:col-span-5' : 'mx-auto w-full max-w-2xl'}>
+        <Card className={showTable ? 'xl:col-span-5' : 'mx-auto w-full max-w-2xl'}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-widest">
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-slate-400">Visor Documental</span>
