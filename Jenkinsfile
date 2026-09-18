@@ -10,7 +10,6 @@ pipeline {
         stage('1. Instalar Dependencias') {
             steps {
                 echo 'Instalando dependencias de Node.js...'
-                // Si existe package-lock.json usa npm ci, si no, usa npm install
                 sh 'if [ -f package-lock.json ]; then npm ci --prefer-offline; else npm install; fi'
             }
         }
@@ -25,6 +24,8 @@ pipeline {
         stage('3. Despliegue') {
             steps {
                 echo 'Sincronizando archivos al servidor...'
+                // Crea la carpeta destino si no existe y luego copia los archivos
+                sh 'mkdir -p /var/www/html/idec-erp-front'
                 sh 'rsync -avz --delete dist/ /var/www/html/idec-erp-front/'
             }
         }
@@ -32,7 +33,6 @@ pipeline {
 
     post {
         always {
-            // Limpia el entorno ÚNICAMENTE al finalizar todo el proceso
             cleanWs()
         }
         success {
