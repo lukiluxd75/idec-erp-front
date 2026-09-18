@@ -18,13 +18,20 @@ function wsUrl() {
  * backend reports a change (someone uploaded/edited/deleted a resolution, from
  * phone or another tab) -- replaces the manual "Actualizar" button.
  *
+ * `onPresenceChange(mobileConnected)` is optional: the backend also pushes a
+ * `presence` message whenever another connection of the SAME account
+ * connects/disconnects, so the caller can show a "phone connected" indicator
+ * (see PhoneConnectedBadge) — see ResolutionsConnectionManager on the backend.
+ *
  * Reconnects with a fixed delay on any drop (expired token, backend restart,
  * network): exponential backoff is unnecessary at this scale.
  */
-export function useResolutionsUpdates(onUpdate) {
+export function useResolutionsUpdates(onUpdate, onPresenceChange) {
   const onUpdateRef = useRef(onUpdate)
+  const onPresenceRef = useRef(onPresenceChange)
   useEffect(() => {
     onUpdateRef.current = onUpdate
+    onPresenceRef.current = onPresenceChange
   })
 
   useEffect(() => {
@@ -36,7 +43,16 @@ export function useResolutionsUpdates(onUpdate) {
       const url = wsUrl()
       if (!url) return
       ws = new WebSocket(url)
-      ws.onmessage = () => onUpdateRef.current()
+      ws.onmessage = (event) => {
+        let msg
+        try {
+          msg = JSON.parse(event.data)
+        } catch {
+          return
+        }
+        if (msg.type === 'update') onUpdateRef.current()
+        else if (msg.type === 'presence') onPresenceRef.current?.(msg.mobile_connected)
+      }
       ws.onclose = () => {
         if (cerrado) return
         reintentoTimer = setTimeout(conectar, RETRY_MS)
