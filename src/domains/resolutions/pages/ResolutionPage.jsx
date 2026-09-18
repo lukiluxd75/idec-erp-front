@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 
 import { ENV } from '@/core/config/env.config'
 import { ocrImage, resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
+import { PlanPagesSection } from '@/domains/resolutions/components/PlanPagesSection'
 import { StatusBadge } from '@/domains/resolutions/components/StatusBadge'
 import { SurfacesTable } from '@/domains/resolutions/components/SurfacesTable'
 import { buildRows, downloadBlob, fillSheet2 } from '@/domains/resolutions/utils/sheet2Excel'
@@ -177,6 +178,14 @@ export default function ResolutionPage() {
 
   const onDeleteRow = (pageIdx, rowId) =>
     upd(pageIdx, (p) => ({ ...p, rows: p.rows.filter((row) => row.id !== rowId) }))
+
+  const refrescarResolucion = async () => {
+    try {
+      setResolucion(await resolutionsApi.get(id))
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
 
   const downloadOcrDiagnostics = () => {
     const blob = new Blob([JSON.stringify(ocrDiagnostics, null, 2)], { type: 'application/json' })
@@ -433,6 +442,12 @@ export default function ResolutionPage() {
           </Button>
         </div>
       </Card>
+
+      <PlanPagesSection
+        resolutionId={id}
+        planPages={resolucion.plan_pages || []}
+        onChanged={refrescarResolucion}
+      />
 
       {paginasTabla && (
         <Card className="animate-card-in">
