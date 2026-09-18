@@ -1,94 +1,62 @@
 pipeline {
-    agent {
-        node {
-            label 'principal'
-        }
-    }
+    agent any
 
     environment {
-        // Rutas del servidor para el despliegue y respaldos del Frontend
-        DEPLOY_DIR = '/tmp/erp-front-pruebas'
-        BACKUP_DIR = '/tmp/erp-front-backups'
-        CI = 'true'
-    }
-
-    options {
-        // Mantiene un historial limpio de las últimas 10 ejecuciones
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        timeout(time: 15, unit: 'MINUTES')
-        disableConcurrentBuilds()
+        NODE_OPTIONS = '--max-old-space-size=4096'
     }
 
     stages {
         stage('1. Preparación del Entorno') {
             steps {
-                echo "Iniciando pipeline del Frontend para la rama ${BRANCH_NAME}..."
-                sh 'node -v || true'
-                sh 'npm -v || true'
+                echo 'Limpiando espacio de trabajo anterior...'
+                cleanWs()
             }
         }
 
         stage('2. Instalar Dependencias') {
             steps {
-                echo "Instalando dependencias de Node.js..."
-                sh '''
-                npm install --no-audit --no-fund || npm install || true
-                '''
+                echo 'Instalando dependencias de Node.js...'
+                sh 'npm ci --prefer-offline || npm install'
             }
         }
 
-        stage('3. Pruebas Automatizadas (Tests)') {
+        stage('3. Pruebas Automatizadas') {
             steps {
-                echo "Ejecutando pruebas del Frontend..."
-                sh '''
-                # Ejecuta las pruebas de forma totalmente segura sin bloquear el flujo por exit code 254
-                npm test --if-present -- --watchAll=false --passWithNoTests || true
-                echo "Etapa de pruebas del Frontend finalizada."
-                '''
+                echo 'Ejecutando pruebas unitarias del Frontend...'
+                // Genera reporte de pruebas en formato JUnit (XML) para la gráfica
+                sh 'npm run test -- --reporter=junit --outputFile=test-report.xml || true'
             }
         }
 
         stage('4. Compilación (Build)') {
             steps {
-                echo "Compilando proyecto para producción..."
-                sh '''
-                npm run build --if-present || true
-                '''
+                echo 'Compilando aplicación Vite / React para producción...'
+                sh 'npm run build || true'
             }
         }
 
         stage('5. Despliegue en Servidor') {
             steps {
-                echo "Desplegando la rama ${BRANCH_NAME} en ${DEPLOY_DIR}..."
-                sh '''
-                # 1. Crear directorios de despliegue y respaldos
-                mkdir -p ${DEPLOY_DIR}
-                mkdir -p ${BACKUP_DIR}
-
-                # 2. Crear un respaldo .tar.gz de la versión anterior (si existen archivos)
-                if [ "$(ls -A ${DEPLOY_DIR} 2>/dev/null)" ]; then
-                    tar -czf ${BACKUP_DIR}/front-backup-$(date +%Y%m%d_%H%M%S).tar.gz -C ${DEPLOY_DIR} . || true
-                fi
-
-                # 3. Sincronizar los archivos del repositorio excluyendo archivos innecesarios
-                rsync -avz --exclude='.git' --exclude='.env' ./ ${DEPLOY_DIR}/
-
-                echo "Despliegue del Frontend completado con éxito."
-                '''
+                echo 'Sincronizando archivos compilados con el servidor web...'
+                sh 'rsync -avz --delete dist/ /var/www/html/idec-erp-front/'
             }
         }
     }
 
     post {
+        always {
+            echo 'Publicando resultados de las pruebas...'
+            // Genera y actualiza la gráfica de tendencias
+            junit allowEmptyResults: true, testResults: '**/test-report.xml'
+            
+            echo 'Limpiando espacio de trabajo temporal...'
+            cleanWs()
+        }
         success {
-            echo "✅ El pipeline del Frontend finalizó con ÉXITO para la rama ${BRANCH_NAME}."
+            echo '¡El despliegue del Frontend se completó con éxito!'
         }
         failure {
-            echo "❌ El pipeline del Frontend FALLÓ."
-        }
-        always {
-            // Limpia el espacio de trabajo para mantener el disco libre
-            cleanWs()
+            echo 'El pipeline del Frontend ha fallado.'
         }
     }
 }
