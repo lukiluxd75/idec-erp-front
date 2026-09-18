@@ -8,6 +8,17 @@ import { ApiError } from '@/core/errors'
 export const resolutionsApi = {
   list: () => httpClient.get(API_ENDPOINTS.RESOLUTIONS.BASE),
 
+  // Creates a resolution with its scanned pages, in upload order — the "Escanear"
+  // flow from NewResolutionPage (before this, only an external mobile app could
+  // POST here).
+  create: (name, resolutionNumber, files) => {
+    const fd = new FormData()
+    fd.append('name', name)
+    fd.append('resolution_number', resolutionNumber)
+    files.forEach((file) => fd.append('pages', file))
+    return httpClient.post(API_ENDPOINTS.RESOLUTIONS.BASE, fd)
+  },
+
   get: (id) => httpClient.get(API_ENDPOINTS.RESOLUTIONS.ONE(id)),
 
   // Image endpoint requires Bearer, so it cannot be used as a direct <img src="...">:
