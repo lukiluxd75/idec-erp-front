@@ -78,7 +78,7 @@ export function ChatMessageBubble({ message, onFeedback }) {
               onClick={() => handleFeedback('positive')}
               aria-label="Respuesta útil"
               className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
-                sentFeedback === 'positive' ? 'bg-state-success/15 text-state-success' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+                sentFeedback === 'positive' ? 'bg-state-success/15 text-state-success' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
               }`}
             >
               <ThumbsUp className="h-3.5 w-3.5" />
@@ -88,7 +88,7 @@ export function ChatMessageBubble({ message, onFeedback }) {
               onClick={() => handleFeedback('negative')}
               aria-label="Respuesta no útil"
               className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
-                sentFeedback === 'negative' ? 'bg-state-danger/15 text-state-danger' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+                sentFeedback === 'negative' ? 'bg-state-danger/15 text-state-danger' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
               }`}
             >
               <ThumbsDown className="h-3.5 w-3.5" />
