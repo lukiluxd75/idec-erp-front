@@ -15,4 +15,12 @@ export default defineConfig({
     port: 8060,
     strictPort: true,
   },
+  build: {
+    rollupOptions: {
+      external: ['fs', 'path'], 
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@techstark/opencv-js'], 
+  },
 })
