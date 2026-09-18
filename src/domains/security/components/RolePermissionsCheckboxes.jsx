@@ -1,41 +1,97 @@
-import { ERP_MODULES } from '../data/moduleCatalog'
+import { ACTIONS, ERP_MODULES } from '../data/moduleCatalog'
 
 /**
- * Permission checklist grouped by ERP module. This is the only way to assign permissions
- * to a role — always chosen from existing modules, never free text.
+ * Permission matrix (modules × actions) for assigning permissions to a role.
+ * Only catalog codes — never free text (IDEC guide §8 / §10).
+ * Extra module actions (e.g. chatbot.feedback) appear as additional columns.
  */
 export function RolePermissionsCheckboxes({ permissions, onChange }) {
-  const hasPermission = (key) => permissions.includes(key)
+  const selected = permissions || []
+
+  const hasPermission = (key) => selected.includes(key)
 
   const toggle = (key) => {
-    onChange(hasPermission(key) ? permissions.filter((p) => p !== key) : [...permissions, key])
+    onChange(hasPermission(key) ? selected.filter((code) => code !== key) : [...selected, key])
   }
 
+  const moduleActionKeys = (module) => module.actions.map((action) => `${module.id}.${action.id}`)
+
+  const setModuleAll = (module, enabled) => {
+    const keys = moduleActionKeys(module)
+    if (enabled) {
+      const merged = new Set([...selected, ...keys])
+      onChange([...merged])
+    } else {
+      onChange(selected.filter((code) => !keys.includes(code)))
+    }
+  }
+
+  const moduleFullySelected = (module) =>
+    module.actions.every((action) => hasPermission(`${module.id}.${action.id}`))
+
+  const moduleHasAction = (module, actionId) =>
+    module.actions.some((action) => action.id === actionId)
+
   return (
-    <div className="max-h-64 space-y-3 overflow-y-auto rounded-xl border border-slate-200 p-3">
-      {ERP_MODULES.map((module) => (
-        <div key={module.id} className="border-b border-slate-100 pb-2.5 last:border-0 last:pb-0">
-          <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-            {module.label}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {module.actions.map((action) => {
-              const key = `${module.id}.${action.id}`
-              return (
-                <label key={key} className="flex items-center gap-1.5 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={hasPermission(key)}
-                    onChange={() => toggle(key)}
-                    className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-400"
-                  />
+    <div className="overflow-hidden rounded-2xl border border-slate-200/80">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[28rem] text-left text-sm">
+          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="px-3 py-2.5 font-semibold">Módulo</th>
+              {ACTIONS.map((action) => (
+                <th key={action.id} className="px-3 py-2.5 text-center font-semibold">
                   {action.label}
-                </label>
+                </th>
+              ))}
+              <th className="px-3 py-2.5 text-center font-semibold">Todo</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {ERP_MODULES.map((module) => {
+              const allOn = moduleFullySelected(module)
+              return (
+                <tr key={module.id} className="hover:bg-slate-50/80">
+                  <td className="px-3 py-2.5">
+                    <p className="font-medium text-slate-800">{module.label}</p>
+                    <p className="font-mono text-[10px] text-slate-400">{module.id}</p>
+                  </td>
+                  {ACTIONS.map((action) => {
+                    const key = `${module.id}.${action.id}`
+                    if (!moduleHasAction(module, action.id)) {
+                      return (
+                        <td key={key} className="px-3 py-2.5 text-center text-slate-200">
+                          —
+                        </td>
+                      )
+                    }
+                    return (
+                      <td key={key} className="px-3 py-2.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={hasPermission(key)}
+                          onChange={() => toggle(key)}
+                          aria-label={`${module.label} · ${action.label}`}
+                          className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-400"
+                        />
+                      </td>
+                    )
+                  })}
+                  <td className="px-3 py-2.5 text-center">
+                    <input
+                      type="checkbox"
+                      checked={allOn}
+                      onChange={() => setModuleAll(module, !allOn)}
+                      aria-label={`Todos los permisos de ${module.label}`}
+                      className="h-4 w-4 rounded border-slate-300 text-accent-600 focus:ring-accent-400"
+                    />
+                  </td>
+                </tr>
               )
             })}
-          </div>
-        </div>
-      ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

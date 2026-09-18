@@ -1,31 +1,34 @@
 import { useMemo, useState } from 'react'
 import { RefreshCw, Search, Users, Pencil, UserX, UserCheck } from 'lucide-react'
 import { toast } from 'react-toastify'
-import { Card, SectionHeader, Select, Input, EmptyState, Alert, Spinner, Badge, IconButton, ConfirmDialog } from '@/shared/ui'
+import {
+  Card,
+  SectionHeader,
+  Select,
+  Input,
+  EmptyState,
+  Alert,
+  Spinner,
+  Badge,
+  IconButton,
+  ConfirmDialog,
+} from '@/shared/ui'
 import { useSecurityData, securityActions } from '../data/securityStore'
 import { UserAssignmentModal } from '../components/UserAssignmentModal'
 
 /**
- * Lists users with their current roles and area. Role + area assignment no longer uses
- * inline row checkboxes: a per-user modal opens instead (UserAssignmentModal, same visual
- * language as ProfileModal) where area and roles are chosen together and saved in one
- * step. Both only offer roles/areas that already exist (created on RolesPage), never free text.
- *
- * Deactivating a user never deletes the row: they are marked inactive (usuario.activo,
- * CLAUDE.md §6) and the backend rejects login while inactive. They stay listed (dimmed
- * below) so they can be reactivated — keeping the role/area they already had.
+ * Lists users with roles and area. Assignment opens UserAssignmentModal (role + area
+ * together). Deactivation is soft (is_active) — row kept for reactivation.
  */
 export default function UsersPage() {
   const { users, roles, areas, loading, error } = useSecurityData()
   const [reloading, setReloading] = useState(false)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
-  // undefined = modal closed, object = user being edited
+  const [areaFilter, setAreaFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [editingUser, setEditingUser] = useState(undefined)
-  // Bumped on each open to force a modal remount (see its comment) so it starts clean
-  // with the current user's values.
   const [modalToken, setModalToken] = useState(0)
-  // null = no pending confirmation, object = user awaiting deactivation confirm
   const [userToDeactivate, setUserToDeactivate] = useState(null)
 
   const openAssignmentModal = (user) => {
@@ -37,8 +40,8 @@ export default function UsersPage() {
     try {
       await securityActions.updateUserStatus(user.id, true)
       toast.success(`"${user.username}" fue reactivado y ya puede iniciar sesión.`)
-    } catch (error) {
-      toast.error(error.message || 'No se pudo reactivar el usuario.')
+    } catch (err) {
+      toast.error(err.message || 'No se pudo reactivar el usuario.')
     }
   }
 
@@ -46,8 +49,8 @@ export default function UsersPage() {
     try {
       await securityActions.updateUserStatus(user.id, false)
       toast.info(`"${user.username}" fue desactivado. Ya no puede iniciar sesión.`)
-    } catch (error) {
-      toast.error(error.message || 'No se pudo desactivar el usuario.')
+    } catch (err) {
+      toast.error(err.message || 'No se pudo desactivar el usuario.')
     }
   }
 
@@ -56,6 +59,9 @@ export default function UsersPage() {
 
     return users.filter((user) => {
       if (roleFilter && !user.rolIds.includes(roleFilter)) return false
+      if (areaFilter && user.areaId !== areaFilter) return false
+      if (statusFilter === 'active' && !user.activo) return false
+      if (statusFilter === 'inactive' && user.activo) return false
 
       if (!term) return true
       return (
@@ -63,7 +69,16 @@ export default function UsersPage() {
         user.email?.toLowerCase().includes(term)
       )
     })
-  }, [users, search, roleFilter])
+  }, [users, search, roleFilter, areaFilter, statusFilter])
+
+  const stats = useMemo(() => {
+    const active = users.filter((user) => user.activo).length
+    return {
+      total: users.length,
+      active,
+      inactive: users.length - active,
+    }
+  }, [users])
 
   const handleReload = async () => {
     setReloading(true)
@@ -102,7 +117,7 @@ export default function UsersPage() {
             type="button"
             onClick={handleReload}
             disabled={reloading}
-            title="Vuelve a pedir la lista de usuarios al backend (por si alguien se logueó recién)"
+            title="Vuelve a pedir la lista de usuarios al backend"
             className="mt-1 flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${reloading ? 'animate-spin' : ''}`} />
@@ -110,29 +125,51 @@ export default function UsersPage() {
           </button>
         </div>
 
+        <p className="mt-2 text-sm text-slate-500">
+          {stats.total} usuarios · {stats.active} activos · {stats.inactive} inactivos. Los usuarios
+          aparecen al primer inicio de sesión con Keycloak.
+        </p>
+
         {users.length === 0 ? (
-          <EmptyState icon={Users} title="No hay usuarios para mostrar" />
+          <EmptyState
+            icon={Users}
+            title="No hay usuarios para mostrar"
+            subtitle="Aparecen cuando alguien inicia sesión por primera vez."
+            className="mt-6"
+          />
         ) : (
           <>
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Input
                 icon={Search}
                 placeholder="Buscar por usuario o correo…"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                containerClassName="flex-1"
+                containerClassName="sm:col-span-2 lg:col-span-1"
               />
-              <Select
-                value={roleFilter}
-                onChange={(event) => setRoleFilter(event.target.value)}
-                containerClassName="sm:w-56"
-              >
+              <Select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
                 <option value="">Todos los roles</option>
                 {roles.map((role) => (
                   <option key={role.id} value={role.id}>
                     {role.nombre}
                   </option>
                 ))}
+              </Select>
+              <Select value={areaFilter} onChange={(event) => setAreaFilter(event.target.value)}>
+                <option value="">Todas las áreas</option>
+                {areas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.nombre}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                <option value="">Todos los estados</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
               </Select>
             </div>
 
@@ -157,9 +194,14 @@ export default function UsersPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredUsers.map((user) => (
-                      <tr key={user.id} className={`bg-white/60 ${user.activo ? '' : 'opacity-60'}`}>
-                        <td className="px-4 py-3 font-mono font-medium text-slate-800">{user.username}</td>
-                        <td className="px-4 py-3 text-slate-600">{user.email}</td>
+                      <tr
+                        key={user.id}
+                        className={`bg-white/60 ${user.activo ? '' : 'opacity-60'}`}
+                      >
+                        <td className="px-4 py-3 font-mono font-medium text-slate-800">
+                          {user.username}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">{user.email || '—'}</td>
                         <td className="px-4 py-3">
                           {user.rolIds.length === 0 ? (
                             <span className="text-xs text-slate-400">Sin roles</span>
@@ -174,7 +216,9 @@ export default function UsersPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-slate-600">
-                          {areaName(user.areaId) || <span className="text-xs text-slate-400">Sin área</span>}
+                          {areaName(user.areaId) || (
+                            <span className="text-xs text-slate-400">Sin área</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={user.activo ? 'success' : 'danger'} dot>
@@ -232,7 +276,7 @@ export default function UsersPage() {
         title="Desactivar usuario"
         message={
           userToDeactivate
-            ? `"${userToDeactivate.username}" no va a poder iniciar sesión mientras esté inactivo. Conserva su rol y área asignados — se pueden reactivar en cualquier momento desde acá.`
+            ? `"${userToDeactivate.username}" no podrá iniciar sesión mientras esté inactivo. Conservará su rol y área asignados; podrá reactivarlo en cualquier momento desde esta pantalla.`
             : ''
         }
         confirmLabel="Desactivar"

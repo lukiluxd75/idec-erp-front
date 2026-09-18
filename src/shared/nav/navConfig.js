@@ -60,9 +60,27 @@ export const NAV_SECTIONS = [
     label: 'Seguridad',
     icon: ShieldCheck,
     path: '/security',
+    description:
+      'Ordene el acceso así: primero defina áreas, luego cree roles con permisos y por último asígnelos a cada usuario.',
     children: [
-      { label: 'Usuarios', path: '/security/users', icon: Users },
-      { label: 'Roles', path: '/security/roles', icon: KeyRound },
+      {
+        label: 'Usuarios',
+        path: '/security/users',
+        icon: Users,
+        blurb: 'Asignar roles, área y activar cuentas',
+      },
+      {
+        label: 'Roles',
+        path: '/security/roles',
+        icon: KeyRound,
+        blurb: 'Definir qué puede hacer cada rol',
+      },
+      {
+        label: 'Áreas',
+        path: '/security/areas',
+        icon: Building2,
+        blurb: 'Unidades organizacionales',
+      },
     ],
   },
   {
