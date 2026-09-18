@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        NODE_OPTIONS = '--max-old-space-size=4096'
+        // Aumenta el límite de memoria asignado a Node.js
+        NODE_OPTIONS = '--max-old-space-size=8192'
     }
 
     stages {
@@ -23,7 +24,6 @@ pipeline {
         stage('3. Pruebas Automatizadas') {
             steps {
                 echo 'Ejecutando pruebas unitarias del Frontend...'
-                // Genera reporte de pruebas en formato JUnit (XML) para la gráfica
                 sh 'npm run test -- --reporter=junit --outputFile=test-report.xml || true'
             }
         }
@@ -31,7 +31,8 @@ pipeline {
         stage('4. Compilación (Build)') {
             steps {
                 echo 'Compilando aplicación Vite / React para producción...'
-                sh 'npm run build || true'
+                // Asigna la memoria explícitamente en el comando de build
+                sh 'NODE_OPTIONS="--max-old-space-size=8192" npm run build'
             }
         }
 
@@ -46,7 +47,6 @@ pipeline {
     post {
         always {
             echo 'Publicando resultados de las pruebas...'
-            // Genera y actualiza la gráfica de tendencias
             junit allowEmptyResults: true, testResults: '**/test-report.xml'
             
             echo 'Limpiando espacio de trabajo temporal...'
