@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     environment {
-        NODE_OPTIONS = '--max-old-space-size=8192'
+        // Asignación de memoria y desactivación de hilos excesivos en Node/Vite para evitar el error 254
+        NODE_OPTIONS = '--max-old-space-size=4096'
+        UV_THREADPOOL_SIZE = '2'
     }
 
     stages {
@@ -14,15 +16,15 @@ pipeline {
 
         stage('2. Instalar Dependencias') {
             steps {
-                echo 'Instalando dependencias...'
+                echo 'Instalando dependencias de Node.js...'
                 sh 'npm ci --prefer-offline || npm install'
             }
         }
 
         stage('3. Compilación (Build)') {
             steps {
-                echo 'Compilando Frontend...'
-                sh 'npm run build'
+                echo 'Compilando Frontend con consumo controlado de RAM...'
+                sh 'NODE_OPTIONS="--max-old-space-size=4096" npm run build'
             }
         }
 
