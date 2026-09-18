@@ -1,17 +1,14 @@
 import { NAV_SECTIONS } from '@/shared/nav'
 
 /**
- * ERP module catalog used to build permissions, derived from NAV_SECTIONS (Home is
- * excluded because it is not a business module). Keeps a role's permission checklist
- * aligned with what actually exists in the ERP, instead of a separate hardcoded list
- * that can drift out of sync.
+ * ERP module catalog used to build role permissions. Derived from NAV_SECTIONS
+ * (Home excluded — it is not a business module). Keeps the checklist aligned with
+ * what exists in the menu instead of a hardcoded list that can drift.
  *
- * The real per-module action catalog is not defined yet (see CLAUDE.md §10), so a generic
- * view/edit pair is used as a placeholder. The backend does not define this catalog — it
- * receives 'modulo.accion' codes when saving role permissions and creates the real
- * 'recurso'/'permiso' row the first time each module is used (see
- * backend/.../infrastructure/sql_rbac_admin_repository.py).
+ * Phase-1 actions are the generic view/edit pair (guide §8). The backend receives
+ * 'module.action' codes and creates resource/permission rows on first save.
  */
+
 export const ERP_MODULES = NAV_SECTIONS.filter((section) => section.path !== '/dashboard').map(
   (section) => ({
     id: section.path.replace('/', ''),
@@ -23,3 +20,28 @@ export const ACTIONS = [
   { id: 'view', label: 'Ver' },
   { id: 'edit', label: 'Editar' },
 ]
+
+/** Human-readable label for a permission code (e.g. detection.view → "Detección… · Ver"). */
+export function permissionLabel(code) {
+  if (!code || typeof code !== 'string') return code || ''
+  const [moduleId, actionId, ...rest] = code.split('.')
+  if (rest.length > 0 || !moduleId || !actionId) return code
+  const module = ERP_MODULES.find((item) => item.id === moduleId)
+  const action = ACTIONS.find((item) => item.id === actionId)
+  const moduleLabel = module?.label || moduleId
+  const actionLabel = action?.label || actionId
+  return `${moduleLabel} · ${actionLabel}`
+}
+
+/** Short summary for role list cards: "3 módulos · 5 permisos". */
+export function permissionSummary(codes = []) {
+  const modules = new Set(
+    codes.map((code) => (typeof code === 'string' ? code.split('.')[0] : null)).filter(Boolean)
+  )
+  const n = codes.length
+  const m = modules.size
+  if (n === 0) return 'Sin permisos'
+  const modulesPart = m === 1 ? '1 módulo' : `${m} módulos`
+  const permsPart = n === 1 ? '1 permiso' : `${n} permisos`
+  return `${modulesPart} · ${permsPart}`
+}

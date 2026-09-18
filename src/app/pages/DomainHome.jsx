@@ -3,7 +3,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { Card, SectionHeader } from '@/shared/ui'
 import { DOMAIN_SECTIONS } from '@/shared/nav'
 
-function SubsystemCard({ label, path, icon: Icon }) {
+function SubsystemCard({ label, path, icon: Icon, blurb }) {
   return (
     <NavLink
       to={path}
@@ -34,7 +34,7 @@ function SubsystemCard({ label, path, icon: Icon }) {
         <span className="block text-base font-bold leading-snug tracking-tight text-slate-900 sm:text-[1.05rem]">
           {label}
         </span>
-        <span className="block text-xs leading-relaxed text-slate-500">Abrir</span>
+        <span className="block text-xs leading-relaxed text-slate-500">{blurb || 'Abrir'}</span>
       </div>
     </NavLink>
   )
@@ -57,6 +57,12 @@ export function DomainHome() {
   return (
     <Card glass={false} className="space-y-5 !p-5 sm:!p-6">
       <SectionHeader icon={domain.icon} eyebrow="Módulo" title={domain.label} className="mb-0" />
+
+      {domain.description ? (
+        <p className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm leading-relaxed text-slate-600">
+          {domain.description}
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
         {domain.children.map((item) => (
