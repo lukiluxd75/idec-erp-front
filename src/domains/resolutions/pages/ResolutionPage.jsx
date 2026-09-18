@@ -14,7 +14,38 @@ import { Alert, Button, Card, Input, SectionHeader, Spinner } from '@/shared/ui'
 
 const TEMPLATE_URL = '/plantilla-ph.xlsm'
 
-const DATOS_GENERALES_VACIO = { codigoCatastral: '', edificio: '', propietario: '' }
+// Campos que van directo a celdas fijas de INICIO al generar el Excel (ver
+// INICIO_CAMPOS en sheet2Excel.js) -- salvo "propietario", que sigue siendo
+// solo de referencia interna (no se encontro una celda propia para el
+// nombre del propietario en la plantilla, a diferencia de sus documentos de
+// identidad).
+const DATOS_GENERALES_VACIO = {
+  codigoCatastral: '',
+  distrito: '',
+  subalcaldia: '',
+  zonaHomogenea: '',
+  calle: '',
+  edificio: '',
+  resolucionEjecutiva: '',
+  fechaResolucion: '',
+  fechaPlanoAprobado: '',
+  supLote: '',
+  propietario: '',
+  ci1: '',
+  ci2: '',
+}
+
+// Input controlado atado a un campo de `datosGenerales` -- evita repetir
+// value/onChange en cada uno de los ~12 campos de la tarjeta de abajo.
+function Campo({ campo, datosGenerales, setDatosGenerales, ...props }) {
+  return (
+    <Input
+      value={datosGenerales[campo]}
+      onChange={(e) => setDatosGenerales((prev) => ({ ...prev, [campo]: e.target.value }))}
+      {...props}
+    />
+  )
+}
 
 export default function ResolutionPage() {
   const { id } = useParams()
@@ -34,12 +65,12 @@ export default function ResolutionPage() {
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
 
-  // Building general data (Código Catastral, building name, owner(s)): not from
-  // the scanned "RELACIÓN DE SUPERFICIE" table -- they live in template Sheet1,
-  // a separate data sheet with formulas chained to other sheets. Decided with
-  // the user (2026-09-09) NOT to touch Sheet1 from here: for now these 3 fields
-  // are only stored in the system (inside the same opaque "tabla" JSON that
-  // already stores pages) for convenience, and transcribed by hand into Excel.
+  // Datos generales del edificio: no salen del escaneo de la tabla de
+  // superficies -- se transcriben a mano mirando el plano/resolucion
+  // aprobados. Se guardan en el mismo JSON opaco "tabla" que las paginas
+  // (ver saveTable) y, al generar el Excel, casi todos se escriben en celdas
+  // fijas de la hoja INICIO (ver INICIO_CAMPOS en sheet2Excel.js) -- excepto
+  // "propietario", que queda solo de referencia interna.
   const [datosGenerales, setDatosGenerales] = useState(DATOS_GENERALES_VACIO)
   const [savingGeneralData, setSavingGeneralData] = useState(false)
 
@@ -198,7 +229,7 @@ export default function ResolutionPage() {
         if (!r.ok) throw new Error('No se encontró la plantilla (public/plantilla-ph.xlsm).')
         return r.arrayBuffer()
       })
-      const blob = await fillSheet2(buf, filas)
+      const blob = await fillSheet2(buf, filas, datosGenerales)
       downloadBlob(blob, `hoja2_${resolucion.resolution_number.replace(/\W+/g, '_')}.xlsm`)
       await saveTable('listo')
     } catch (e) {
@@ -278,28 +309,124 @@ export default function ResolutionPage() {
           icon={Landmark}
           eyebrow="Plano de división"
           title="Datos generales del edificio"
-          subtitle="No salen del escaneo de la tabla — se transcriben a mano mirando el plano aprobado (sello, código catastral, propietarios)."
+          subtitle="No salen del escaneo de la tabla — se transcriben a mano mirando el plano aprobado y la resolución. Se escriben directo en la hoja INICIO del Excel al generar."
         />
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Input
+
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Identificación catastral
+        </p>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Campo
             label="Código catastral"
             placeholder="00-000-000-0-00-000-000"
-            value={datosGenerales.codigoCatastral}
-            onChange={(e) => setDatosGenerales((prev) => ({ ...prev, codigoCatastral: e.target.value }))}
+            campo="codigoCatastral"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
           />
-          <Input
-            label="Edificio / Proyecto"
-            placeholder='Ej. Edificio "Don Juan"'
-            value={datosGenerales.edificio}
-            onChange={(e) => setDatosGenerales((prev) => ({ ...prev, edificio: e.target.value }))}
+          <Campo
+            label="Distrito"
+            type="number"
+            campo="distrito"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
           />
-          <Input
-            label="Propietario(s)"
-            placeholder="Nombre completo"
-            value={datosGenerales.propietario}
-            onChange={(e) => setDatosGenerales((prev) => ({ ...prev, propietario: e.target.value }))}
+          <Campo
+            label="Subalcaldía"
+            campo="subalcaldia"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+          <Campo
+            label="Zona homogénea"
+            placeholder="Ej. ZONA 6"
+            campo="zonaHomogenea"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
           />
         </div>
+
+        <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Ubicación</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo
+            label="Calle o avenida"
+            campo="calle"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+          <Campo
+            label="Edificio / Proyecto"
+            placeholder='Ej. Edificio "Don Juan"'
+            campo="edificio"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+        </div>
+
+        <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Resolución ejecutiva
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Campo
+            label="N° Resolución Ejecutiva"
+            placeholder="102/2026"
+            campo="resolucionEjecutiva"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+          <Campo
+            label="Fecha de la R.E."
+            placeholder="DD/MM/AAAA"
+            campo="fechaResolucion"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+          <Campo
+            label="Fecha de plano aprobado"
+            placeholder="DD/MM/AAAA"
+            campo="fechaPlanoAprobado"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+        </div>
+
+        <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
+          Propietario(s) y superficie de lote
+        </p>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="sm:col-span-2">
+            <Campo
+              label="Propietario(s)"
+              placeholder="Nombre completo"
+              campo="propietario"
+              datosGenerales={datosGenerales}
+              setDatosGenerales={setDatosGenerales}
+            />
+          </div>
+          <Campo
+            label="C.I. propietario 1"
+            type="number"
+            campo="ci1"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+          <Campo
+            label="C.I. propietario 2"
+            type="number"
+            campo="ci2"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-4">
+          <Campo
+            label="Sup. de lote (m²)"
+            type="number"
+            campo="supLote"
+            datosGenerales={datosGenerales}
+            setDatosGenerales={setDatosGenerales}
+          />
+        </div>
+
         <div className="mt-4">
           <Button variant="secondary" icon={Save} onClick={saveGeneralData} loading={savingGeneralData}>
             Guardar datos generales

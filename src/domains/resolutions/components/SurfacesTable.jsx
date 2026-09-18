@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react'
 import { ENV } from '@/core/config/env.config'
 import { cn } from '@/shared/utils'
 import { ROLES } from '@/domains/resolutions/utils/surfacesOcrParser'
+import { PLANTAS_RESUMEN } from '@/domains/resolutions/utils/plantasCatalog'
 
 const inputCls =
   'rounded-lg border border-slate-200 bg-white/70 px-2 py-1 text-xs outline-none transition-colors focus:border-accent-500/60 focus:bg-white focus-visible:ring-2 focus-visible:ring-accent-400/30'
@@ -44,9 +45,14 @@ function calcularColumnasOcultas(pagina) {
 /**
  * Tabla editable de la "RELACION DE SUPERFICIE" reconstruida por OCR (por
  * posicion). Los <select> de rol vienen pre-seleccionados por el parser; las
- * celdas de baja confianza salen en rojo; Planta y Bloque son texto libre por
- * fila (ninguna de las dos se detecta del OCR: Planta se completa sola cuando
- * la tabla trae "PLANTA X PISO", Bloque siempre la escribe el usuario). Si la
+ * celdas de baja confianza salen en rojo. Planta es un <select> de la lista
+ * fija PLANTAS_RESUMEN (no texto libre): el texto tal cual lo leyo el OCR se
+ * muestra debajo como referencia, pero el valor que se manda al Excel tiene
+ * que ser exactamente uno de esos nombres -- son los que busca RESUMEN con
+ * VLOOKUP contra la fila de subtotal de cada planta en Hoja2 (ver
+ * sheet2Excel.js); cualquier otro texto ahi hace que esa planta desaparezca
+ * de RESUMEN y MODEL SISCAT en silencio. Bloque es texto libre (el OCR nunca
+ * lo detecta, siempre lo escribe el usuario). Si la
  * pagina trae `filaTotal` (la fila "SUPERFICIE TOTAL" del papel, ver
  * surfacesOcrParser.js), se muestra de solo lectura al final de la tabla
  * -- solo de referencia visual, nunca se manda al Excel (buildRows en
@@ -107,12 +113,23 @@ export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaCha
                         rowSpan={tramosPlanta[rowIdx]}
                         className="border border-t-0 border-slate-200 px-1.5 py-1 align-top"
                       >
-                        <input
-                          className={cn(inputCls, 'w-32')}
+                        <select
+                          className={cn(inputCls, 'w-36', !row.planta && 'border-state-danger/60 bg-state-danger/5')}
                           value={row.planta || ''}
-                          placeholder="Planta"
                           onChange={(e) => onPlantaChange(pageIdx, row.id, e.target.value)}
-                        />
+                        >
+                          <option value="">Seleccionar…</option>
+                          {PLANTAS_RESUMEN.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                        {row.plantaOcr && row.plantaOcr !== row.planta && (
+                          <p className="mt-0.5 truncate text-[10px] text-slate-400" title={row.plantaOcr}>
+                            OCR: {row.plantaOcr}
+                          </p>
+                        )}
                       </td>
                     )}
                     {!bloqueOculto && (

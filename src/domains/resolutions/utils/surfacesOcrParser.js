@@ -338,6 +338,8 @@ const rowTieneDigitos = (row) => row.cells.some((c) => hasDigits(c.text.replace(
 // "Ruido" institucional: sello/membrete de la Alcaldia superpuesto sobre la
 // hoja (membrete, direccion, telefonos). El OCR lo lee como si fueran filas
 // mas de la tabla; se descartan por patron antes de armar las filas de datos.
+import { guessPlantaCanonica } from './plantasCatalog'
+
 const NOISE_RE = [
   /GOBIERNO\s*AUTONOMO\s*MUNICIPAL/,
   /ALCALDIA/,
@@ -561,6 +563,10 @@ export function parseSuperficiesPage(blocks, opts = {}) {
 
   const rows = []
   let plantaActual = ''
+  // Texto crudo leido por el OCR para la planta actual, para mostrarlo de
+  // referencia junto al <select> de planta canonica en la tabla web -- ver
+  // `guessPlantaCanonica` en plantasCatalog.js.
+  let plantaActualRaw = ''
   // Fila "SUPERFICIE TOTAL" de la tabla: no se manda al Excel (son formulas
   // que la plantilla ya calcula solas), pero se guarda aparte para mostrarla
   // de referencia en la web (comparar a ojo contra el papel).
@@ -618,7 +624,10 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     // viene solo en la 1a fila del bloque; se arrastra hacia abajo).
     if (plantaColIdx >= 0) {
       const v = cells[plantaColIdx]?.text?.trim()
-      if (v) plantaActual = v
+      if (v) {
+        plantaActualRaw = v
+        plantaActual = guessPlantaCanonica(v) || plantaActual
+      }
     }
 
     // Layout A: fila que SOLO trae "PLANTA X PISO" (marca de seccion) -> fija la
@@ -630,7 +639,8 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     // la mitad y el resto se pegaria sobre el ambiente siguiente, que no
     // tiene nada que ver.
     if (soloPrimera && PLANTA_RE.test(primeraTxt)) {
-      plantaActual = cells[ambienteIdx >= 0 ? ambienteIdx : 0].text.trim()
+      plantaActualRaw = cells[ambienteIdx >= 0 ? ambienteIdx : 0].text.trim()
+      plantaActual = guessPlantaCanonica(plantaActualRaw) || plantaActual
       continue
     }
 
@@ -661,6 +671,7 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     rows.push({
       id: `f-${r}`,
       planta: plantaActual,
+      plantaOcr: plantaActualRaw,
       // "Bloque"/torre (columna B de Hoja2): la tabla de "RELACION DE
       // SUPERFICIE" no trae una marca propia para esto (a diferencia de
       // "PLANTA X PISO"), asi que arranca vacio y lo completa el usuario a
