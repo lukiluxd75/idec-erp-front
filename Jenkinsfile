@@ -1,45 +1,31 @@
 pipeline {
-    agent any
-
-    environment {
-        NODE_OPTIONS = '--max-old-space-size=4096'
-        UV_THREADPOOL_SIZE = '2'
-    }
+    agent { label 'principal' }
 
     stages {
-        stage('1. Instalar Dependencias') {
+        stage('1. Preparación del Entorno') {
             steps {
-                echo 'Instalando dependencias de Node.js...'
-                sh 'if [ -f package-lock.json ]; then npm ci --prefer-offline; else npm install; fi'
+                echo 'Limpiando entorno de trabajo...'
+                cleanWs()
+                checkout scm
             }
         }
 
-        stage('2. Compilación (Build)') {
+        stage('2. Instalar Dependencias') {
             steps {
-                echo 'Compilando Frontend con consumo controlado de RAM...'
-                sh 'NODE_OPTIONS="--max-old-space-size=4096" npm run build'
+                echo 'Instalando dependencias de Python...'
+                sh '''
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
             }
         }
 
         stage('3. Despliegue') {
             steps {
-                echo 'Sincronizando archivos al servidor...'
-                // Crea la carpeta destino si no existe y luego copia los archivos
-                sh 'mkdir -p /var/www/html/idec-erp-front'
-                sh 'rsync -avz --delete dist/ /var/www/html/idec-erp-front/'
+                echo 'Preparando despliegue de Python...'
             }
-        }
-    }
-
-    post {
-        always {
-            cleanWs()
-        }
-        success {
-            echo '¡Despliegue del Frontend exitoso!'
-        }
-        failure {
-            echo 'Error en el despliegue.'
         }
     }
 }
