@@ -12,19 +12,15 @@ pipeline {
 
         stage('2. Instalar Dependencias') {
             steps {
-                echo 'Instalando dependencias de Python...'
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
+                echo 'Instalando dependencias del Frontend...'
+                sh 'npm install'
             }
         }
 
-        stage('3. Despliegue') {
+        stage('3. Compilación') {
             steps {
-                echo 'Preparando entorno de ejecucion...'
+                echo 'Compilando Frontend...'
+                sh 'npm run build'
             }
         }
     }
