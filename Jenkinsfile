@@ -24,7 +24,7 @@ pipeline {
 
         stage('3. Despliegue') {
             steps {
-                echo 'Preparando despliegue de Python...'
+                echo 'Preparando despliegue de Backend Python...'
             }
         }
     }
