@@ -21,6 +21,7 @@ export const API_ENDPOINTS = {
     CAPTURE: (id) => `/api/geoextraction/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/geoextraction/captures/${id}/image`,
     CAPTURES_WS: '/api/geoextraction/captures/ws',
+    CAPTURES_PRESENCE: '/api/geoextraction/captures/presence',
   },
   SECURITY: {
     ROLES: '/api/security/roles',
@@ -37,6 +38,7 @@ export const API_ENDPOINTS = {
     ONE: (id) => `/api/resolutions/${id}`,
     PAGE: (id, order) => `/api/resolutions/${id}/pages/${order}`,
     TABLE: (id) => `/api/resolutions/${id}/table`,
+    PRESENCE: '/api/resolutions/presence',
   },
   DETECTION: {
     HEALTH: '/api/detection/health',
