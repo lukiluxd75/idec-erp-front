@@ -75,6 +75,14 @@ function discardCapture(id) {
   return httpClient.delete(API_ENDPOINTS.GEOEXTRACTION.CAPTURE(id))
 }
 
+/**
+ * Presence snapshot polled by useCapturesUpdates.js — cross-worker-safe
+ * fallback for PhoneConnectedBadge, see CapturesConnectionManager.is_mobile_connected.
+ */
+function getPresence() {
+  return httpClient.get(API_ENDPOINTS.GEOEXTRACTION.CAPTURES_PRESENCE)
+}
+
 export const geoextractionApi = {
   generateShapefile,
   mergeShapefiles,
@@ -83,4 +91,5 @@ export const geoextractionApi = {
   listCaptures,
   captureBlob,
   discardCapture,
+  getPresence,
 }

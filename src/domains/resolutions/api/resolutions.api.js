@@ -30,6 +30,10 @@ export const resolutionsApi = {
     httpClient.put(API_ENDPOINTS.RESOLUTIONS.TABLE(id), { table_data: tableData, status }),
 
   remove: (id) => httpClient.delete(API_ENDPOINTS.RESOLUTIONS.ONE(id)),
+
+  // Presence snapshot polled by useResolutionsUpdates.js — cross-worker-safe
+  // fallback for PhoneConnectedBadge, see ResolutionsConnectionManager.is_mobile_connected.
+  getPresence: () => httpClient.get(API_ENDPOINTS.RESOLUTIONS.PRESENCE),
 }
 
 /** ---- GAMC OCR service (browser calls it directly, same as geoextraction) ---- */
