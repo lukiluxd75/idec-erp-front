@@ -15,6 +15,10 @@ import {
   ScanLine,
   ThumbsUp,
   ClipboardCheck,
+  FileText,
+  Braces,
+  Hash,
+  FileOutput,
 } from 'lucide-react'
 
 /**
@@ -23,19 +27,27 @@ import {
  * domain entry redirect (app/pages/DomainHome). Lives in shared/ so those consumers
  * do not depend on each other directly.
  */
+// Orden alfabético por `label` (afecta la grilla de módulos del Dashboard y,
+// de paso, el Sidebar -- este último ubica "Inicio" con `.find()`, no por
+// posición, así que reordenar aquí no le afecta).
 export const NAV_SECTIONS = [
   {
-    label: 'Inicio',
-    icon: LayoutDashboard,
-    path: '/dashboard',
-  },
-  {
-    label: 'Geo-Extract',
-    icon: Map,
-    path: '/geoextraction',
+    label: 'Asistente de Trámites',
+    icon: Bot,
+    path: '/chatbot',
+    // Acción extra sobre el par view/edit genérico (ver moduleCatalog.js) — separa
+    // "gestionar el catálogo de trámites/ingesta" (chatbot.edit) de "ver la
+    // retroalimentación de todos los usuarios" (chatbot.feedback), para que un rol
+    // como "Asistente" pueda tener uno sin el otro.
+    actions: [{ id: 'feedback', label: 'Ver retroalimentación' }],
     children: [
-      { label: 'Captura OCR', path: '/geoextraction/capture', icon: Camera },
-      { label: 'Fusión de Shapefiles', path: '/geoextraction/merge', icon: Layers },
+      { label: 'Asistente', path: '/chatbot/chat', icon: MessageCircle },
+      // El resto son pantallas de administración (ver canViewChild) — el back
+      // igual las rechaza con 403 sin el permiso, esto solo evita mostrar el
+      // enlace a quien no puede usarlas.
+      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
+      { label: 'Ingesta OCR', path: '/chatbot/ingest', icon: ScanLine, permission: 'chatbot.edit' },
+      { label: 'Retroalimentación', path: '/chatbot/feedback', icon: ThumbsUp, permission: 'chatbot.feedback' },
     ],
   },
   {
@@ -47,9 +59,35 @@ export const NAV_SECTIONS = [
     ],
   },
   {
+    label: 'Geo-Extract',
+    icon: Map,
+    path: '/geoextraction',
+    children: [
+      { label: 'Captura OCR', path: '/geoextraction/capture', icon: Camera },
+      { label: 'Fusión de Shapefiles', path: '/geoextraction/merge', icon: Layers },
+    ],
+  },
+  {
+    label: 'Inicio',
+    icon: LayoutDashboard,
+    path: '/dashboard',
+  },
+  {
     label: 'Lector OCR de Resoluciones P.H.',
     icon: FileSpreadsheet,
     path: '/resolutions',
+  },
+  {
+    label: 'Plantillas dinámicas',
+    icon: FileText,
+    path: '/templates',
+    description: 'Gestione plantillas institucionales, variables, CITES y documentos.',
+    children: [
+      { label: 'Plantillas', path: '/templates/catalog', icon: FileText, blurb: 'Formatos institucionales reutilizables' },
+      { label: 'Variables', path: '/templates/variables', icon: Braces, blurb: 'Datos dinámicos de los documentos' },
+      { label: 'CITES', path: '/templates/cites', icon: Hash, blurb: 'Códigos correlativos generados' },
+      { label: 'Documentos', path: '/templates/documents', icon: FileOutput, blurb: 'Generación y descarga documental' },
+    ],
   },
   {
     label: 'Revisión Avalúos',
@@ -81,25 +119,6 @@ export const NAV_SECTIONS = [
         icon: Building2,
         blurb: 'Unidades organizacionales',
       },
-    ],
-  },
-  {
-    label: 'Asistente de Trámites',
-    icon: Bot,
-    path: '/chatbot',
-    // Acción extra sobre el par view/edit genérico (ver moduleCatalog.js) — separa
-    // "gestionar el catálogo de trámites/ingesta" (chatbot.edit) de "ver la
-    // retroalimentación de todos los usuarios" (chatbot.feedback), para que un rol
-    // como "Asistente" pueda tener uno sin el otro.
-    actions: [{ id: 'feedback', label: 'Ver retroalimentación' }],
-    children: [
-      { label: 'Asistente', path: '/chatbot/chat', icon: MessageCircle },
-      // El resto son pantallas de administración (ver canViewChild) — el back
-      // igual las rechaza con 403 sin el permiso, esto solo evita mostrar el
-      // enlace a quien no puede usarlas.
-      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
-      { label: 'Ingesta OCR', path: '/chatbot/ingest', icon: ScanLine, permission: 'chatbot.edit' },
-      { label: 'Retroalimentación', path: '/chatbot/feedback', icon: ThumbsUp, permission: 'chatbot.feedback' },
     ],
   },
 ]

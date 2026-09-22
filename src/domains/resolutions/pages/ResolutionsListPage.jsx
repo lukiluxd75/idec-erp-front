@@ -46,7 +46,17 @@ export default function ResolutionsListPage() {
     loadList(true)
   }, [loadList])
 
+  // WS notifies instantly, but only reaches this tab when it landed on the same
+  // backend worker that received the change, and not at all if a reverse proxy
+  // in front of the backend blocks/kills the wss:// upgrade handshake (seen in
+  // some environments). As a fallback, polling every 10s keeps the list fresh
+  // regardless of WS state instead of staying stale indefinitely — same pattern
+  // as CapturePage.jsx / useCapturesUpdates.js.
   useResolutionsUpdates(useCallback(() => loadList(false), [loadList]), setPhoneConnected)
+  useEffect(() => {
+    const interval = setInterval(() => loadList(false), 10000)
+    return () => clearInterval(interval)
+  }, [loadList])
 
   return (
     <Card className="animate-card-in">
