@@ -34,6 +34,23 @@ export const resolutionsApi = {
   // Presence snapshot polled by useResolutionsUpdates.js — cross-worker-safe
   // fallback for PhoneConnectedBadge, see ResolutionsConnectionManager.is_mobile_connected.
   getPresence: () => httpClient.get(API_ENDPOINTS.RESOLUTIONS.PRESENCE),
+
+  // Paginas del plano de division (para colindancias) -- mismo endpoint que
+  // usa (o va a usar) la app movil, "source" es solo metadata de quien subio.
+  planPageBlob: (id, orden) =>
+    httpClient.get(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGE(id, orden), { responseType: 'blob' }),
+
+  addPlanPages: (id, paginas) => {
+    const fd = new FormData()
+    paginas.forEach(({ blob, planta }, i) => {
+      fd.append('pages', blob, `plano_${i + 1}.jpg`)
+      fd.append('plantas', planta)
+    })
+    fd.append('source', 'web')
+    return httpClient.post(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGES(id), fd)
+  },
+
+  removePlanPage: (id, orden) => httpClient.delete(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGE(id, orden)),
 }
 
 /** ---- GAMC OCR service (browser calls it directly, same as geoextraction) ---- */

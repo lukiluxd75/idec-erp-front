@@ -39,6 +39,8 @@ export const API_ENDPOINTS = {
     PAGE: (id, order) => `/api/resolutions/${id}/pages/${order}`,
     TABLE: (id) => `/api/resolutions/${id}/table`,
     PRESENCE: '/api/resolutions/presence',
+    PLAN_PAGES: (id) => `/api/resolutions/${id}/plan-pages`,
+    PLAN_PAGE: (id, order) => `/api/resolutions/${id}/plan-pages/${order}`,
   },
   DETECTION: {
     HEALTH: '/api/detection/health',
