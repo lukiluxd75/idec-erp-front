@@ -171,11 +171,25 @@ export default function ResolutionPage() {
       ),
     }))
 
+  // El <select> de Planta que ve el usuario representa un bloque de varias
+  // filas fusionadas por rowSpan (ver calcularTramosPlanta en
+  // SurfacesTable.jsx), no solo la fila "cabecera" cuyo id llega acá --
+  // hay que propagar el valor elegido a todo el tramo contiguo que
+  // compartía el valor viejo, si no el resto del bloque queda con su
+  // planta original (vacía si el OCR no la pudo adivinar) aunque
+  // visualmente parezca ya asignado.
   const onPlantaChange = (pageIdx, rowId, text) =>
-    upd(pageIdx, (p) => ({
-      ...p,
-      rows: p.rows.map((row) => (row.id === rowId ? { ...row, planta: text } : row)),
-    }))
+    upd(pageIdx, (p) => {
+      const idx = p.rows.findIndex((row) => row.id === rowId)
+      if (idx === -1) return p
+      const valorViejo = p.rows[idx].planta || ''
+      let fin = idx
+      while (fin + 1 < p.rows.length && (p.rows[fin + 1].planta || '') === valorViejo) fin++
+      return {
+        ...p,
+        rows: p.rows.map((row, i) => (i >= idx && i <= fin ? { ...row, planta: text } : row)),
+      }
+    })
 
   const onBloqueChange = (pageIdx, rowId, text) =>
     upd(pageIdx, (p) => ({
