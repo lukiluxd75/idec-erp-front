@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 
 import { ENV } from '@/core/config/env.config'
 import { ocrImage, resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
+import { ColindanciasSection } from '@/domains/resolutions/components/ColindanciasSection'
 import { PlanPagesSection } from '@/domains/resolutions/components/PlanPagesSection'
 import { StatusBadge } from '@/domains/resolutions/components/StatusBadge'
 import { SurfacesTable } from '@/domains/resolutions/components/SurfacesTable'
@@ -75,6 +76,11 @@ export default function ResolutionPage() {
   const [datosGenerales, setDatosGenerales] = useState(DATOS_GENERALES_VACIO)
   const [savingGeneralData, setSavingGeneralData] = useState(false)
 
+  // Sugerencias de COLINDANCIAS revisadas/editadas por el usuario:
+  // colindancias[planta][ambiente] = { norte, este, sud, oeste }. Mismo JSON
+  // opaco que datosGenerales/paginasTabla (ver ColindanciasSection.jsx).
+  const [colindancias, setColindancias] = useState({})
+
   useEffect(() => {
     let alive = true
     const urls = []
@@ -87,6 +93,7 @@ export default function ResolutionPage() {
         if (detalle.table_data?.datosGenerales) {
           setDatosGenerales({ ...DATOS_GENERALES_VACIO, ...detalle.table_data.datosGenerales })
         }
+        if (detalle.table_data?.colindancias) setColindancias(detalle.table_data.colindancias)
 
         const imgs = []
         for (const p of detalle.pages) {
@@ -197,7 +204,7 @@ export default function ResolutionPage() {
     try {
       const actualizada = await resolutionsApi.saveTable(
         id,
-        { paginas: paginasTabla, datosGenerales },
+        { paginas: paginasTabla, datosGenerales, colindancias },
         estado,
       )
       setResolucion(actualizada)
@@ -214,7 +221,7 @@ export default function ResolutionPage() {
     try {
       const actualizada = await resolutionsApi.saveTable(
         id,
-        { paginas: paginasTabla, datosGenerales },
+        { paginas: paginasTabla, datosGenerales, colindancias },
         resolucion.status,
       )
       setResolucion(actualizada)
@@ -224,6 +231,18 @@ export default function ResolutionPage() {
     } finally {
       setSavingGeneralData(false)
     }
+  }
+
+  // Nombres de "Ambiente" ya cargados en Hoja2, agrupados por Planta -- lo
+  // que ColindanciasSection necesita para saber qué unidades buscar en cada
+  // página del plano (y qué ofrecer como vecino en el <input list>).
+  const unidadesPorPlanta = {}
+  if (paginasTabla) {
+    buildRows(paginasTabla).forEach((f) => {
+      if (!f.planta) return
+      if (!unidadesPorPlanta[f.planta]) unidadesPorPlanta[f.planta] = []
+      if (!unidadesPorPlanta[f.planta].includes(f.ambiente)) unidadesPorPlanta[f.planta].push(f.ambiente)
+    })
   }
 
   const generateExcel = async () => {
@@ -238,7 +257,7 @@ export default function ResolutionPage() {
         if (!r.ok) throw new Error('No se encontró la plantilla (public/plantilla-ph.xlsm).')
         return r.arrayBuffer()
       })
-      const blob = await fillSheet2(buf, filas, datosGenerales)
+      const blob = await fillSheet2(buf, filas, datosGenerales, colindancias)
       downloadBlob(blob, `hoja2_${resolucion.resolution_number.replace(/\W+/g, '_')}.xlsm`)
       await saveTable('listo')
     } catch (e) {
@@ -447,6 +466,14 @@ export default function ResolutionPage() {
         resolutionId={id}
         planPages={resolucion.plan_pages || []}
         onChanged={refrescarResolucion}
+      />
+
+      <ColindanciasSection
+        resolutionId={id}
+        planPages={resolucion.plan_pages || []}
+        unidadesPorPlanta={unidadesPorPlanta}
+        colindancias={colindancias}
+        setColindancias={setColindancias}
       />
 
       {paginasTabla && (

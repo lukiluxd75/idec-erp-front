@@ -29,8 +29,24 @@ import JSZip from 'jszip'
 
 const HOJA2 = 'Hoja2'
 const INICIO = 'INICIO'
+const COLINDANCIAS = 'COLINDANCIAS'
 const FIRST_ROW = 10
 const LAST_ROW = 705 // limite real de la plantilla (Hoja2!U2 suma U10:U705)
+
+// COLINDANCIAS trae, para CADA fila de Hoja2 (real o no: subtotales y filas
+// sin usar tambien tienen su bloque), un bloque de 5 filas con formulas ya
+// armadas en A/B/C/D que apuntan a `Hoja2!<col><r>` (ver docstring del
+// archivo) -- lo unico que la plantilla deja en blanco es la columna E
+// (NORTE/ESTE/SUD/OESTE, en ese orden dentro del bloque). Bloque de la fila
+// r de Hoja2 arranca en `11 + 5*(r-10)`: r=10 -> 11, r=11 -> 16, r=17 -> 46
+// (verificado contra COLINDANCIAS!B46="=Hoja2!B17" en el Excel real de
+// referencia). Solo se escribe E para filas con unidad real (no subtotales):
+// para esas no hay ninguna sugerencia en `colindancias` y `set()` ya ignora
+// valores null/undefined.
+const COLINDANCIAS_OFFSET = { norte: 0, este: 1, sud: 2, oeste: 3 }
+function filaBloqueColindancias(filaHoja2) {
+  return 11 + 5 * (filaHoja2 - FIRST_ROW)
+}
 
 const COLUMNAS = {
   bloque: 'A',
@@ -172,9 +188,10 @@ function agruparPorPlanta(filas) {
  * @param {ArrayBuffer} templateBuf  bytes de plantilla-ph.xlsm
  * @param {Array<{planta,bloque,ambiente,sup_privada_construida,sup_privada_libre,sup_ideal,sup_comun_construida,sup_comun_libre}>} filas
  * @param {Record<string,string|number>} [datosGenerales]  campos de INICIO (ver INICIO_CAMPOS)
+ * @param {Record<string,Record<string,{norte,este,sud,oeste}>>} [colindancias]  colindancias[planta][ambiente] -> ver ColindanciasSection.jsx
  * @returns {Promise<Blob>}  el .xlsm llenado
  */
-export async function fillSheet2(templateBuf, filas, datosGenerales = {}) {
+export async function fillSheet2(templateBuf, filas, datosGenerales = {}, colindancias = {}) {
   const sinPlanta = filas.filter((f) => !f.planta)
   if (sinPlanta.length > 0) {
     throw new Error(`Falta asignar la Planta de ${sinPlanta.length} fila(s) (columna "Planta" en la tabla).`)
@@ -189,6 +206,13 @@ export async function fillSheet2(templateBuf, filas, datosGenerales = {}) {
   const set = (col, r, valor) => {
     if (valor == null || valor === '') return
     valoresHoja2[`${col}${r}`] = valor
+  }
+
+  const valoresColindancias = {}
+  const setColindancia = (filaHoja2, direccion, valor) => {
+    if (valor == null || valor === '') return
+    const base = filaBloqueColindancias(filaHoja2)
+    valoresColindancias[`E${base + COLINDANCIAS_OFFSET[direccion]}`] = valor
   }
 
   // Filas de datos, reagrupadas de forma contigua por planta, + una fila de
@@ -207,6 +231,14 @@ export async function fillSheet2(templateBuf, filas, datosGenerales = {}) {
       set(COLUMNAS.sup_ideal, r, f.sup_ideal)
       set(COLUMNAS.sup_comun_construida, r, f.sup_comun_construida)
       set(COLUMNAS.sup_comun_libre, r, f.sup_comun_libre)
+
+      const sugerencia = colindancias[f.planta]?.[f.ambiente]
+      if (sugerencia) {
+        setColindancia(r, 'norte', sugerencia.norte)
+        setColindancia(r, 'este', sugerencia.este)
+        setColindancia(r, 'sud', sugerencia.sud)
+        setColindancia(r, 'oeste', sugerencia.oeste)
+      }
     })
     const finRango = cursor - 1
     const filaSubtotal = cursor++
@@ -243,6 +275,14 @@ export async function fillSheet2(templateBuf, filas, datosGenerales = {}) {
 
   zip.file(hoja2Path, parchearCeldas(await zip.file(hoja2Path).async('string'), valoresHoja2))
   zip.file(inicioPath, parchearCeldas(await zip.file(inicioPath).async('string'), valoresInicio))
+
+  if (Object.keys(valoresColindancias).length > 0) {
+    const colindanciasPath = await resolverRutaHoja(zip, COLINDANCIAS)
+    zip.file(
+      colindanciasPath,
+      parchearCeldas(await zip.file(colindanciasPath).async('string'), valoresColindancias),
+    )
+  }
 
   // El resto de las formulas (F, J, el bloque N:BA de cada fila, RESUMEN,
   // MODEL SISCAT) dependen de lo que acabamos de escribir, pero su valor
