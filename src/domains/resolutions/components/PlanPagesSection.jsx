@@ -19,11 +19,19 @@ import { Button, Card, SectionHeader, Spinner } from '@/shared/ui'
  * por visión por computadora solo trabajan con imágenes, igual que las
  * fotos que ya manda el celular -- así nunca hay dos formatos distintos que
  * detectar.
+ *
+ * Una misma foto puede aplicar a varias plantas iguales (ej. "PLANTA TIPO"
+ * repetida del 2º al 4º piso en el plano aprobado): en vez de modelar un
+ * grupo de plantas en la base (rompería el VLOOKUP fijo de RESUMEN contra
+ * PLANTAS_RESUMEN), se elige más de una planta para la misma página y se
+ * sube una copia por cada una -- quedan como páginas independientes, cada
+ * planta con su propia foto para las colindancias, igual que si se hubiera
+ * subido una por una.
  */
 export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
   const [imagenes, setImagenes] = useState({}) // { [order_index]: objectURL }
   const [loadingImgs, setLoadingImgs] = useState(true)
-  const [pendientes, setPendientes] = useState([]) // [{ blob, url, planta }]
+  const [pendientes, setPendientes] = useState([]) // [{ blob, url, plantas: string[] }]
   const [procesandoArchivo, setProcesandoArchivo] = useState(false)
   const [subiendo, setSubiendo] = useState(false)
 
@@ -61,9 +69,9 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
       for (const file of files) {
         if (file.type === 'application/pdf') {
           const imagenesDelPdf = await pdfToImages(file)
-          imagenesDelPdf.forEach((blob) => nuevos.push({ blob, url: URL.createObjectURL(blob), planta: '' }))
+          imagenesDelPdf.forEach((blob) => nuevos.push({ blob, url: URL.createObjectURL(blob), plantas: [] }))
         } else {
-          nuevos.push({ blob: file, url: URL.createObjectURL(file), planta: '' })
+          nuevos.push({ blob: file, url: URL.createObjectURL(file), plantas: [] })
         }
       }
       setPendientes((prev) => [...prev, ...nuevos])
@@ -74,8 +82,14 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
     }
   }
 
-  const onPlantaPendiente = (idx, planta) =>
-    setPendientes((prev) => prev.map((p, i) => (i === idx ? { ...p, planta } : p)))
+  const onTogglePlantaPendiente = (idx, planta) =>
+    setPendientes((prev) =>
+      prev.map((p, i) => {
+        if (i !== idx) return p
+        const yaElegida = p.plantas.includes(planta)
+        return { ...p, plantas: yaElegida ? p.plantas.filter((x) => x !== planta) : [...p.plantas, planta] }
+      }),
+    )
 
   const quitarPendiente = (idx) =>
     setPendientes((prev) => {
@@ -84,13 +98,17 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
     })
 
   const subirPendientes = async () => {
-    if (pendientes.some((p) => !p.planta)) {
-      toast.error('Asigne la planta de cada página antes de subir.')
+    if (pendientes.some((p) => p.plantas.length === 0)) {
+      toast.error('Asigne al menos una planta a cada página antes de subir.')
       return
     }
     setSubiendo(true)
     try {
-      await resolutionsApi.addPlanPages(resolutionId, pendientes)
+      // Una entrada por (página, planta): si una foto aplica a varias plantas
+      // iguales, se repite el mismo blob una vez por planta elegida (ver
+      // docstring de arriba).
+      const paginas = pendientes.flatMap((p) => p.plantas.map((planta) => ({ blob: p.blob, planta })))
+      await resolutionsApi.addPlanPages(resolutionId, paginas)
       pendientes.forEach((p) => URL.revokeObjectURL(p.url))
       setPendientes([])
       toast.success('Páginas del plano agregadas.')
@@ -178,23 +196,29 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
 
       {pendientes.length > 0 && (
         <div className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-          <p className="text-sm font-medium text-slate-600">Asigne la planta de cada página antes de subir:</p>
+          <p className="text-sm font-medium text-slate-600">
+            Asigne la planta de cada página antes de subir — si el plano es igual en varios pisos (ej. "planta
+            tipo" del 2º al 4º), marque todas las que correspondan.
+          </p>
           <div className="flex flex-wrap gap-4">
             {pendientes.map((p, i) => (
               <div key={p.url} className="flex flex-col items-center gap-1">
                 <img src={p.url} alt="" className="h-28 w-24 rounded-xl border border-white/60 object-cover" />
-                <select
-                  className="w-36 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs outline-none focus:border-accent-500/60"
-                  value={p.planta}
-                  onChange={(e) => onPlantaPendiente(i, e.target.value)}
-                >
-                  <option value="">Seleccionar…</option>
+                <div className="max-h-32 w-36 overflow-y-auto rounded-lg border border-slate-200 bg-white p-1.5">
                   {PLANTAS_RESUMEN.map((planta) => (
-                    <option key={planta} value={planta}>
+                    <label key={planta} className="flex items-center gap-1.5 py-0.5 text-[11px] text-slate-600">
+                      <input
+                        type="checkbox"
+                        checked={p.plantas.includes(planta)}
+                        onChange={() => onTogglePlantaPendiente(i, planta)}
+                      />
                       {planta}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
+                {p.plantas.length > 0 && (
+                  <p className="max-w-36 text-center text-[10px] text-slate-400">{p.plantas.join(', ')}</p>
+                )}
                 <button
                   type="button"
                   className="text-slate-400 transition-colors hover:text-state-danger"
