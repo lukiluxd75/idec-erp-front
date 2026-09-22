@@ -216,88 +216,95 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
               ))}
             </datalist>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {nombres.map((ambiente) => (
-                <div key={ambiente} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3">
-                  <p className="mb-2 truncate text-xs font-semibold text-slate-700" title={ambiente}>
-                    {ambiente}
-                  </p>
-                  <div
-                    className="grid items-center justify-items-center gap-1"
-                    style={{
-                      gridTemplateAreas: '". norte ." "oeste imagen este" ". sud ."',
-                      gridTemplateColumns: '5.5rem 1fr 5.5rem',
-                      gridTemplateRows: 'auto 1fr auto',
-                    }}
-                  >
-                    <div style={{ gridArea: 'norte' }} className="flex flex-col items-center">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        Norte
-                      </span>
-                      <input
-                        list={datalistId}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-accent-500/60"
-                        value={colindancias[planta]?.[ambiente]?.norte || ''}
-                        onChange={(e) => onCambioValor(planta, ambiente, 'norte', e.target.value)}
-                        placeholder="Sin detectar…"
-                      />
-                    </div>
-
-                    <div style={{ gridArea: 'oeste' }} className="flex flex-col items-center">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        Oeste
-                      </span>
-                      <input
-                        list={datalistId}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-accent-500/60"
-                        value={colindancias[planta]?.[ambiente]?.oeste || ''}
-                        onChange={(e) => onCambioValor(planta, ambiente, 'oeste', e.target.value)}
-                        placeholder="Sin detectar…"
-                      />
-                    </div>
-
+            <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(26rem, 1fr))' }}>
+              {nombres.map((ambiente) => {
+                const valores = colindancias[planta]?.[ambiente] || {}
+                return (
+                  <div key={ambiente} className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                    <p className="mb-3 truncate text-sm font-semibold text-slate-700" title={ambiente}>
+                      {ambiente}
+                    </p>
                     <div
-                      style={{ gridArea: 'imagen' }}
-                      className="flex h-36 w-36 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white"
+                      className="grid items-center justify-items-stretch gap-2"
+                      style={{
+                        gridTemplateAreas: '". norte ." "oeste imagen este" ". sud ."',
+                        gridTemplateColumns: '8rem 10rem 8rem',
+                        gridTemplateRows: 'auto 10rem auto',
+                      }}
                     >
-                      {imagenUrl ? (
-                        <img
-                          src={imagenUrl}
-                          alt={`Plano ${planta}`}
-                          className="max-h-full max-w-full object-contain transition-transform"
-                          style={{ transform: `rotate(${-angleDeg}deg)` }}
+                      <div style={{ gridArea: 'norte' }} className="flex min-w-0 flex-col items-center">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Norte
+                        </span>
+                        <input
+                          list={datalistId}
+                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+                          value={valores.norte || ''}
+                          title={valores.norte || ''}
+                          onChange={(e) => onCambioValor(planta, ambiente, 'norte', e.target.value)}
+                          placeholder="Sin detectar…"
                         />
-                      ) : (
-                        <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
-                      )}
-                    </div>
+                      </div>
 
-                    <div style={{ gridArea: 'este' }} className="flex flex-col items-center">
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                        Este
-                      </span>
-                      <input
-                        list={datalistId}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-accent-500/60"
-                        value={colindancias[planta]?.[ambiente]?.este || ''}
-                        onChange={(e) => onCambioValor(planta, ambiente, 'este', e.target.value)}
-                        placeholder="Sin detectar…"
-                      />
-                    </div>
+                      <div style={{ gridArea: 'oeste' }} className="flex min-w-0 flex-col items-center">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Oeste
+                        </span>
+                        <input
+                          list={datalistId}
+                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+                          value={valores.oeste || ''}
+                          title={valores.oeste || ''}
+                          onChange={(e) => onCambioValor(planta, ambiente, 'oeste', e.target.value)}
+                          placeholder="Sin detectar…"
+                        />
+                      </div>
 
-                    <div style={{ gridArea: 'sud' }} className="flex flex-col items-center">
-                      <input
-                        list={datalistId}
-                        className="w-full rounded-lg border border-slate-200 bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-accent-500/60"
-                        value={colindancias[planta]?.[ambiente]?.sud || ''}
-                        onChange={(e) => onCambioValor(planta, ambiente, 'sud', e.target.value)}
-                        placeholder="Sin detectar…"
-                      />
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Sud</span>
+                      <div
+                        style={{ gridArea: 'imagen' }}
+                        className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white"
+                      >
+                        {imagenUrl ? (
+                          <img
+                            src={imagenUrl}
+                            alt={`Plano ${planta}`}
+                            className="max-h-full max-w-full object-contain transition-transform"
+                            style={{ transform: `rotate(${-angleDeg}deg)` }}
+                          />
+                        ) : (
+                          <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
+                        )}
+                      </div>
+
+                      <div style={{ gridArea: 'este' }} className="flex min-w-0 flex-col items-center">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          Este
+                        </span>
+                        <input
+                          list={datalistId}
+                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+                          value={valores.este || ''}
+                          title={valores.este || ''}
+                          onChange={(e) => onCambioValor(planta, ambiente, 'este', e.target.value)}
+                          placeholder="Sin detectar…"
+                        />
+                      </div>
+
+                      <div style={{ gridArea: 'sud' }} className="flex min-w-0 flex-col items-center">
+                        <input
+                          list={datalistId}
+                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+                          value={valores.sud || ''}
+                          title={valores.sud || ''}
+                          onChange={(e) => onCambioValor(planta, ambiente, 'sud', e.target.value)}
+                          placeholder="Sin detectar…"
+                        />
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Sud</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )

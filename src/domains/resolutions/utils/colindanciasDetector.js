@@ -31,6 +31,14 @@ import { rotatePoint } from './planNorthDetector'
 // OCR encuentra alguna de ellas escrita en el plano, es una colindancia
 // exterior (no otra unidad del propio edificio). "CALLE" es un prefijo: el
 // nombre real de la calle casi siempre sigue ("CALLE ANTONIO QUIJARRO...").
+//
+// "LOTE Nº" y "R.M." NO son parte de esas 7 (no estan en C3:C9 de la
+// plantilla) pero aparecen como rotulo de colindancia real en planos reales
+// (linda con el lote vecino / retiro municipal) -- se agregan igual como
+// prefijo reconocible, igual que "CALLE". "R.M." es mas riesgoso: son solo
+// 2 letras sueltas, asi que puede matchear con texto ajeno que tenga una R y
+// una M cerca por casualidad -- como toda sugerencia, queda en el <input>
+// editable, el usuario la corrige si no corresponde.
 export const LEYENDAS_COLINDANCIA = [
   'MURO DE CONTENCION',
   'AREA COMUN',
@@ -39,14 +47,25 @@ export const LEYENDAS_COLINDANCIA = [
   'AREA DE CIRCULACION VEHICULAR',
   'VECINO',
   'CALLE',
+  'LOTE Nº',
+  'R.M.',
 ]
 
+// Separa letras de numeros pegados ("BAULERA1" -> "BAULERA 1") antes de
+// tokenizar: en Hoja2 el "Ambiente" a veces se tipea sin espacio antes del
+// numero, pero en el plano casi siempre esta dibujado CON espacio ("BAULERA
+// 1") y el OCR lo lee como dos bloques separados -- sin este paso, buscar
+// "Baulera1" nunca calzaba contra el texto "BAULERA 1" del plano (el token
+// unico "BAULERA1" no es substring de "BAULERA 1") y la unidad se quedaba
+// sin sugerencia aunque estuviera bien dibujada.
 function normTexto(s) {
   return (s || '')
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .toUpperCase()
     .replace(/[^A-Z0-9\s]/g, ' ')
+    .replace(/([A-Z])(\d)/g, '$1 $2')
+    .replace(/(\d)([A-Z])/g, '$1 $2')
     .replace(/\s+/g, ' ')
     .trim()
 }

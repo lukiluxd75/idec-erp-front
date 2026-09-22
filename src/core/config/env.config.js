@@ -9,5 +9,5 @@ export const ENV = {
   IS_DEV: import.meta.env.DEV,
   // External OCR service for the geoextraction domain — outside the ERP backend.
   OCR_API_URL: import.meta.env.VITE_OCR_API_URL || '',
-  OCR_CONFIDENCE_THRESHOLD: parseFloat(import.meta.env.VITE_OCR_THRESHOLD || '0.99'),
+  OCR_CONFIDENCE_THRESHOLD: parseFloat(import.meta.env.VITE_OCR_THRESHOLD || '0.85'),
 }
