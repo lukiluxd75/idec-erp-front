@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { API_ENDPOINTS } from '@/core/config/endpoints.config'
 import { ENV } from '@/core/config/env.config'
@@ -7,6 +7,7 @@ import { geoextractionApi } from '../api/geoextraction.api'
 
 const RETRY_MS = 3000
 const PRESENCE_POLL_MS = 3000
+const FALLBACK_POLL_MS = 4000
 
 function wsUrl() {
   const token = storageService.getToken()
@@ -36,10 +37,21 @@ function wsUrl() {
  *
  * Reconnects with a fixed delay on any drop (expired token, backend restart,
  * network): exponential backoff is unnecessary at this scale.
+ *
+ * Plan B (`fallbackMode`, returned but optional to use): some deployments put
+ * a reverse proxy in front of the backend that kills the wss:// upgrade
+ * handshake outright (infra-side, not fixable from here). `onerror`, or
+ * `onclose` with a non-clean close, flips `fallbackMode` on, which drives a
+ * `setInterval` calling `onUpdate` (a GET against /captures, same call the WS
+ * `update` message would have triggered) every FALLBACK_POLL_MS so the list
+ * doesn't go stale while stuck behind a proxy that never lets the socket
+ * open. The normal reconnect loop above keeps trying in the background; a
+ * successful `onopen` clears `fallbackMode` and polling stops.
  */
 export function useCapturesUpdates(onUpdate, onPresenceChange) {
   const onUpdateRef = useRef(onUpdate)
   const onPresenceRef = useRef(onPresenceChange)
+  const [fallbackMode, setFallbackMode] = useState(false)
   useEffect(() => {
     onUpdateRef.current = onUpdate
     onPresenceRef.current = onPresenceChange
@@ -54,6 +66,7 @@ export function useCapturesUpdates(onUpdate, onPresenceChange) {
       const url = wsUrl()
       if (!url) return
       ws = new WebSocket(url)
+      ws.onopen = () => setFallbackMode(false)
       ws.onmessage = (event) => {
         let msg
         try {
@@ -64,11 +77,15 @@ export function useCapturesUpdates(onUpdate, onPresenceChange) {
         if (msg.type === 'update') onUpdateRef.current()
         else if (msg.type === 'presence') onPresenceRef.current?.(msg.mobile_connected)
       }
-      ws.onclose = () => {
+      ws.onclose = (event) => {
+        if (!event.wasClean) setFallbackMode(true)
         if (closed) return
         retryTimer = setTimeout(connect, RETRY_MS)
       }
-      ws.onerror = () => ws.close()
+      ws.onerror = () => {
+        setFallbackMode(true)
+        ws.close()
+      }
     }
 
     connect()
@@ -104,4 +121,13 @@ export function useCapturesUpdates(onUpdate, onPresenceChange) {
       clearInterval(timer)
     }
   }, [onPresenceChange])
+
+  useEffect(() => {
+    if (!fallbackMode) return
+
+    const interval = setInterval(() => onUpdateRef.current(), FALLBACK_POLL_MS)
+    return () => clearInterval(interval)
+  }, [fallbackMode])
+
+  return { fallbackMode }
 }

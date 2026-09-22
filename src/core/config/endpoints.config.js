@@ -60,6 +60,14 @@ export const API_ENDPOINTS = {
       `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/observations`,
     MIGRATE: (formNumber) => `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/migrate`,
   },
+  TEMPLATES: {
+    BASE: '/api/templates',
+    ONE: (id) => `/api/templates/${id}`,
+    VARIABLES: '/api/templates/variables',
+    CITES: '/api/templates/cites',
+    CITES_CONFIGURACIONES: '/api/templates/cites/configuraciones',
+    CITES_GENERAR: '/api/templates/cites/generar',
+  },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
     VISION: '/api/chatbot/vision',
