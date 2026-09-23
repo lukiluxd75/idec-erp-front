@@ -31,4 +31,7 @@ export const chatbotApi = {
   listFeedback: () => httpClient.get(API_ENDPOINTS.CHATBOT.FEEDBACK),
 
   reindexEmbeddings: () => httpClient.post(API_ENDPOINTS.CHATBOT.REINDEX_EMBEDDINGS, {}),
+
+  learnFromFeedback: (ruleText) =>
+    httpClient.post(API_ENDPOINTS.CHATBOT.FEEDBACK + '/learn', { rule_text: ruleText }),
 }

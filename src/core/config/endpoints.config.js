@@ -21,6 +21,7 @@ export const API_ENDPOINTS = {
     CAPTURE: (id) => `/api/geoextraction/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/geoextraction/captures/${id}/image`,
     CAPTURES_WS: '/api/geoextraction/captures/ws',
+    CAPTURES_PRESENCE: '/api/geoextraction/captures/presence',
   },
   SECURITY: {
     ROLES: '/api/security/roles',
@@ -37,6 +38,16 @@ export const API_ENDPOINTS = {
     ONE: (id) => `/api/resolutions/${id}`,
     PAGE: (id, order) => `/api/resolutions/${id}/pages/${order}`,
     TABLE: (id) => `/api/resolutions/${id}/table`,
+    PRESENCE: '/api/resolutions/presence',
+    PLAN_PAGES: (id) => `/api/resolutions/${id}/plan-pages`,
+    PLAN_PAGE: (id, order) => `/api/resolutions/${id}/plan-pages/${order}`,
+  },
+  FOLIOS: {
+    BASE: '/api/folios',
+    ONE: (id) => `/api/folios/${id}`,
+    PAGE: (id, index, upright = true) => `/api/folios/${id}/pages/${index}?upright=${upright}`,
+    DIAGNOSTICS: (id) => `/api/folios/${id}/diagnostics`,
+    REPROCESS: (id) => `/api/folios/${id}/reprocess`,
   },
   DETECTION: {
     HEALTH: '/api/detection/health',
@@ -57,6 +68,14 @@ export const API_ENDPOINTS = {
     OBSERVATIONS: (formNumber) =>
       `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/observations`,
     MIGRATE: (formNumber) => `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/migrate`,
+  },
+  TEMPLATES: {
+    BASE: '/api/templates',
+    ONE: (id) => `/api/templates/${id}`,
+    VARIABLES: '/api/templates/variables',
+    CITES: '/api/templates/cites',
+    CITES_CONFIGURACIONES: '/api/templates/cites/configuraciones',
+    CITES_GENERAR: '/api/templates/cites/generar',
   },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',

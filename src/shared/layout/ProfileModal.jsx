@@ -77,7 +77,7 @@ export function ProfileModal({ open, onClose, user }) {
 
   return (
     <Modal open={open} onClose={handleClose} title="Perfil" icon={UserIcon}>
-      <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/60 p-4">
+      <div className="flex items-center gap-3 rounded-2xl border border-white/50 bg-white/40 p-4">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-800 text-white">
           <UserIcon className="h-6 w-6" />
         </span>
@@ -87,7 +87,7 @@ export function ProfileModal({ open, onClose, user }) {
         </div>
       </div>
 
-      <div className="mt-5 border-t border-slate-100 pt-5">
+      <div className="mt-5 border-t border-white/40 pt-5">
         {!showForm ? (
           <Button variant="secondary" size="md" icon={KeyRound} onClick={() => setShowForm(true)} className="w-full">
             Cambiar contraseña

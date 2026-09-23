@@ -9,7 +9,7 @@ import { ChatComposer } from '@/domains/chatbot/components/ChatComposer'
 const GREETING = {
   role: 'assistant',
   content:
-    'Buenos días. Soy el Asistente Catastral del GAMC. Puedo orientarlo sobre qué trámite le corresponde, sus requisitos y costos. ¿En qué puedo ayudarlo?',
+    '¡Buenos días! Bienvenido al servicio de atención virtual de la Dirección de Administración Geográfica y Catastro.',
 }
 
 const SUGGESTIONS = ['¿Qué puedes hacer?', '¿Qué áreas abarcas?', 'Contacto']

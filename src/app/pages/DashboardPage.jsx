@@ -128,8 +128,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <Card glass={false} className="!p-0 overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-r from-brand-800 to-brand-600 px-5 py-5 text-white sm:px-6">
+      <Card glass={false} className="liquid-glass-tint !p-0 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-5 text-white sm:px-6">
           <div className="flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25">
               <UserRound className="h-5 w-5" />
@@ -157,7 +157,7 @@ export function DashboardPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
                 Catálogo
               </p>
-              <h2 className="text-sm font-bold text-slate-900">Módulos del ERP</h2>
+              <h2 className="text-sm font-bold text-slate-900">Módulos del IDEC</h2>
             </div>
           </div>
 

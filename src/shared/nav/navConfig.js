@@ -17,7 +17,11 @@ import {
   Sparkles,
   FileSpreadsheet,
   FolderSearch,
-  Files,
+  FileText,
+  Braces,
+  Hash,
+  FileOutput,
+  FileSearch,
 } from 'lucide-react'
 
 /**
@@ -26,11 +30,27 @@ import {
  * domain entry redirect (app/pages/DomainHome). Lives in shared/ so those consumers
  * do not depend on each other directly.
  */
+// Orden alfabético por `label` (afecta la grilla de módulos del Dashboard y,
+// de paso, el Sidebar -- este último ubica "Inicio" con `.find()`, no por
+// posición, así que reordenar aquí no le afecta).
 export const NAV_SECTIONS = [
   {
-    label: 'Inicio',
-    icon: LayoutDashboard,
-    path: '/dashboard',
+    label: 'Asistente de Trámites',
+    icon: Bot,
+    path: '/chatbot',
+    actions: [{ id: 'feedback', label: 'Ver retroalimentación' }],
+    children: [
+      { label: 'Asistente', path: '/chatbot/chat', icon: MessageCircle },
+      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
+      { label: 'Ingesta OCR', path: '/chatbot/ingest', icon: ScanLine, permission: 'chatbot.edit' },
+      { label: 'Retroalimentación', path: '/chatbot/feedback', icon: ThumbsUp, permission: 'chatbot.feedback' },
+    ],
+  },
+  {
+    label: 'Detección de construcciones',
+    icon: Building2,
+    path: '/detection',
+    children: [{ label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch }],
   },
   {
     label: 'Geo-Extract',
@@ -39,14 +59,6 @@ export const NAV_SECTIONS = [
     children: [
       { label: 'Captura OCR', path: '/geoextraction/capture', icon: Camera },
       { label: 'Fusión de Shapefiles', path: '/geoextraction/merge', icon: Layers },
-    ],
-  },
-  {
-    label: 'Detección de construcciones',
-    icon: Building2,
-    path: '/detection',
-    children: [
-      { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
     ],
   },
   {
@@ -69,11 +81,29 @@ export const NAV_SECTIONS = [
         children: [
           {
             label: 'Detector de Folios',
-            path: '/ocr-ia/carpetas/folios',
-            icon: Files,
+            path: '/folios',
+            icon: FileSearch,
+            accessPrefix: 'folios',
           },
         ],
       },
+    ],
+  },
+  {
+    label: 'Inicio',
+    icon: LayoutDashboard,
+    path: '/dashboard',
+  },
+  {
+    label: 'Plantillas dinámicas',
+    icon: FileText,
+    path: '/templates',
+    description: 'Gestione plantillas institucionales, variables, CITES y documentos.',
+    children: [
+      { label: 'Plantillas', path: '/templates/catalog', icon: FileText, blurb: 'Formatos institucionales reutilizables' },
+      { label: 'Variables', path: '/templates/variables', icon: Braces, blurb: 'Datos dinámicos de los documentos' },
+      { label: 'CITES', path: '/templates/cites', icon: Hash, blurb: 'Códigos correlativos generados' },
+      { label: 'Documentos', path: '/templates/documents', icon: FileOutput, blurb: 'Generación y descarga documental' },
     ],
   },
   {
@@ -88,43 +118,9 @@ export const NAV_SECTIONS = [
     description:
       'Ordene el acceso así: primero defina áreas, luego cree roles con permisos y por último asígnelos a cada usuario.',
     children: [
-      {
-        label: 'Usuarios',
-        path: '/security/users',
-        icon: Users,
-        blurb: 'Asignar roles, área y activar cuentas',
-      },
-      {
-        label: 'Roles',
-        path: '/security/roles',
-        icon: KeyRound,
-        blurb: 'Definir qué puede hacer cada rol',
-      },
-      {
-        label: 'Áreas',
-        path: '/security/areas',
-        icon: Building2,
-        blurb: 'Unidades organizacionales',
-      },
-    ],
-  },
-  {
-    label: 'Asistente de Trámites',
-    icon: Bot,
-    path: '/chatbot',
-    // Acción extra sobre el par view/edit genérico (ver moduleCatalog.js) — separa
-    // "gestionar el catálogo de trámites/ingesta" (chatbot.edit) de "ver la
-    // retroalimentación de todos los usuarios" (chatbot.feedback), para que un rol
-    // como "Asistente" pueda tener uno sin el otro.
-    actions: [{ id: 'feedback', label: 'Ver retroalimentación' }],
-    children: [
-      { label: 'Asistente', path: '/chatbot/chat', icon: MessageCircle },
-      // El resto son pantallas de administración (ver canViewChild) — el back
-      // igual las rechaza con 403 sin el permiso, esto solo evita mostrar el
-      // enlace a quien no puede usarlas.
-      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
-      { label: 'Ingesta OCR', path: '/chatbot/ingest', icon: ScanLine, permission: 'chatbot.edit' },
-      { label: 'Retroalimentación', path: '/chatbot/feedback', icon: ThumbsUp, permission: 'chatbot.feedback' },
+      { label: 'Usuarios', path: '/security/users', icon: Users, blurb: 'Asignar roles, área y activar cuentas' },
+      { label: 'Roles', path: '/security/roles', icon: KeyRound, blurb: 'Definir qué puede hacer cada rol' },
+      { label: 'Áreas', path: '/security/areas', icon: Building2, blurb: 'Unidades organizacionales' },
     ],
   },
 ]
