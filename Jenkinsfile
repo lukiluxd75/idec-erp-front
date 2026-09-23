@@ -24,6 +24,7 @@ pipeline {
                 echo 'Instalando dependencias del Frontend...'
                 bat '''
                     set NODE_SKIP_PLATFORM_CHECK=1
+                    set PATH=C:\\Program Files\\nodejs;%PATH%
                     "C:\\Program Files\\nodejs\\npm.cmd" install
                 '''
             }
@@ -34,6 +35,7 @@ pipeline {
                 echo 'Compilando Frontend...'
                 bat '''
                     set NODE_SKIP_PLATFORM_CHECK=1
+                    set PATH=C:\\Program Files\\nodejs;%PATH%
                     "C:\\Program Files\\nodejs\\npm.cmd" run build
                 '''
             }
