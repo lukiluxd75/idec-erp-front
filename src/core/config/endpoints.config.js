@@ -42,6 +42,13 @@ export const API_ENDPOINTS = {
     PLAN_PAGES: (id) => `/api/resolutions/${id}/plan-pages`,
     PLAN_PAGE: (id, order) => `/api/resolutions/${id}/plan-pages/${order}`,
   },
+  FOLIOS: {
+    BASE: '/api/folios',
+    ONE: (id) => `/api/folios/${id}`,
+    PAGE: (id, index, upright = true) => `/api/folios/${id}/pages/${index}?upright=${upright}`,
+    DIAGNOSTICS: (id) => `/api/folios/${id}/diagnostics`,
+    REPROCESS: (id) => `/api/folios/${id}/reprocess`,
+  },
   DETECTION: {
     HEALTH: '/api/detection/health',
     WMS_LAYERS: '/api/detection/wms/layers',

@@ -19,6 +19,7 @@ import {
   Braces,
   Hash,
   FileOutput,
+  FileSearch,
 } from 'lucide-react'
 
 /**
@@ -57,6 +58,11 @@ export const NAV_SECTIONS = [
     children: [
       { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
     ],
+  },
+  {
+    label: 'Detección de Folios',
+    icon: FileSearch,
+    path: '/folios',
   },
   {
     label: 'Geo-Extract',
