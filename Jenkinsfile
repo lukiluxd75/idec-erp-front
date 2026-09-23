@@ -22,14 +22,14 @@ pipeline {
         stage('2. Instalar Dependencias') {
             steps {
                 echo 'Instalando dependencias del Frontend...'
-                bat 'set NODE_SKIP_PLATFORM_CHECK=1 && npm install'
+                bat 'set NODE_SKIP_PLATFORM_CHECK=1 && "C:\\Program Files\\nodejs\\npm.cmd" install'
             }
         }
         
         stage('3. Compilación') {
             steps {
                 echo 'Compilando Frontend...'
-                bat 'set NODE_SKIP_PLATFORM_CHECK=1 && npm run build'
+                bat 'set NODE_SKIP_PLATFORM_CHECK=1 && "C:\\Program Files\\nodejs\\npm.cmd" run build'
             }
         }
 
