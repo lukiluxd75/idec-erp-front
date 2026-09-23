@@ -10,10 +10,34 @@ const linkBase =
 const linkActive = 'bg-brand-800 text-white shadow-sm shadow-brand-800/20'
 const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 
+function FunctionLinks({ items, permissions, depth = 0 }) {
+  return items.map((child) => {
+    const ChildIcon = child.icon
+    const nested = (child.children || []).filter((item) => canViewChild(permissions, item))
+    return (
+      <div key={child.path} className={depth ? 'space-y-1 pl-3' : 'space-y-1'}>
+        <NavLink
+          to={child.path}
+          end={nested.length > 0}
+          className={({ isActive }) =>
+            `${linkBase} ${depth ? 'text-[13px] font-medium' : ''} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <ChildIcon className="h-[18px] w-[18px] shrink-0" />
+          <span>{child.label}</span>
+        </NavLink>
+        {nested.length > 0 ? (
+          <FunctionLinks items={nested} permissions={permissions} depth={depth + 1} />
+        ) : null}
+      </div>
+    )
+  })
+}
+
 /**
  * Contextual sidebar: high contrast on white (readable over the ERP light-blue background).
  */
-export function Sidebar({ open = true, onNavigate }) {
+export function Sidebar({ open = true }) {
   const { pathname } = useLocation()
   const { user } = useAuth()
   const currentDomain = getCurrentDomain(pathname)
@@ -62,20 +86,7 @@ export function Sidebar({ open = true, onNavigate }) {
             </p>
           )}
 
-          {visibleChildren.map((child) => {
-            const ChildIcon = child.icon
-            return (
-              <NavLink
-                key={child.path}
-                to={child.path}
-                onClick={onNavigate}
-                className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-              >
-                <ChildIcon className="h-[18px] w-[18px] shrink-0" />
-                <span>{child.label}</span>
-              </NavLink>
-            )
-          })}
+          <FunctionLinks items={visibleChildren} permissions={user?.permisos} />
         </nav>
       </aside>
     </div>

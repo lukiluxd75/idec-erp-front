@@ -34,7 +34,7 @@ export function AppShell() {
   return (
     <div className="relative flex h-dvh overflow-hidden text-slate-800 antialiased">
       <GisBackdrop />
-      <Sidebar open={sidebarOpen} onNavigate={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header

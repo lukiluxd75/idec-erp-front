@@ -18,13 +18,23 @@ export const BASE_ACTIONS = [
   { id: 'edit', label: 'Editar' },
 ]
 
-export const ERP_MODULES = NAV_SECTIONS.filter((section) => section.path !== '/dashboard').map(
-  (section) => ({
-    id: section.path.replace('/', ''),
-    label: section.label,
-    actions: section.actions ? [...BASE_ACTIONS, ...section.actions] : BASE_ACTIONS,
-  })
-)
+function collectPermissionNodes(sections) {
+  const nodes = []
+  const walk = (node, topLevel) => {
+    if (node.permissionModule || (topLevel && node.path !== '/dashboard' && !node.group)) {
+      nodes.push(node)
+    }
+    for (const child of node.children || []) walk(child, false)
+  }
+  for (const section of sections) walk(section, true)
+  return nodes
+}
+
+export const ERP_MODULES = collectPermissionNodes(NAV_SECTIONS).map((section) => ({
+  id: section.permissionModule || section.path.replace(/^\//, ''),
+  label: section.catalogLabel || section.label,
+  actions: section.actions ? [...BASE_ACTIONS, ...section.actions] : BASE_ACTIONS,
+}))
 
 /** Unique action columns for the permission matrix (view/edit + any extras). */
 export const ACTIONS = (() => {

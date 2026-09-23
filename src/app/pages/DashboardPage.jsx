@@ -1,22 +1,49 @@
+import { useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { ArrowUpRight, LayoutGrid, UserRound } from 'lucide-react'
-import { Card, EmptyState } from '@/shared/ui'
+import { ArrowUpRight, LayoutGrid, Search, UserRound } from 'lucide-react'
+import { Card, EmptyState, Input, Select } from '@/shared/ui'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { NAV_SECTIONS, getModuleEntryPath, canViewModule } from '@/shared/nav'
+import { NAV_SECTIONS, collectNavLabels, getModuleEntryPath, canViewModule } from '@/shared/nav'
 
-function ModuleCard({ label, path, icon: Icon, children }) {
-  const entryPath = getModuleEntryPath({ path, children })
+const SORT_STORAGE_KEY = 'idec-erp.dashboard.sort'
+
+const SORT_OPTIONS = [
+  { id: 'catalog', label: 'Orden del catálogo' },
+  { id: 'az', label: 'Nombre (A–Z)' },
+  { id: 'za', label: 'Nombre (Z–A)' },
+  { id: 'functions-desc', label: 'Más funciones' },
+  { id: 'functions-asc', label: 'Menos funciones' },
+]
+
+function countFunctions(section) {
+  const roots = section.menuChildren || section.children
+  const walk = (nodes) =>
+    (nodes || []).reduce((total, node) => total + 1 + walk(node.children), 0)
+  const nested = walk(roots)
+  return nested || 1
+}
+
+function readStoredSort() {
+  try {
+    const stored = window.localStorage.getItem(SORT_STORAGE_KEY)
+    return SORT_OPTIONS.some((option) => option.id === stored) ? stored : 'catalog'
+  } catch {
+    return 'catalog'
+  }
+}
+
+function ModuleCard({ label, icon: Icon, menuChildren, entryPath }) {
   const subtitle =
-    children?.length === 1
+    menuChildren?.length === 1
       ? 'Abrir módulo'
-      : children?.length
-        ? `${children.length} funciones`
+      : menuChildren?.length
+        ? `${menuChildren.length} funciones`
         : 'Abrir módulo'
 
   return (
     <NavLink
       to={entryPath}
-      className="group relative flex aspect-square flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-700/30 hover:shadow-[0_12px_28px_rgba(15,23,42,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 sm:p-5"
+      className="liquid-glass-tile group relative flex aspect-square flex-col overflow-hidden rounded-2xl p-4 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 sm:p-5"
     >
       <span
         aria-hidden
@@ -54,11 +81,50 @@ function ModuleCard({ label, path, icon: Icon, children }) {
  */
 export function DashboardPage() {
   const { user } = useAuth()
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState(readStoredSort)
 
   const displayName = user?.username || 'Usuario'
   const modules = NAV_SECTIONS.filter(
     (section) => section.path !== '/dashboard' && canViewModule(user?.permisos, section)
   )
+
+  const visibleModules = useMemo(() => {
+    const term = query.trim().toLowerCase()
+    const matched = modules
+      .map((section) => {
+        const labels = collectNavLabels(section)
+        const hit = !term || labels.some((label) => label.toLowerCase().includes(term))
+        if (!hit) return null
+        return {
+          path: section.path,
+          label: section.label,
+          icon: section.icon,
+          menuChildren: section.children,
+          entryPath: getModuleEntryPath(section, user?.permisos),
+        }
+      })
+      .filter(Boolean)
+
+    const ordered = [...matched]
+    if (sort === 'az' || sort === 'za') {
+      ordered.sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }))
+      if (sort === 'za') ordered.reverse()
+    } else if (sort === 'functions-desc' || sort === 'functions-asc') {
+      ordered.sort((a, b) => countFunctions(a) - countFunctions(b) || a.label.localeCompare(b.label, 'es'))
+      if (sort === 'functions-desc') ordered.reverse()
+    }
+    return ordered
+  }, [modules, query, sort, user?.permisos])
+
+  const changeSort = (value) => {
+    setSort(value)
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, value)
+    } catch {
+      /* ignore private-mode storage errors */
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -81,17 +147,42 @@ export function DashboardPage() {
         </div>
       </Card>
 
-      <Card glass={false} className="space-y-5 !p-5 sm:!p-6">
-        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-            <LayoutGrid className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-              Catálogo
-            </p>
-            <h2 className="text-sm font-bold text-slate-900">Módulos del ERP</h2>
+      <Card glass={false} className="liquid-glass space-y-5 !p-5 sm:!p-6">
+        <div className="flex flex-col gap-4 border-b border-white/25 pb-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
+              <LayoutGrid className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                Catálogo
+              </p>
+              <h2 className="text-sm font-bold text-slate-900">Módulos del ERP</h2>
+            </div>
           </div>
+
+          {modules.length > 0 ? (
+            <div className="grid w-full gap-3 sm:max-w-xl sm:grid-cols-[minmax(0,1fr)_13.5rem]">
+              <Input
+                icon={Search}
+                placeholder="Buscar módulo o herramienta…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                aria-label="Buscar módulos"
+              />
+              <Select
+                aria-label="Ordenar módulos"
+                value={sort}
+                onChange={(event) => changeSort(event.target.value)}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
         </div>
 
         {modules.length === 0 ? (
@@ -101,9 +192,16 @@ export function DashboardPage() {
             subtitle="Solicite a un administrador que le asigne un rol y un área en Seguridad → Permisos."
             className="py-10"
           />
+        ) : visibleModules.length === 0 ? (
+          <EmptyState
+            icon={Search}
+            title="Ningún módulo coincide con la búsqueda"
+            subtitle="Pruebe con otro nombre o limpie el texto para ver el catálogo completo."
+            className="py-10"
+          />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-            {modules.map((module) => (
+            {visibleModules.map((module) => (
               <ModuleCard key={module.path} {...module} />
             ))}
           </div>
