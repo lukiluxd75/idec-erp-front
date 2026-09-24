@@ -77,6 +77,65 @@ export function parseNumber(text) {
   return Number.isFinite(n) ? n : null
 }
 
+// Not compared: scores and messages the pipeline recomputes, and the raw OCR
+// text of each asiento (the reviewer never edits it).
+const NOT_COMPARED = new Set(['version', 'confianza', 'campos_baja_confianza', 'observaciones', 'texto'])
+
+/** { 'linderos.norte': 'CON ...', 'titularidad_dominio.asientos.1.personas.0.ci': '123', ... } */
+function flattenLeaves(value, prefix = '', out = {}) {
+  if (value !== null && typeof value === 'object') {
+    const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)
+    if (entries.length === 0) out[prefix] = value
+    for (const [key, v] of entries) {
+      if (NOT_COMPARED.has(key)) continue
+      flattenLeaves(v, prefix ? `${prefix}.${key}` : key, out)
+    }
+  } else if (prefix) {
+    out[prefix] = value ?? null
+  }
+  return out
+}
+
+/** Field-by-field differences between what was detected and what is on screen. */
+export function compareFill(extracted, current) {
+  const before = flattenLeaves(extracted || {})
+  const after = flattenLeaves(current || {})
+  const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+  const corregidos = []
+  for (const key of keys) {
+    const detectado = key in before ? before[key] : null
+    const revisado = key in after ? after[key] : null
+    if (JSON.stringify(detectado) !== JSON.stringify(revisado)) corregidos.push({ campo: key, detectado, revisado })
+  }
+  return { campos: keys.length, sin_cambios: keys.length - corregidos.length, corregidos }
+}
+
+/**
+ * Everything needed to judge a fill in one file: the backend's fill log (where
+ * each value came from) plus the comparison against the data on screen --
+ * unsaved edits included, so the reviewer can correct and download right away.
+ */
+export function buildFillReport(folio, fillLog, draft) {
+  const current = draft ? prepareForSave(draft) : null
+  const hasLog = fillLog && Object.keys(fillLog).length > 0
+  return {
+    folio: {
+      id: folio.id,
+      matricula: folio.matricula,
+      estado: folio.status,
+      fotos: folio.page_count,
+      escaneado: folio.created_at,
+      procesado: folio.processed_at,
+    },
+    generado: new Date().toISOString(),
+    comparacion: compareFill(folio.extracted_data, current),
+    llenado: hasLog ? fillLog : null,
+    ...(hasLog ? {} : { aviso: 'El folio se procesó antes de que existiera el log de llenado: reprocéselo para tenerlo.' }),
+    datos_detectados: folio.extracted_data,
+    datos_en_pantalla: current,
+  }
+}
+
 export function downloadJson(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

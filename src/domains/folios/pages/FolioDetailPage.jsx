@@ -1,4 +1,15 @@
-import { ArrowLeft, Braces, Bug, CheckCircle2, FileSearch, FormInput, RefreshCw, Save, Trash2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Braces,
+  Bug,
+  CheckCircle2,
+  FileSearch,
+  FormInput,
+  ListChecks,
+  RefreshCw,
+  Save,
+  Trash2,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -10,6 +21,7 @@ import { JsonPanel } from '@/domains/folios/components/JsonPanel'
 import { PageViewer } from '@/domains/folios/components/PageViewer'
 import {
   IN_PROGRESS,
+  buildFillReport,
   downloadJson,
   formatDateTime,
   pathKey,
@@ -140,6 +152,16 @@ export default function FolioDetailPage() {
     }
   }
 
+  const downloadFillLog = async () => {
+    try {
+      const report = buildFillReport(folio, await foliosApi.fillLog(id), draft)
+      downloadJson(report, `log_llenado_folio_${folio.matricula || id}.json`)
+      if (!report.llenado) toast.info(report.aviso)
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-24">
@@ -194,9 +216,20 @@ export default function FolioDetailPage() {
             </Button>
           )}
           {folio.processed_at && (
-            <Button icon={Bug} size="sm" variant="ghost" onClick={downloadDiagnostics}>
-              Descargar diagnóstico
-            </Button>
+            <>
+              <Button
+                icon={ListChecks}
+                size="sm"
+                variant="ghost"
+                onClick={downloadFillLog}
+                title="De qué texto salió cada campo y qué se corrigió en pantalla"
+              >
+                Log de llenado
+              </Button>
+              <Button icon={Bug} size="sm" variant="ghost" onClick={downloadDiagnostics}>
+                Descargar diagnóstico
+              </Button>
+            </>
           )}
           <span className="ml-auto" />
           <Button icon={Trash2} size="sm" variant="danger" onClick={() => setDialog('delete')}>
