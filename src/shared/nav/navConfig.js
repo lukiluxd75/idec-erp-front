@@ -21,6 +21,8 @@ import {
   Braces,
   Hash,
   FileOutput,
+  FileSearch,
+  Receipt,
   MonitorCog,
 } from 'lucide-react'
 
@@ -85,6 +87,24 @@ export const NAV_SECTIONS = [
         icon: FolderSearch,
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
+        children: [
+          {
+            label: 'Detector de Folios',
+            path: '/folios',
+            icon: FileSearch,
+            accessPrefix: 'folios',
+          },
+          {
+            label: 'Facturas',
+            path: '/facturas',
+            icon: Receipt,
+            // Also a module of the role permission matrix (facturas.view /
+            // facturas.edit), so an admin can grant it from Roles.
+            permissionModule: 'facturas',
+            catalogLabel: 'Facturas (comprobantes de pago)',
+            accessPrefix: 'facturas',
+          },
+        ],
       },
     ],
   },
