@@ -9,7 +9,6 @@ import { geoextractionRoutes } from './geoextraction/routes'
 import { securityRoutes } from './security/routes'
 import { detectionRoutes } from './detection/routes'
 import { resolutionsRoutes } from './resolutions/routes'
-import { facturasRoutes } from './facturas/routes'
 import { chatbotRoutes } from './chatbot/routes'
 import { appraisalReviewRoutes } from './appraisal-review/routes'
 import { templatesRoutes } from './templates/routes'
@@ -21,7 +20,6 @@ export const DOMAIN_ROUTES = [
   ...securityRoutes,
   ...detectionRoutes,
   ...resolutionsRoutes,
-  ...facturasRoutes,
   ...chatbotRoutes,
   ...appraisalReviewRoutes,
   ...templatesRoutes,
