@@ -47,6 +47,7 @@ export const API_ENDPOINTS = {
     ONE: (id) => `/api/folios/${id}`,
     PAGE: (id, index, upright = true) => `/api/folios/${id}/pages/${index}?upright=${upright}`,
     DIAGNOSTICS: (id) => `/api/folios/${id}/diagnostics`,
+    FILL_LOG: (id) => `/api/folios/${id}/fill-log`,
     REPROCESS: (id) => `/api/folios/${id}/reprocess`,
   },
   DETECTION: {

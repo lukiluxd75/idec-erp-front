@@ -18,6 +18,9 @@ export const foliosApi = {
 
   diagnostics: (id) => httpClient.get(API_ENDPOINTS.FOLIOS.DIAGNOSTICS(id)),
 
+  // How the last extraction filled each field ({} if the folio has no log yet).
+  fillLog: (id) => httpClient.get(API_ENDPOINTS.FOLIOS.FILL_LOG(id)),
+
   save: (id, data, confirm = false) => httpClient.put(API_ENDPOINTS.FOLIOS.ONE(id), { data, confirm }),
 
   reprocess: (id) => httpClient.post(API_ENDPOINTS.FOLIOS.REPROCESS(id)),
