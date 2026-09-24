@@ -50,13 +50,6 @@ export const API_ENDPOINTS = {
     FILL_LOG: (id) => `/api/folios/${id}/fill-log`,
     REPROCESS: (id) => `/api/folios/${id}/reprocess`,
   },
-  FACTURAS: {
-    BASE: '/api/facturas',
-    ONE: (id) => `/api/facturas/${id}`,
-    IMAGE: (id, upright = true) => `/api/facturas/${id}/image?upright=${upright}`,
-    FILL_LOG: (id) => `/api/facturas/${id}/fill-log`,
-    REPROCESS: (id) => `/api/facturas/${id}/reprocess`,
-  },
   DETECTION: {
     HEALTH: '/api/detection/health',
     WMS_LAYERS: '/api/detection/wms/layers',
