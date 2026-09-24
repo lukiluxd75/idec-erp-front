@@ -21,7 +21,6 @@ import {
   Braces,
   Hash,
   FileOutput,
-  FileSearch,
   Receipt,
   MonitorCog,
 } from 'lucide-react'
@@ -88,12 +87,6 @@ export const NAV_SECTIONS = [
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
         children: [
-          {
-            label: 'Detector de Folios',
-            path: '/folios',
-            icon: FileSearch,
-            accessPrefix: 'folios',
-          },
           {
             label: 'Facturas',
             path: '/facturas',
