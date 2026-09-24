@@ -15,6 +15,7 @@ import { chatbotRoutes } from './chatbot/routes'
 import { appraisalReviewRoutes } from './appraisal-review/routes'
 import { templatesRoutes } from './templates/routes'
 import { digitizationRoutes } from './digitization/routes'
+import { folderAnalysisRoutes } from './folder-analysis/routes'
 
 export const DOMAIN_ROUTES = [
   ...geoextractionRoutes,
@@ -27,6 +28,7 @@ export const DOMAIN_ROUTES = [
   ...appraisalReviewRoutes,
   ...templatesRoutes,
   ...digitizationRoutes,
+  ...folderAnalysisRoutes,
 ]
 
 /** true if the active route requested AppShell's wide container instead of max-w-4xl. */

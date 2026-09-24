@@ -83,8 +83,10 @@ export const NAV_SECTIONS = [
       },
       {
         label: 'Analizador y extractor de datos de carpetas',
-        path: '/ocr-ia/carpetas',
+        path: '/folder-analysis',
         icon: FolderSearch,
+        permissionModule: 'folder-analysis',
+        accessPrefix: 'folder-analysis',
         children: [
           {
             label: 'Detector de Folios',

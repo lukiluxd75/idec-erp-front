@@ -88,6 +88,18 @@ export const API_ENDPOINTS = {
   DIGITIZATION: {
     WORKERS: '/api/digitization/workers',
   },
+  FOLDER_ANALYSIS: {
+    CAPTURES: '/api/folder-analysis/captures',
+    CAPTURE: (id) => `/api/folder-analysis/captures/${id}`,
+    CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
+    CAPTURE_THUMBNAIL: (id) => `/api/folder-analysis/captures/${id}/thumbnail`,
+    DOCUMENTS: '/api/folder-analysis/documents',
+    DOCUMENT: (id) => `/api/folder-analysis/documents/${id}`,
+    DOCUMENT_PAGES: (id) => `/api/folder-analysis/documents/${id}/pages`,
+    DOCUMENT_ANALYZE: (id) => `/api/folder-analysis/documents/${id}/analyze`,
+    DOCUMENT_REVIEW: (id) => `/api/folder-analysis/documents/${id}/review`,
+    DOCUMENT_EXPORT: (id) => `/api/folder-analysis/documents/${id}/export`,
+  },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
     VISION: '/api/chatbot/vision',
