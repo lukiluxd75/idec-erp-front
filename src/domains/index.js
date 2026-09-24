@@ -10,6 +10,7 @@ import { securityRoutes } from './security/routes'
 import { detectionRoutes } from './detection/routes'
 import { resolutionsRoutes } from './resolutions/routes'
 import { foliosRoutes } from './folios/routes'
+import { facturasRoutes } from './facturas/routes'
 import { chatbotRoutes } from './chatbot/routes'
 import { appraisalReviewRoutes } from './appraisal-review/routes'
 import { templatesRoutes } from './templates/routes'
@@ -21,6 +22,7 @@ export const DOMAIN_ROUTES = [
   ...detectionRoutes,
   ...resolutionsRoutes,
   ...foliosRoutes,
+  ...facturasRoutes,
   ...chatbotRoutes,
   ...appraisalReviewRoutes,
   ...templatesRoutes,
