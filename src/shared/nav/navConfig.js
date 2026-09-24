@@ -21,7 +21,6 @@ import {
   Braces,
   Hash,
   FileOutput,
-  FileSearch,
   MonitorCog,
 } from 'lucide-react'
 
@@ -82,16 +81,10 @@ export const NAV_SECTIONS = [
       },
       {
         label: 'Analizador y extractor de datos de carpetas',
-        path: '/ocr-ia/carpetas',
+        path: '/folder-analysis',
         icon: FolderSearch,
-        children: [
-          {
-            label: 'Detector de Folios',
-            path: '/folios',
-            icon: FileSearch,
-            accessPrefix: 'folios',
-          },
-        ],
+        permissionModule: 'folder-analysis',
+        accessPrefix: 'folder-analysis',
       },
     ],
   },
