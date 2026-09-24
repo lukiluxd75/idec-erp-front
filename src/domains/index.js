@@ -13,6 +13,7 @@ import { foliosRoutes } from './folios/routes'
 import { chatbotRoutes } from './chatbot/routes'
 import { appraisalReviewRoutes } from './appraisal-review/routes'
 import { templatesRoutes } from './templates/routes'
+import { digitizationRoutes } from './digitization/routes'
 
 export const DOMAIN_ROUTES = [
   ...geoextractionRoutes,
@@ -23,6 +24,7 @@ export const DOMAIN_ROUTES = [
   ...chatbotRoutes,
   ...appraisalReviewRoutes,
   ...templatesRoutes,
+  ...digitizationRoutes,
 ]
 
 /** true if the active route requested AppShell's wide container instead of max-w-4xl. */

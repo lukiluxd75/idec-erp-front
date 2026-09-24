@@ -22,6 +22,7 @@ import {
   Hash,
   FileOutput,
   FileSearch,
+  MonitorCog,
 } from 'lucide-react'
 
 /**
@@ -51,6 +52,11 @@ export const NAV_SECTIONS = [
     icon: Building2,
     path: '/detection',
     children: [{ label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch }],
+  },
+  {
+    label: 'Digitalización IA',
+    icon: MonitorCog,
+    path: '/digitization',
   },
   {
     label: 'Geo-Extract',

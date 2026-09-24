@@ -77,6 +77,9 @@ export const API_ENDPOINTS = {
     CITES_CONFIGURACIONES: '/api/templates/cites/configuraciones',
     CITES_GENERAR: '/api/templates/cites/generar',
   },
+  DIGITIZATION: {
+    WORKERS: '/api/digitization/workers',
+  },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
     VISION: '/api/chatbot/vision',
