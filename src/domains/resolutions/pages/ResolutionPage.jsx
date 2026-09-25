@@ -9,6 +9,7 @@ import { ColindanciasSection } from '@/domains/resolutions/components/Colindanci
 import { PlanPagesSection } from '@/domains/resolutions/components/PlanPagesSection'
 import { StatusBadge } from '@/domains/resolutions/components/StatusBadge'
 import { SurfacesTable } from '@/domains/resolutions/components/SurfacesTable'
+import { plantasDePagina } from '@/domains/resolutions/utils/plantasCatalog'
 import { buildRows, downloadBlob, fillSheet2 } from '@/domains/resolutions/utils/sheet2Excel'
 import { parseSuperficiesPage } from '@/domains/resolutions/utils/surfacesOcrParser'
 import { detectAndDeskewTable } from '@/domains/resolutions/utils/tableLineDetector'
@@ -259,6 +260,13 @@ export default function ResolutionPage() {
     })
   }
 
+  // Una entrada por (página, planta): una hoja tipo ("PLANTA TIPO 2° - 4°
+  // PISO") sirve para las colindancias de cada uno de sus pisos. Las páginas
+  // cuya planta todavía se está leyendo no entran hasta que la tengan.
+  const paginasPorPlanta = (resolucion?.plan_pages || []).flatMap((p) =>
+    plantasDePagina(p).map((planta) => ({ ...p, planta })),
+  )
+
   const generateExcel = async () => {
     const filas = buildRows(paginasTabla)
     if (filas.length === 0) {
@@ -485,7 +493,7 @@ export default function ResolutionPage() {
       <ColindanciasSection
         resolutionId={id}
         resolutionNumber={resolucion.resolution_number}
-        planPages={resolucion.plan_pages || []}
+        planPages={paginasPorPlanta}
         unidadesPorPlanta={unidadesPorPlanta}
         colindancias={colindancias}
         setColindancias={setColindancias}

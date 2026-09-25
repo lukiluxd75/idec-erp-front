@@ -41,6 +41,8 @@ export const API_ENDPOINTS = {
     PRESENCE: '/api/resolutions/presence',
     PLAN_PAGES: (id) => `/api/resolutions/${id}/plan-pages`,
     PLAN_PAGE: (id, order) => `/api/resolutions/${id}/plan-pages/${order}`,
+    PLAN_PAGE_PLANTAS: (id, order) => `/api/resolutions/${id}/plan-pages/${order}/plantas`,
+    PLAN_PAGE_DETECT: (id, order) => `/api/resolutions/${id}/plan-pages/${order}/detect-planta`,
   },
   FOLIOS: {
     BASE: '/api/folios',
