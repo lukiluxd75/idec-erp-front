@@ -80,6 +80,7 @@ export const API_ENDPOINTS = {
   },
   DIGITIZATION: {
     WORKERS: '/api/digitization/workers',
+    STOP_WORKER: '/api/digitization/workers/stop',
   },
   FOLDER_ANALYSIS: {
     CAPTURES: '/api/folder-analysis/captures',
