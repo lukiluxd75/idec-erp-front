@@ -218,6 +218,245 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
+/* Banco de trabajo (folder-analysis): tablero plano — no tarjetas de catálogo. */
+.workbench-shell {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgb(255 255 255);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.workbench-board {
+  display: flex;
+  flex-direction: column;
+  min-height: 28rem;
+}
+
+@media (min-width: 1024px) {
+  .workbench-board {
+    flex-direction: row;
+  }
+}
+
+.workbench-lanes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+@media (min-width: 768px) {
+  .workbench-lanes {
+    flex-direction: row;
+    border-top: none;
+    border-left: 1px solid rgba(226, 232, 240, 0.95);
+  }
+}
+
+.workbench-queue {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: rgb(248 250 252);
+}
+
+@media (min-width: 1024px) {
+  .workbench-queue {
+    width: min(100%, 22rem);
+    flex-shrink: 0;
+  }
+}
+
+.workbench-queue__head {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.6));
+}
+
+.workbench-queue__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.workbench-queue-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 0.625rem;
+  align-items: start;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  transition: background-color 0.12s ease;
+}
+
+.workbench-queue-row:hover {
+  background: rgb(255 255 255);
+}
+
+.workbench-queue-row:active {
+  cursor: grabbing;
+}
+
+.workbench-assign {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.125rem;
+  border-radius: 0.625rem;
+  background: rgba(241, 245, 249, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.workbench-assign-btn {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgb(71 85 105);
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workbench-lane {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 16rem;
+  overflow: hidden;
+  background: rgb(255 255 255);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+@media (min-width: 768px) {
+  .workbench-lane {
+    border-bottom: none;
+    border-right: 1px solid rgba(226, 232, 240, 0.95);
+  }
+
+  .workbench-lane:last-child {
+    border-right: none;
+  }
+}
+
+.workbench-lane::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgb(100 116 139);
+}
+
+.workbench-lane--folio::before {
+  background: rgb(52 26 103);
+}
+
+.workbench-lane--tax::before {
+  background: rgb(5 150 105);
+}
+
+.workbench-lane--plan::before {
+  background: rgb(0 158 208);
+}
+
+.workbench-lane--active {
+  background: rgba(240, 249, 255, 0.65);
+  box-shadow: inset 0 0 0 2px rgba(0, 158, 208, 0.25);
+}
+
+.workbench-lane__head {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+.workbench-lane__drop {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.55);
+  background: rgba(248, 250, 252, 0.85);
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(100 116 139);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workbench-lane--active .workbench-lane__drop {
+  border-color: rgba(0, 158, 208, 0.55);
+  background: rgba(224, 247, 255, 0.75);
+  color: rgb(8 89 121);
+}
+
+.workbench-lane__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.workbench-lane__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workbench-lane__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: rgb(100 116 139);
+}
+
+/* Document rows inside a lane — list items, not cards. */
+.workbench-work-row {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgb(255 255 255);
+  transition: background-color 0.12s ease;
+}
+
+.workbench-work-row:last-child {
+  border-bottom: none;
+}
+
+.workbench-work-row:hover {
+  background: rgba(248, 250, 252, 0.85);
+}
+
+.workbench-work-row--drop-target {
+  background: rgba(224, 247, 255, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(0, 158, 208, 0.35);
+}
+
 :root {
   /* react-toastify — se pisan sus colores por defecto con la paleta GAMC (ver §4 CLAUDE.md) */
   --toastify-color-success: var(--color-state-success);

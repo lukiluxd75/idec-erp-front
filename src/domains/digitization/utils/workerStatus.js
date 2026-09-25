@@ -6,7 +6,7 @@ import { Cpu, Monitor, MonitorOff, MonitorX } from 'lucide-react'
  */
 /** `used_by` as the backend reports it (the domain that took the PC). */
 const USED_BY_LABELS = {
-  digitization: 'Digitalización IA',
+  digitization: 'Administrador de servidores de visión por computadora',
   folios: 'Detector de Folios',
   chatbot: 'Asistente de Trámites',
 }

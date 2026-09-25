@@ -86,7 +86,7 @@ export default function FolderAnalysisPage() {
         icon={FolderSearch}
         eyebrow="Herramientas OCR+IA"
         title="Analizador y extractor de datos de carpetas"
-        subtitle="Las fotos que usted toma con la aplicación móvil llegan a la bandeja. Arrástrelas al apartado que corresponda y presione Analizar."
+        subtitle="Tablero de clasificación: bandeja a la izquierda y carriles Folio, Impuesto y Plano (vista en filas, no tarjetas de módulo)."
       />
 
       {loading ? (
@@ -96,23 +96,25 @@ export default function FolderAnalysisPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {error && <Alert type="error">{error}</Alert>}
-          <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
-            <InboxPanel
-              captures={captures}
-              disabled={busy}
-              onSend={handlers.onCreate}
-              onDelete={deleteCapture}
-            />
-            <div className="grid gap-4 xl:grid-cols-3">
-              {DOC_TYPES.map((type) => (
-                <DocumentSection
-                  key={type.id}
-                  type={type}
-                  documents={documents.filter((d) => d.doc_type === type.id)}
-                  busy={busy}
-                  {...handlers}
-                />
-              ))}
+          <div className="workbench-shell">
+            <div className="workbench-board">
+              <InboxPanel
+                captures={captures}
+                disabled={busy}
+                onSend={handlers.onCreate}
+                onDelete={deleteCapture}
+              />
+              <div className="workbench-lanes">
+                {DOC_TYPES.map((type) => (
+                  <DocumentSection
+                    key={type.id}
+                    type={type}
+                    documents={documents.filter((d) => d.doc_type === type.id)}
+                    busy={busy}
+                    {...handlers}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>

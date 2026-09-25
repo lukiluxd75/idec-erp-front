@@ -1,7 +1,13 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { NAV_SECTIONS, canViewChild, getCurrentDomain } from '@/shared/nav'
+import {
+  NAV_SECTIONS,
+  canViewChild,
+  compareNavLabels,
+  getCurrentDomain,
+  getVisibleNavChildren,
+} from '@/shared/nav'
 
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
@@ -13,7 +19,9 @@ const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 function FunctionLinks({ items, permissions, depth = 0 }) {
   return items.map((child) => {
     const ChildIcon = child.icon
-    const nested = (child.children || []).filter((item) => canViewChild(permissions, item))
+    const nested = (child.children || [])
+      .filter((item) => canViewChild(permissions, item))
+      .sort(compareNavLabels)
     return (
       <div key={child.path} className={depth ? 'space-y-1 pl-3' : 'space-y-1'}>
         <NavLink
@@ -47,7 +55,7 @@ export function Sidebar({ open = true }) {
   if (!currentDomain) return null
 
   const DomainIcon = currentDomain.icon
-  const visibleChildren = (currentDomain.children || []).filter((child) => canViewChild(user?.permisos, child))
+  const visibleChildren = getVisibleNavChildren(user?.permisos, currentDomain.children)
 
   return (
     <div
@@ -84,7 +92,7 @@ export function Sidebar({ open = true }) {
 
           {visibleChildren.length > 0 && (
             <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-              Funciones
+              Funciones · A–Z
             </p>
           )}
 

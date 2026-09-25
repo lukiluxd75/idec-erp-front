@@ -27,6 +27,38 @@ export const DOC_TYPES = [
 
 export const DOC_TYPE_BY_ID = Object.fromEntries(DOC_TYPES.map((t) => [t.id, t]))
 
+/** Visual theme per lane (workbench — not module catalog tiles). */
+export const LANE_THEME = {
+  folio: {
+    accentBar: 'bg-brand-900',
+    iconWrap: 'bg-brand-900/10 text-brand-900 ring-brand-900/20',
+    lane: 'workbench-lane--folio',
+    workAccent: 'border-l-brand-800',
+    assignBtn:
+      'ring-brand-900/15 text-brand-900 hover:bg-brand-900/10 hover:ring-brand-900/30 focus-visible:ring-brand-900/40',
+  },
+  tax_receipt: {
+    accentBar: 'bg-emerald-600',
+    iconWrap: 'bg-emerald-600/10 text-emerald-800 ring-emerald-600/20',
+    lane: 'workbench-lane--tax',
+    workAccent: 'border-l-emerald-600',
+    assignBtn:
+      'ring-emerald-600/15 text-emerald-800 hover:bg-emerald-600/10 hover:ring-emerald-600/30 focus-visible:ring-emerald-600/40',
+  },
+  plan: {
+    accentBar: 'bg-accent-600',
+    iconWrap: 'bg-accent-600/10 text-accent-800 ring-accent-600/25',
+    lane: 'workbench-lane--plan',
+    workAccent: 'border-l-accent-600',
+    assignBtn:
+      'ring-accent-600/15 text-accent-800 hover:bg-accent-600/10 hover:ring-accent-600/30 focus-visible:ring-accent-600/40',
+  },
+}
+
+export const LANE_ACCENT_CLASS = Object.fromEntries(
+  Object.entries(LANE_THEME).map(([id, t]) => [id, t.workAccent])
+)
+
 export const FALLBACK_ICON = FileSpreadsheet
 
 export const STATUS_META = {

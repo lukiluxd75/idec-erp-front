@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { DOMAIN_SECTIONS, canViewChild } from '@/shared/nav'
+import { DOMAIN_SECTIONS, getVisibleNavChildren } from '@/shared/nav'
 
 /**
  * Domain entry screen: redirects straight to the module's first accessible function.
@@ -14,7 +14,7 @@ export function DomainHome() {
 
   if (!domain) return null
 
-  const visibleChildren = (domain.children || []).filter((child) => canViewChild(user?.permisos, child))
+  const visibleChildren = getVisibleNavChildren(user?.permisos, domain.children)
 
   if (visibleChildren.length === 0) return null
 

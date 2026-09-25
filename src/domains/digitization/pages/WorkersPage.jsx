@@ -76,7 +76,7 @@ export default function WorkersPage() {
     <Card className="animate-card-in">
       <SectionHeader
         icon={MonitorCog}
-        eyebrow="Digitalización IA"
+        eyebrow="Administrador de servidores de visión por computadora"
         title="Computadoras conectadas"
         subtitle="Equipos de los arquitectos que procesan las digitalizaciones. Se actualiza solo cada pocos segundos."
         actions={

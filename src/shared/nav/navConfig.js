@@ -41,9 +41,9 @@ export const NAV_SECTIONS = [
     actions: [{ id: 'feedback', label: 'Ver retroalimentación' }],
     children: [
       { label: 'Asistente', path: '/chatbot/chat', icon: MessageCircle },
-      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
       { label: 'Ingesta OCR', path: '/chatbot/ingest', icon: ScanLine, permission: 'chatbot.edit' },
       { label: 'Retroalimentación', path: '/chatbot/feedback', icon: ThumbsUp, permission: 'chatbot.feedback' },
+      { label: 'Trámites', path: '/chatbot/procedures', icon: ClipboardList, permission: 'chatbot.edit' },
     ],
   },
   {
@@ -53,31 +53,17 @@ export const NAV_SECTIONS = [
     children: [{ label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch }],
   },
   {
-    label: 'Digitalización IA',
-    icon: MonitorCog,
-    path: '/digitization',
-  },
-  {
-    label: 'Geo-Extract',
-    icon: Map,
-    path: '/geoextraction',
-    children: [
-      { label: 'Captura OCR', path: '/geoextraction/capture', icon: Camera },
-      { label: 'Fusión de Shapefiles', path: '/geoextraction/merge', icon: Layers },
-    ],
-  },
-  {
     label: 'Herramientas OCR+IA',
     icon: Sparkles,
     path: '/ocr-ia',
     catalogGroup: true,
     children: [
       {
-        label: 'Lector OCR de Resoluciones P.H.',
-        path: '/resolutions',
-        icon: FileSpreadsheet,
-        permissionModule: 'resolutions',
-        accessPrefix: 'resolutions',
+        label: 'Administrador de servidores de visión por computadora',
+        path: '/digitization',
+        icon: MonitorCog,
+        permissionModule: 'digitization',
+        accessPrefix: 'digitization',
       },
       {
         label: 'Analizador y extractor de datos de carpetas',
@@ -85,6 +71,24 @@ export const NAV_SECTIONS = [
         icon: FolderSearch,
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
+      },
+      {
+        label: 'Geo-Extract',
+        path: '/geoextraction/capture',
+        icon: Map,
+        permissionModule: 'geoextraction',
+        accessPrefix: 'geoextraction',
+        children: [
+          { label: 'Captura OCR', path: '/geoextraction/capture', icon: Camera },
+          { label: 'Fusión de Shapefiles', path: '/geoextraction/merge', icon: Layers },
+        ],
+      },
+      {
+        label: 'Lector OCR de Resoluciones P.H.',
+        path: '/resolutions',
+        icon: FileSpreadsheet,
+        permissionModule: 'resolutions',
+        accessPrefix: 'resolutions',
       },
     ],
   },
@@ -99,10 +103,10 @@ export const NAV_SECTIONS = [
     path: '/templates',
     description: 'Gestione plantillas institucionales, variables, CITES y documentos.',
     children: [
-      { label: 'Plantillas', path: '/templates/catalog', icon: FileText, blurb: 'Formatos institucionales reutilizables' },
-      { label: 'Variables', path: '/templates/variables', icon: Braces, blurb: 'Datos dinámicos de los documentos' },
       { label: 'CITES', path: '/templates/cites', icon: Hash, blurb: 'Códigos correlativos generados' },
       { label: 'Documentos', path: '/templates/documents', icon: FileOutput, blurb: 'Generación y descarga documental' },
+      { label: 'Plantillas', path: '/templates/catalog', icon: FileText, blurb: 'Formatos institucionales reutilizables' },
+      { label: 'Variables', path: '/templates/variables', icon: Braces, blurb: 'Datos dinámicos de los documentos' },
     ],
   },
   {
@@ -117,9 +121,9 @@ export const NAV_SECTIONS = [
     description:
       'Ordene el acceso así: primero defina áreas, luego cree roles con permisos y por último asígnelos a cada usuario.',
     children: [
-      { label: 'Usuarios', path: '/security/users', icon: Users, blurb: 'Asignar roles, área y activar cuentas' },
-      { label: 'Roles', path: '/security/roles', icon: KeyRound, blurb: 'Definir qué puede hacer cada rol' },
       { label: 'Áreas', path: '/security/areas', icon: Building2, blurb: 'Unidades organizacionales' },
+      { label: 'Roles', path: '/security/roles', icon: KeyRound, blurb: 'Definir qué puede hacer cada rol' },
+      { label: 'Usuarios', path: '/security/users', icon: Users, blurb: 'Asignar roles, área y activar cuentas' },
     ],
   },
 ]
@@ -141,13 +145,30 @@ function collectAccessPrefixes(node) {
   return prefixes
 }
 
+export function compareNavLabels(a, b) {
+  return (a?.label || '').localeCompare(b?.label || '', 'es', { sensitivity: 'base' })
+}
+
+/**
+ * Visible sidebar / domain children, A→Z at each nesting level (Spanish locale).
+ */
+export function getVisibleNavChildren(permissions, nodes) {
+  return (nodes || [])
+    .filter((child) => canViewChild(permissions, child))
+    .map((child) => ({
+      ...child,
+      children: child.children?.length ? getVisibleNavChildren(permissions, child.children) : child.children,
+    }))
+    .sort(compareNavLabels)
+}
+
 /**
  * Entry path into a module from the catalog.
  * Opens the first function the user can open. DomainHome does not render a picker.
  */
 export function getModuleEntryPath(section, permissions) {
   if (!section) return '/dashboard'
-  const kids = (section.children || []).filter((child) => canViewChild(permissions, child))
+  const kids = getVisibleNavChildren(permissions, section.children)
   return kids[0]?.path || section.path
 }
 
