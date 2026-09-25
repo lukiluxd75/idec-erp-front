@@ -17,20 +17,21 @@ pipeline {
         }
         stage('Instalar Node Modules') {
             steps {
-                bat 'npm install'
+                // Se usa la ruta absoluta de npm para evitar errores en el agente de Windows
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" install'
             }
         }
         stage('Compilar Frontend') {
             steps {
-                // Ajusta este comando según el script de compilación de tu package.json (ej: npm run build)
-                bat 'npm run build'
+                // Compila el proyecto usando npm
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" run build'
             }
         }
         stage('Desplegar a IIS') {
             steps {
                 echo 'Copiando archivos compilados del frontend a IIS...'
-                // Nota: Si tu compilación genera una carpeta de salida como 'dist' o 'build', 
-                // apunta el xcopy a esa subcarpeta. Aquí se asume que se copian desde la raíz o dist:
+                // Copia el contenido de la carpeta de compilación (ej. dist o build) hacia IIS
+                // Nota: Si tu framework genera la salida en 'build' en lugar de 'dist', cambia 'dist' por 'build'
                 bat 'xcopy /E /Y /I "%WORKSPACE%\\dist\\*" "C:\\inetpub\\wwwroot\\siscatJenkins\\"'
             }
         }
@@ -40,7 +41,7 @@ pipeline {
             echo '¡El pipeline del Frontend se ejecutó y desplegó con éxito en IIS!'
         }
         failure {
-            echo 'El pipeline del Frontend ha fallado.'
+            echo 'El pipeline del Frontend ha fallado. Revisa los registros.'
         }
     }
 }
