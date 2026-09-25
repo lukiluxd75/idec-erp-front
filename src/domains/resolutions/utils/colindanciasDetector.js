@@ -35,10 +35,9 @@ import { rotatePoint } from './planNorthDetector'
 // "LOTE Nº" y "R.M." NO son parte de esas 7 (no estan en C3:C9 de la
 // plantilla) pero aparecen como rotulo de colindancia real en planos reales
 // (linda con el lote vecino / retiro municipal) -- se agregan igual como
-// prefijo reconocible, igual que "CALLE". "R.M." es mas riesgoso: son solo
-// 2 letras sueltas, asi que puede matchear con texto ajeno que tenga una R y
-// una M cerca por casualidad -- como toda sugerencia, queda en el <input>
-// editable, el usuario la corrige si no corresponde.
+// prefijo reconocible, igual que "CALLE". "R.M." y "LOTE Nº" tienen letras
+// sueltas, así que se exigen enteros y seguidos en un mismo bloque (ver
+// claveDe) -- si no, calzaban con cualquier texto con una R y una M cerca.
 export const LEYENDAS_COLINDANCIA = [
   'MURO DE CONTENCION',
   'AREA COMUN',
@@ -80,49 +79,210 @@ function blockCenter(b) {
 // de OCR vecinos para reconstruir una etiqueta partida en varias líneas
 // ("PARQUEO" / "ELECTRICO 5") -- no intenta reconstruir el orden de lectura
 // exacto (las etiquetas suelen ir rotadas siguiendo el ambiente), solo junta
-// el texto para buscar substrings.
+// los bloques para buscar las palabras del nombre.
 function radioAgrupado(cols, rows) {
   return Math.max(40, Math.round(Math.min(cols, rows) * 0.05))
 }
 
+// Medidas y superficies ("SUP 13.44m2", "2.80", "1=20%", "ESC: 1:100")
+// llenan el plano de números que NO son parte de ningún nombre: si se
+// dejaran, el "2" de "Parqueo Eléctrico 2" calzaba con el "2" de "m2" y el
+// "8" de "Baulera 8" con el de "1.80". Se borran antes de tokenizar.
+function limpiarMedidas(s) {
+  return (s || '')
+    .replace(/\d+\s*=\s*\d+\s*%?/g, ' ')
+    .replace(/\d+\s*%/g, ' ')
+    .replace(/\d+(?:[.,:]\d+)+\s*(?:m\s*2|m²|mts?\b|m\b)?/gi, ' ')
+    .replace(/\bm\s*2\b|m²/gi, ' ')
+}
+
+function tokensBloque(b) {
+  return normTexto(limpiarMedidas(b.text)).split(' ').filter(Boolean)
+}
+
+const esNumero = (t) => /^\d+$/.test(t)
+
+// ¿A lo sumo 1 letra de diferencia? El OCR suele comerse o cambiar una letra
+// de palabras largas ("BAULER8" por "BAULERA 8").
+function aLoSumoUnCambio(a, b) {
+  if (a === b) return true
+  if (Math.abs(a.length - b.length) > 1) return false
+  let i = 0
+  let j = 0
+  let cambios = 0
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      i++
+      j++
+      continue
+    }
+    if (++cambios > 1) return false
+    if (a.length > b.length) i++
+    else if (b.length > a.length) j++
+    else {
+      i++
+      j++
+    }
+  }
+  return cambios + (a.length - i) + (b.length - j) <= 1
+}
+
+/**
+ * Palabra del nombre vs. palabra del OCR: exacta, o 1 letra de error si es
+ * larga, o pegada a otra palabra si es muy larga -- en los planos los rótulos
+ * se enciman ("SALA DE ESTAR" sobre "DEPARTAMENTO B" sale "ESTARDEPARTAMENTO").
+ */
+function mismaPalabra(esperada, leida) {
+  if (esNumero(esperada) || esNumero(leida)) {
+    return esNumero(esperada) && esNumero(leida) && Number(esperada) === Number(leida)
+  }
+  if (esperada === leida) return true
+  if (esperada.length >= 5 && aLoSumoUnCambio(esperada, leida)) return true
+  return esperada.length >= 8 && (leida.startsWith(esperada) || leida.endsWith(esperada))
+}
+
+// Letras que el OCR confunde con dígitos cuando van pegadas al final de una
+// palabra ("ELECTRICOS" por "ELECTRICO 5").
+const LETRA_COMO_DIGITO = { O: '0', D: '0', Q: '0', I: '1', L: '1', Z: '2', S: '5', G: '6', B: '8' }
+
+/**
+ * ¿Aparece la secuencia `clave` (palabras seguidas, p.ej. ["ELECTRICO","5"])
+ * dentro de los tokens de un bloque? Tolera el número pegado y mal leído al
+ * final de la palabra anterior.
+ */
+function contieneSecuencia(tokens, clave) {
+  // "ELECTRICOS" = "ELECTRICO" + "5": palabra exacta + letra-dígito pegada.
+  // Va primero porque la tolerancia de 1 letra de mismaPalabra ya aceptaría
+  // "ELECTRICOS" como "ELECTRICO" y se quedaría esperando el número aparte.
+  if (clave.length === 2 && esNumero(clave[1])) {
+    const pegado = tokens.some((t) => {
+      const digito = LETRA_COMO_DIGITO[t.slice(-1)]
+      return digito && Number(digito) === Number(clave[1]) && t.slice(0, -1) === clave[0]
+    })
+    if (pegado) return true
+  }
+  for (let i = 0; i < tokens.length; i++) {
+    let k = 0
+    let j = i
+    while (k < clave.length && j < tokens.length && mismaPalabra(clave[k], tokens[j])) {
+      k++
+      j++
+    }
+    if (k === clave.length) return true
+  }
+  return false
+}
+
+/**
+ * Qué parte del nombre tiene que estar junta en UN mismo bloque del OCR (la
+ * "clave"): la palabra + número que identifica la unidad ("ELECTRICO 5",
+ * "BAULERA 8"), o el nombre entero si tiene letras sueltas ("R M", "LOTE N"),
+ * que por sí solas calzarían con cualquier texto. Si no, la primera palabra.
+ */
+function claveDe(tokens) {
+  const iNum = tokens.findIndex((t, i) => i > 0 && esNumero(t))
+  if (iNum > 0) return { desde: iNum - 1, palabras: tokens.slice(iNum - 1, iNum + 1) }
+  if (tokens.some((t) => t.length === 1)) return { desde: 0, palabras: tokens }
+  return { desde: 0, palabras: tokens.slice(0, 1) }
+}
+
 /**
  * Busca dónde está escrita `frase` en el plano, juntando bloques de OCR
- * cercanos entre sí. Devuelve el centro (promedio) de los bloques que la
- * forman, o null si no aparece. Tolerante a como venga separada en bloques,
- * NO tolerante a errores de OCR letra por letra (igual que el resto del
- * pipeline de esta pantalla: si el OCR lee mal el texto, el usuario corrige
- * a mano en el <select>).
+ * cercanos entre sí. Devuelve en `pos` el centro (promedio) de los bloques
+ * que la forman, o null si no aparece.
+ *
+ * La "clave" del nombre (ver claveDe) tiene que estar en un solo bloque (o
+ * la palabra en uno y SOLO su número en otro pegado, como cuando el OCR
+ * parte "BAULERA" / "05"); el resto de las palabras, como palabras completas
+ * en bloques a menos de `radio` px. Los números se comparan como número
+ * entero, nunca como pedazo de texto. Tolera 1 letra mal leída en palabras
+ * largas; más que eso lo corrige el usuario en el <input>.
+ *
+ * Para el log de llenado explica además el resultado: con qué bloques se
+ * armó la etiqueta o, si no se encontró, por qué.
  */
-function buscarFrase(bloques, frase, radio) {
+function buscarFraseDetalle(bloques, frase, radio) {
   const tokens = normTexto(frase).split(' ').filter(Boolean)
-  if (tokens.length === 0) return null
+  if (tokens.length === 0) return { pos: null, motivo: 'nombre vacío' }
+  const { desde, palabras: clave } = claveDe(tokens)
+  const resto = tokens.filter((_, i) => i < desde || i >= desde + clave.length)
 
-  // Bloque(s) que contienen el primer token -- puntos de partida para juntar
-  // vecinos.
-  const candidatosInicio = bloques.filter((b) => normTexto(b.text).includes(tokens[0]))
+  const conTokens = bloques.map((b) => ({ b, t: tokensBloque(b), c: blockCenter(b) }))
+  const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y)
+
+  // Puntos de partida: bloques con la clave completa, o la palabra al final
+  // de un bloque y su número solo en otro bloque muy cercano.
+  const inicios = []
+  conTokens.forEach((x) => {
+    if (contieneSecuencia(x.t, clave)) inicios.push([x])
+  })
+  if (clave.length === 2 && esNumero(clave[1])) {
+    conTokens.forEach((x) => {
+      if (!x.t.length || !mismaPalabra(clave[0], x.t[x.t.length - 1])) return
+      conTokens.forEach((y) => {
+        if (y !== x && y.t.length === 1 && mismaPalabra(clave[1], y.t[0]) && dist(x.c, y.c) <= radio / 2) {
+          inicios.push([x, y])
+        }
+      })
+    })
+  }
+  if (inicios.length === 0) {
+    return { pos: null, tokens, motivo: `ningún bloque del OCR tiene "${clave.join(' ')}"` }
+  }
+
+  const centro = (usados) => ({
+    x: usados.reduce((a, u) => a + u.c.x, 0) / usados.length,
+    y: usados.reduce((a, u) => a + u.c.y, 0) / usados.length,
+  })
 
   let mejor = null
-  for (const inicio of candidatosInicio) {
-    const centroInicio = blockCenter(inicio)
-    // Junta todo bloque dentro del radio (incluido `inicio`), sin importar
-    // el orden -- alcanza con que el conjunto de texto contenga TODOS los
-    // tokens de la frase buscada.
-    const cercanos = bloques.filter((b) => {
-      const c = blockCenter(b)
-      return Math.hypot(c.x - centroInicio.x, c.y - centroInicio.y) <= radio
+  let menosFaltantes = null
+  for (const inicio of inicios) {
+    const c0 = centro(inicio)
+    const cercanos = conTokens.filter((x) => dist(x.c, c0) <= radio)
+    const usados = [...inicio]
+    const faltantes = []
+    resto.forEach((palabra) => {
+      if (usados.some((u) => u.t.some((t) => mismaPalabra(palabra, t)))) return
+      const encontrado = cercanos
+        .filter((x) => x.t.some((t) => mismaPalabra(palabra, t)))
+        .sort((p, q) => dist(p.c, c0) - dist(q.c, c0))[0]
+      if (encontrado) usados.push(encontrado)
+      else faltantes.push(palabra)
     })
-    const textoJunto = normTexto(cercanos.map((b) => b.text).join(' '))
-    const faltaAlguno = tokens.some((t) => !textoJunto.includes(t))
-    if (faltaAlguno) continue
-
-    const cx = cercanos.reduce((a, b) => a + blockCenter(b).x, 0) / cercanos.length
-    const cy = cercanos.reduce((a, b) => a + blockCenter(b).y, 0) / cercanos.length
-    // Si hay varias coincidencias (nombre repetido/ambiguo), se prefiere la
-    // que junto menos bloques ajenos -- mas probable que sea la etiqueta
-    // "limpia" y no una mezcla con texto de al lado.
-    if (!mejor || cercanos.length < mejor.n) mejor = { x: cx, y: cy, n: cercanos.length }
+    if (faltantes.length > 0) {
+      if (!menosFaltantes || faltantes.length < menosFaltantes.faltantes.length) {
+        menosFaltantes = { faltantes, textoCerca: cercanos.map((x) => x.b.text) }
+      }
+      continue
+    }
+    // Centro de los bloques que forman el nombre (no de todo lo que hay
+    // cerca). Si hay varias coincidencias (nombre repetido/ambiguo), se
+    // prefiere la que usa menos bloques -- la etiqueta más "limpia" -- y, a
+    // igualdad, la que no es un anexo de otra unidad: en "PARQUEO 3 +BAULERA
+    // 1" la baulera se nombra dentro del rótulo del parqueo, pero su propio
+    // ambiente tiene el rótulo "BAULERA 1" sin el "+".
+    const anexos = usados.filter((u) => u.b.text.trim().startsWith('+')).length
+    const peor =
+      mejor && (usados.length > mejor.usados.length || (usados.length === mejor.usados.length && anexos >= mejor.anexos))
+    if (!peor) mejor = { usados, anexos, pos: centro(usados) }
   }
-  return mejor ? { x: mejor.x, y: mejor.y } : null
+  if (mejor) {
+    return {
+      pos: mejor.pos,
+      tokens,
+      bloques: mejor.usados.map((u) => u.b.text),
+      coincidencias: inicios.length,
+    }
+  }
+  return {
+    pos: null,
+    tokens,
+    motivo:
+      `"${clave.join(' ')}" aparece en ${inicios.length} lugar(es), pero a menos de ${radio} px ` +
+      `no están: ${menosFaltantes.faltantes.join(', ')}`,
+    textoCerca: menosFaltantes.textoCerca,
+  }
 }
 
 // Sector cardinal (frame "arriba = norte") del vector (dx,dy) -- ver
@@ -145,6 +305,18 @@ function sectorDe(dx, dy) {
  *   etiqueta en el plano; el resto se deja para completar a mano.
  */
 export function detectColindancias(bloquesOcr, nombresUnidadesPlanta, norte, tamañoImagen) {
+  return analizarColindancias(bloquesOcr, nombresUnidadesPlanta, norte, tamañoImagen).sugerencias
+}
+
+const redondear = (v) => Math.round(v)
+
+/**
+ * Mismo cálculo que detectColindancias, pero devuelve además el detalle paso
+ * a paso para el "log de llenado" de colindancias (ColindanciasSection.jsx):
+ * dónde se ubicó cada etiqueta (o por qué no) y, por unidad y lado, todos los
+ * candidatos con su distancia -- para ver por qué salió cada sugerencia.
+ */
+export function analizarColindancias(bloquesOcr, nombresUnidadesPlanta, norte, tamañoImagen) {
   const radio = radioAgrupado(tamañoImagen.width, tamañoImagen.height)
   const cx = tamañoImagen.width / 2
   const cy = tamañoImagen.height / 2
@@ -155,40 +327,70 @@ export function detectColindancias(bloquesOcr, nombresUnidadesPlanta, norte, tam
   // Ubica cada unidad conocida (nombres que ya estan en Hoja2 para esta
   // planta) y cada leyenda fija -- ambos son "candidatos a vecino".
   const etiquetas = []
-  nombresUnidadesPlanta.forEach((nombre) => {
-    const pos = buscarFrase(bloquesOcr, nombre, radio)
-    if (pos) etiquetas.push({ tipo: 'unidad', valor: nombre, ...aFrameNorte(pos) })
-  })
-  LEYENDAS_COLINDANCIA.forEach((leyenda) => {
-    const pos = buscarFrase(bloquesOcr, leyenda, radio)
-    if (pos) etiquetas.push({ tipo: 'leyenda', valor: leyenda.trim(), ...aFrameNorte(pos) })
-  })
+  const busquedas = []
+  const ubicar = (tipo, valor) => {
+    const d = buscarFraseDetalle(bloquesOcr, valor, radio)
+    const registro = { tipo, valor, encontrada: Boolean(d.pos) }
+    if (d.pos) {
+      const enNorte = aFrameNorte(d.pos)
+      etiquetas.push({ tipo, valor, ...enNorte })
+      registro.posicionImagen = { x: redondear(d.pos.x), y: redondear(d.pos.y) }
+      registro.posicionNorteArriba = { x: redondear(enNorte.x), y: redondear(enNorte.y) }
+      registro.bloquesUsados = d.bloques
+      if (d.coincidencias > 1) registro.coincidenciasDelPrimerToken = d.coincidencias
+    } else {
+      registro.motivo = d.motivo
+      if (d.textoCerca) registro.textoCerca = d.textoCerca
+    }
+    busquedas.push(registro)
+  }
+  nombresUnidadesPlanta.forEach((nombre) => ubicar('unidad', nombre))
+  LEYENDAS_COLINDANCIA.forEach((leyenda) => ubicar('leyenda', leyenda.trim()))
 
   const sugerencias = {}
+  const detallePorUnidad = {}
   const unidadesUbicadas = etiquetas.filter((e) => e.tipo === 'unidad')
 
   unidadesUbicadas.forEach((origen) => {
-    const porSector = { norte: null, este: null, sud: null, oeste: null }
+    const porSector = { norte: [], este: [], sud: [], oeste: [] }
     etiquetas.forEach((destino) => {
       if (destino === origen) return
       const dx = destino.x - origen.x
       const dy = destino.y - origen.y
-      const dist = Math.hypot(dx, dy)
-      const sector = sectorDe(dx, dy)
-      if (!porSector[sector] || dist < porSector[sector].dist) {
-        porSector[sector] = { valor: destino.valor, dist }
-      }
+      porSector[sectorDe(dx, dy)].push({
+        valor: destino.valor,
+        tipo: destino.tipo,
+        distancia: redondear(Math.hypot(dx, dy)),
+        // Rumbo desde la unidad, con el norte arriba (0 = norte, 90 = este).
+        rumboDeg: redondear(((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360),
+      })
     })
     // Sin nada detectado en un lado: sugerencia por defecto ESPACIO EXTERIOR
     // (nada construido ahí que el OCR haya podido leer) -- el usuario la
     // corrige si en verdad hay un vecino/calle que el OCR no captó.
-    sugerencias[origen.valor] = {
-      norte: porSector.norte?.valor || 'ESPACIO EXTERIOR',
-      este: porSector.este?.valor || 'ESPACIO EXTERIOR',
-      sud: porSector.sud?.valor || 'ESPACIO EXTERIOR',
-      oeste: porSector.oeste?.valor || 'ESPACIO EXTERIOR',
-    }
+    const sugerencia = {}
+    const detalle = {}
+    Object.entries(porSector).forEach(([lado, candidatos]) => {
+      candidatos.sort((a, b) => a.distancia - b.distancia)
+      sugerencia[lado] = candidatos[0]?.valor || 'ESPACIO EXTERIOR'
+      detalle[lado] = {
+        elegido: sugerencia[lado],
+        porDefecto: candidatos.length === 0,
+        candidatos: candidatos.slice(0, 5),
+      }
+    })
+    sugerencias[origen.valor] = sugerencia
+    detallePorUnidad[origen.valor] = detalle
   })
 
-  return sugerencias
+  return {
+    sugerencias,
+    detalle: {
+      radioAgrupadoPx: radio,
+      anguloNorteUsado: angleDeg,
+      busquedas,
+      unidadesSinUbicar: nombresUnidadesPlanta.filter((n) => !sugerencias[n]),
+      porUnidad: detallePorUnidad,
+    },
+  }
 }

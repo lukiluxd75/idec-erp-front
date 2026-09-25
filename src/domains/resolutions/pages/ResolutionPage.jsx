@@ -484,6 +484,7 @@ export default function ResolutionPage() {
 
       <ColindanciasSection
         resolutionId={id}
+        resolutionNumber={resolucion.resolution_number}
         planPages={resolucion.plan_pages || []}
         unidadesPorPlanta={unidadesPorPlanta}
         colindancias={colindancias}

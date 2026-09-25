@@ -1,11 +1,75 @@
-import { Compass, RotateCcw, RotateCw, ScanSearch } from 'lucide-react'
+import { Bug, Compass, RotateCcw, RotateCw, ScanSearch } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
 import { ocrImage, resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
-import { LEYENDAS_COLINDANCIA, detectColindancias } from '@/domains/resolutions/utils/colindanciasDetector'
+import { LEYENDAS_COLINDANCIA, analizarColindancias } from '@/domains/resolutions/utils/colindanciasDetector'
 import { detectNorth } from '@/domains/resolutions/utils/planNorthDetector'
+import { downloadBlob } from '@/domains/resolutions/utils/sheet2Excel'
 import { Alert, Button, Card, SectionHeader } from '@/shared/ui'
+
+/**
+ * Dónde hacer zoom en la tarjeta de cada unidad: el rótulo de la unidad en
+ * el plano (posición en la imagen original) y el ancho de la "ventana"
+ * visible -- 3 veces la distancia al vecino elegido más cercano (se ve la
+ * unidad y lo que la rodea), acotado entre 12% y 40% del plano.
+ */
+function focosDe(detalle, ancho, alto) {
+  const lado = Math.max(ancho, alto)
+  const focos = {}
+  detalle.busquedas
+    .filter((b) => b.tipo === 'unidad' && b.encontrada)
+    .forEach((b) => {
+      const distancias = Object.values(detalle.porUnidad[b.valor] || {})
+        .map((l) => l.candidatos[0]?.distancia)
+        .filter(Boolean)
+      const base = distancias.length ? Math.min(...distancias) * 3 : lado * 0.25
+      focos[b.valor] = {
+        x: b.posicionImagen.x,
+        y: b.posicionImagen.y,
+        ventana: Math.min(lado * 0.4, Math.max(lado * 0.12, base)),
+      }
+    })
+  return focos
+}
+
+/**
+ * Imagen del plano en la tarjeta de una unidad, con el norte arriba. Si se
+ * ubicó el rótulo de la unidad, muestra el plano AMPLIADO sobre esa zona (no
+ * un recorte: es el mismo plano con zoom, marcando el rótulo); un clic
+ * alterna con el plano completo.
+ */
+function PlanoUnidad({ url, planta, angleDeg, ancho, alto, foco }) {
+  const [completo, setCompleto] = useState(false)
+  if (!url) return <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
+  if (!foco || !ancho || !alto || completo) {
+    return (
+      <img
+        src={url}
+        alt={`Plano ${planta}`}
+        className={`max-h-full max-w-full object-contain transition-transform ${foco ? 'cursor-zoom-in' : ''}`}
+        style={{ transform: `rotate(${-angleDeg}deg)` }}
+        onClick={foco ? () => setCompleto(false) : undefined}
+        title={foco ? 'Clic para acercar a la unidad' : undefined}
+      />
+    )
+  }
+  // viewBox centrado en el rótulo: el SVG escala solo al tamaño de la tarjeta.
+  const v = foco.ventana
+  return (
+    <svg
+      viewBox={`${-v / 2} ${-v / 2} ${v} ${v}`}
+      className="h-full w-full cursor-zoom-out"
+      onClick={() => setCompleto(true)}
+    >
+      <title>Clic para ver el plano completo</title>
+      <g transform={`rotate(${-angleDeg}) translate(${-foco.x} ${-foco.y})`}>
+        <image href={url} width={ancho} height={alto} />
+      </g>
+      <circle r={v * 0.04} fill="none" stroke="#dc2626" strokeWidth={v * 0.008} />
+    </svg>
+  )
+}
 
 /**
  * Revisión/confirmación de colindancias (columna E de COLINDANCIAS, ver
@@ -28,11 +92,24 @@ import { Alert, Button, Card, SectionHeader } from '@/shared/ui'
  * tiene la última palabra antes de generar el Excel. Si el norte detectado
  * quedó mal, los botones de rotación lo corrigen sin volver a llamar al OCR
  * (se guarda el resultado crudo del OCR por planta para recalcular local).
+ *
+ * "Descargar log de llenado" baja un JSON con TODO lo que llevó a cada
+ * sugerencia (norte detectado y por qué, bloques del OCR, dónde se ubicó cada
+ * unidad o por qué no, candidatos por lado) más lo que quedó en pantalla,
+ * para depurar con resoluciones reales sin tener que reproducirlas.
  */
-export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta, colindancias, setColindancias }) {
+export function ColindanciasSection({
+  resolutionId,
+  resolutionNumber,
+  planPages,
+  unidadesPorPlanta,
+  colindancias,
+  setColindancias,
+}) {
   const [detectando, setDetectando] = useState(false)
-  const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence } }
+  const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
+  const [logPorPagina, setLogPorPagina] = useState({}) // { [order_index]: entrada del log de llenado }
 
   const cargadasRef = useRef(new Set())
   const objectUrlsRef = useRef({})
@@ -76,10 +153,27 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
     setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg } }))
     if (!datos?.ancho || !datos?.alto) return // aun no corrio el OCR -- solo gira la vista previa
     const nombres = unidadesPorPlanta[planta] || []
-    const sugerencias = detectColindancias(datos.bloques, nombres, { angleDeg }, {
+    const analisis = analizarColindancias(datos.bloques, nombres, { angleDeg }, {
       width: datos.ancho,
       height: datos.alto,
     })
+    const sugerencias = analisis.sugerencias
+    const focos = focosDe(analisis.detalle, datos.ancho, datos.alto)
+    setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg, focos } }))
+    setLogPorPagina((prev) =>
+      prev[datos.pagina]
+        ? {
+            ...prev,
+            [datos.pagina]: {
+              ...prev[datos.pagina],
+              correccionManualNorteDeg: angleDeg,
+              unidadesBuscadas: nombres,
+              analisis: analisis.detalle,
+              sugerencias,
+            },
+          }
+        : prev,
+    )
     setColindancias((prev) => ({
       ...prev,
       [planta]: { ...(prev[planta] || {}), ...sugerencias },
@@ -95,6 +189,7 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
     try {
       const nuevosDatos = {}
       const nuevasColindancias = {}
+      const nuevoLog = {}
       for (const p of planPages) {
         const nombres = unidadesPorPlanta[p.planta] || []
         if (nombres.length === 0) continue // planta sin unidades cargadas todavia en Hoja2
@@ -106,12 +201,50 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
 
         const bloques = await ocrImage(blob, `plano_${p.order_index}.jpg`)
         const norte = await detectNorth(blob, bloques)
-        const sugerencias = detectColindancias(bloques, nombres, norte, { width: ancho, height: alto })
+        const analisis = analizarColindancias(bloques, nombres, norte, { width: ancho, height: alto })
+        const sugerencias = analisis.sugerencias
 
-        nuevosDatos[p.planta] = { ancho, alto, bloques, angleDeg: norte.angleDeg, confidence: norte.confidence }
+        nuevosDatos[p.planta] = {
+          ancho,
+          alto,
+          bloques,
+          angleDeg: norte.angleDeg,
+          confidence: norte.confidence,
+          pagina: p.order_index,
+          focos: focosDe(analisis.detalle, ancho, alto),
+        }
+        // El zoom usa posiciones de ESTA página: la tarjeta tiene que mostrar
+        // la misma imagen (si la planta tiene varias páginas, la precarga
+        // mostraba la primera).
+        const url = URL.createObjectURL(blob)
+        if (objectUrlsRef.current[p.planta]) URL.revokeObjectURL(objectUrlsRef.current[p.planta])
+        objectUrlsRef.current[p.planta] = url
+        setImagenesPorPlanta((prev) => ({ ...prev, [p.planta]: url }))
         nuevasColindancias[p.planta] = { ...(nuevasColindancias[p.planta] || {}), ...sugerencias }
+        nuevoLog[p.order_index] = {
+          planta: p.planta,
+          pagina: p.order_index,
+          imagen: { ancho, alto },
+          norte,
+          correccionManualNorteDeg: null,
+          ocr: {
+            cantidadBloques: bloques.length,
+            bloques: bloques.map((b) => ({
+              texto: b.text,
+              confianza: b.confidence,
+              centro: {
+                x: Math.round(b.points.reduce((a, pt) => a + pt[0], 0) / b.points.length),
+                y: Math.round(b.points.reduce((a, pt) => a + pt[1], 0) / b.points.length),
+              },
+            })),
+          },
+          unidadesBuscadas: nombres,
+          analisis: analisis.detalle,
+          sugerencias,
+        }
       }
       setDatosPorPlanta((prev) => ({ ...prev, ...nuevosDatos }))
+      setLogPorPagina((prev) => ({ ...prev, ...nuevoLog }))
       setColindancias((prev) => {
         const merged = { ...prev }
         Object.entries(nuevasColindancias).forEach(([planta, porUnidad]) => {
@@ -125,6 +258,21 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
     } finally {
       setDetectando(false)
     }
+  }
+
+  const descargarLog = () => {
+    const log = {
+      tipo: 'log_llenado_colindancias',
+      version: 1,
+      generado: new Date().toISOString(),
+      resolucion: { id: resolutionId, numero: resolutionNumber || null },
+      paginas: Object.values(logPorPagina).sort((a, b) => a.pagina - b.pagina),
+      // Lo que quedó en los campos al descargar (incluye lo corregido a mano):
+      // comparándolo con `sugerencias` de cada página se ve qué falló.
+      valoresEnPantalla: colindancias,
+    }
+    const nombre = String(resolutionNumber || resolutionId).replace(/\W+/g, '_')
+    downloadBlob(new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' }), `colindancias_log_${nombre}.json`)
   }
 
   const onCambioValor = (planta, ambiente, direccion, valor) => {
@@ -148,9 +296,16 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
         subtitle="Sugerido a partir del OCR del plano y la orientación detectada — revise cada unidad antes de generar el Excel."
       />
 
-      <Button icon={ScanSearch} onClick={detectar} loading={detectando}>
-        Detectar colindancias
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button icon={ScanSearch} onClick={detectar} loading={detectando}>
+          Detectar colindancias
+        </Button>
+        {Object.keys(logPorPagina).length > 0 && (
+          <Button variant="secondary" icon={Bug} onClick={descargarLog}>
+            Descargar log de llenado
+          </Button>
+        )}
+      </div>
 
       {plantasConPlano.length === 0 && (
         <Alert type="info" className="mt-3">
@@ -175,7 +330,10 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
                 <span>
                   Norte detectado: {Math.round(angleDeg)}°{' '}
                   {datos?.confidence === 'baja' && (
-                    <span className="text-state-warning">(baja confianza, revise)</span>
+                    <span className="text-state-warning">(no se encontró el símbolo de norte, revise)</span>
+                  )}
+                  {datos?.confidence === 'media' && (
+                    <span className="text-state-warning">(confianza media, revise)</span>
                   )}
                 </span>
                 <button
@@ -194,10 +352,9 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
                 >
                   <RotateCw className="h-3.5 w-3.5" />
                 </button>
-                {/* Ajuste fino: el OCR casi nunca lee la "N" del rótulo de
-                    norte (es un símbolo, no texto de línea) -- en la
-                    práctica el ángulo real casi siempre se corrige acá a
-                    mano, no con los botones de 90° solos. */}
+                {/* Ajuste fino: el símbolo de norte (arco + barra) lo busca
+                    planNorthDetector.js con OpenCV; si no lo encontró o el
+                    plano tiene otro símbolo, el ángulo se corrige acá a mano. */}
                 <input
                   type="number"
                   step="1"
@@ -264,16 +421,14 @@ export function ColindanciasSection({ resolutionId, planPages, unidadesPorPlanta
                         style={{ gridArea: 'imagen' }}
                         className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white"
                       >
-                        {imagenUrl ? (
-                          <img
-                            src={imagenUrl}
-                            alt={`Plano ${planta}`}
-                            className="max-h-full max-w-full object-contain transition-transform"
-                            style={{ transform: `rotate(${-angleDeg}deg)` }}
-                          />
-                        ) : (
-                          <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
-                        )}
+                        <PlanoUnidad
+                          url={imagenUrl}
+                          planta={planta}
+                          angleDeg={angleDeg}
+                          ancho={datos?.ancho}
+                          alto={datos?.alto}
+                          foco={datos?.focos?.[ambiente]}
+                        />
                       </div>
 
                       <div style={{ gridArea: 'este' }} className="flex min-w-0 flex-col items-center">
