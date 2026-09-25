@@ -1,5 +1,5 @@
 import { MonitorCog, MonitorOff, RefreshCw } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { digitizationApi } from '@/domains/digitization/api/digitization.api'
 import { WorkerCard } from '@/domains/digitization/components/WorkerCard'
@@ -19,20 +19,28 @@ export default function WorkersPage() {
   const [stoppingHost, setStoppingHost] = useState(null)
   const [notice, setNotice] = useState(null)
 
+  // A refresh still on its way. The backend probes every PC and reads the database
+  // on each request, so a single refresh can outlast POLL_MS when either is slow;
+  // without this guard the timer stacks requests that pile onto that same delay.
+  const inFlight = useRef(false)
+
   // `loading` only covers the first load; the periodic refresh is silent.
-  const refresh = useCallback(
-    () =>
-      digitizationApi
-        .listWorkers()
-        .then((data) => {
-          setWorkers(data)
-          setUpdatedAt(new Date())
-          setError(null)
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setLoading(false)),
-    []
-  )
+  const refresh = useCallback(() => {
+    if (inFlight.current) return Promise.resolve()
+    inFlight.current = true
+    return digitizationApi
+      .listWorkers()
+      .then((data) => {
+        setWorkers(data)
+        setUpdatedAt(new Date())
+        setError(null)
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => {
+        inFlight.current = false
+        setLoading(false)
+      })
+  }, [])
 
   useEffect(() => {
     refresh()
