@@ -1,72 +1,46 @@
 pipeline {
-    agent { label 'windows' }
-    
+    agent {
+        label 'windows-runner'
+    }
     parameters {
-        booleanParam(name: 'EJECUTAR_AUTOMATICO', defaultValue: true, description: 'Marcar para ejecución automática y fluida en la demo.')
+        booleanParam(name: 'EJECUTAR_AUTOMATICO', defaultValue: true, description: 'Ejecución fluida automática')
     }
-    
     triggers {
-        // Disparador automático nocturno todos los días a las 02:00 AM
-        cron('0 2 * * *')
+        cron('0 3 * * *')
     }
-    
     stages {
-        stage('1. Preparación del Entorno') {
+        stage('Preparación') {
             steps {
-                echo 'Limpiando entorno de trabajo...'
                 cleanWs()
                 checkout scm
             }
         }
-        
-        stage('2. Instalar Dependencias') {
+        stage('Instalar Node Modules') {
             steps {
-                echo 'Instalando dependencias del Frontend...'
-                bat '''
-                    set NODE_SKIP_PLATFORM_CHECK=1
-                    set PATH=C:\\Program Files\\nodejs;%PATH%
-                    "C:\\Program Files\\nodejs\\npm.cmd" install
-                '''
+                bat 'npm install'
             }
         }
-        
-        stage('3. Compilación') {
+        stage('Compilar Frontend') {
             steps {
-                echo 'Compilando Frontend...'
-                bat '''
-                    set NODE_SKIP_PLATFORM_CHECK=1
-                    set PATH=C:\\Program Files\\nodejs;%PATH%
-                    "C:\\Program Files\\nodejs\\npm.cmd" run build
-                '''
+                // Ajusta este comando según el script de compilación de tu package.json (ej: npm run build)
+                bat 'npm run build'
             }
         }
-
-        stage('4. Control y Despliegue') {
+        stage('Desplegar a IIS') {
             steps {
-                script {
-                    if (params.EJECUTAR_AUTOMATICO == true) {
-                        echo 'Modo automático activado: Despliegue completado con éxito para la demostración.'
-                    } else {
-                        // Agregamos un timeout de seguridad por si la interfaz web se pone lenta
-                        try {
-                            timeout(time: 1, unit: 'MINUTES') {
-                                input message: '¿Desea aprobar el despliegue del Frontend al entorno de destino?', ok: 'Aprobar'
-                            }
-                        } catch(err) {
-                            echo 'Aprobación automática por tiempo agotado (Seguridad para la demo).'
-                        }
-                    }
-                }
+                echo 'Copiando archivos compilados del frontend a IIS...'
+                // Nota: Si tu compilación genera una carpeta de salida como 'dist' o 'build', 
+                // apunta el xcopy a esa subcarpeta. Aquí se asume que se copian desde la raíz o dist:
+                bat 'xcopy /E /Y /I "%WORKSPACE%\\dist\\*" "C:\\inetpub\\wwwroot\\siscatJenkins\\"'
             }
         }
     }
-    
     post {
         success {
-            echo '¡El pipeline del Frontend finalizó exitosamente y está listo!'
+            echo '¡El pipeline del Frontend se ejecutó y desplegó con éxito en IIS!'
         }
         failure {
-            echo 'El pipeline del Frontend falló. Revisa los registros.'
+            echo 'El pipeline del Frontend ha fallado.'
         }
     }
 }
