@@ -38,3 +38,10 @@ export function guessPlantaCanonica(rawText) {
   }
   return ''
 }
+
+/** Plantas de una página del plano: `plantas` si el backend las manda (varias
+ * en un plano tipo), si no `planta` (backend anterior). [] mientras se detecta. */
+export function plantasDePagina(p) {
+  if (p.plantas?.length) return p.plantas
+  return p.planta ? [p.planta] : []
+}

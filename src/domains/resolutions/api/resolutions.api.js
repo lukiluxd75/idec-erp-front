@@ -40,17 +40,24 @@ export const resolutionsApi = {
   planPageBlob: (id, orden) =>
     httpClient.get(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGE(id, orden), { responseType: 'blob' }),
 
+  // Una foto puede ir con varias plantas (plano tipo) separadas por "|", o
+  // sin ninguna: entonces el backend la lee del título del plano.
   addPlanPages: (id, paginas) => {
     const fd = new FormData()
-    paginas.forEach(({ blob, planta }, i) => {
+    paginas.forEach(({ blob, plantas = [] }, i) => {
       fd.append('pages', blob, `plano_${i + 1}.jpg`)
-      fd.append('plantas', planta)
+      fd.append('plantas', plantas.join('|'))
     })
     fd.append('source', 'web')
     return httpClient.post(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGES(id), fd)
   },
 
   removePlanPage: (id, orden) => httpClient.delete(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGE(id, orden)),
+
+  setPlanPagePlantas: (id, orden, plantas) =>
+    httpClient.put(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGE_PLANTAS(id, orden), { plantas }),
+
+  detectPlanPagePlanta: (id, orden) => httpClient.post(API_ENDPOINTS.RESOLUTIONS.PLAN_PAGE_DETECT(id, orden)),
 }
 
 /** ---- GAMC OCR service (browser calls it directly, same as geoextraction) ---- */

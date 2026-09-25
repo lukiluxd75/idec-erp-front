@@ -109,7 +109,7 @@ export function ColindanciasSection({
   const [detectando, setDetectando] = useState(false)
   const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
-  const [logPorPagina, setLogPorPagina] = useState({}) // { [order_index]: entrada del log de llenado }
+  const [logPorPagina, setLogPorPagina] = useState({}) // { ["orden|planta"]: entrada del log de llenado }
 
   const cargadasRef = useRef(new Set())
   const objectUrlsRef = useRef({})
@@ -161,11 +161,11 @@ export function ColindanciasSection({
     const focos = focosDe(analisis.detalle, datos.ancho, datos.alto)
     setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg, focos } }))
     setLogPorPagina((prev) =>
-      prev[datos.pagina]
+      prev[datos.claveLog]
         ? {
             ...prev,
-            [datos.pagina]: {
-              ...prev[datos.pagina],
+            [datos.claveLog]: {
+              ...prev[datos.claveLog],
               correccionManualNorteDeg: angleDeg,
               unidadesBuscadas: nombres,
               analisis: analisis.detalle,
@@ -190,17 +190,29 @@ export function ColindanciasSection({
       const nuevosDatos = {}
       const nuevasColindancias = {}
       const nuevoLog = {}
+      // Una hoja tipo llega una vez por cada piso (ver ResolutionPage): el
+      // OCR y el norte de esa imagen se calculan una sola vez.
+      const leidas = {}
       for (const p of planPages) {
         const nombres = unidadesPorPlanta[p.planta] || []
         if (nombres.length === 0) continue // planta sin unidades cargadas todavia en Hoja2
 
-        const blob = await resolutionsApi.planPageBlob(resolutionId, p.order_index)
-        const bitmap = await createImageBitmap(blob)
-        const { width: ancho, height: alto } = bitmap
-        bitmap.close?.()
-
-        const bloques = await ocrImage(blob, `plano_${p.order_index}.jpg`)
-        const norte = await detectNorth(blob, bloques)
+        if (!leidas[p.order_index]) {
+          const blobPagina = await resolutionsApi.planPageBlob(resolutionId, p.order_index)
+          const bitmap = await createImageBitmap(blobPagina)
+          const { width, height } = bitmap
+          bitmap.close?.()
+          const bloquesPagina = await ocrImage(blobPagina, `plano_${p.order_index}.jpg`)
+          leidas[p.order_index] = {
+            blob: blobPagina,
+            ancho: width,
+            alto: height,
+            bloques: bloquesPagina,
+            norte: await detectNorth(blobPagina, bloquesPagina),
+          }
+        }
+        const { blob, ancho, alto, bloques, norte } = leidas[p.order_index]
+        const claveLog = `${p.order_index}|${p.planta}`
         const analisis = analizarColindancias(bloques, nombres, norte, { width: ancho, height: alto })
         const sugerencias = analisis.sugerencias
 
@@ -211,6 +223,7 @@ export function ColindanciasSection({
           angleDeg: norte.angleDeg,
           confidence: norte.confidence,
           pagina: p.order_index,
+          claveLog,
           focos: focosDe(analisis.detalle, ancho, alto),
         }
         // El zoom usa posiciones de ESTA página: la tarjeta tiene que mostrar
@@ -221,7 +234,7 @@ export function ColindanciasSection({
         objectUrlsRef.current[p.planta] = url
         setImagenesPorPlanta((prev) => ({ ...prev, [p.planta]: url }))
         nuevasColindancias[p.planta] = { ...(nuevasColindancias[p.planta] || {}), ...sugerencias }
-        nuevoLog[p.order_index] = {
+        nuevoLog[claveLog] = {
           planta: p.planta,
           pagina: p.order_index,
           imagen: { ancho, alto },
@@ -266,7 +279,7 @@ export function ColindanciasSection({
       version: 1,
       generado: new Date().toISOString(),
       resolucion: { id: resolutionId, numero: resolutionNumber || null },
-      paginas: Object.values(logPorPagina).sort((a, b) => a.pagina - b.pagina),
+      paginas: Object.values(logPorPagina).sort((a, b) => a.pagina - b.pagina || a.planta.localeCompare(b.planta)),
       // Lo que quedó en los campos al descargar (incluye lo corregido a mano):
       // comparándolo con `sugerencias` de cada página se ve qué falló.
       valoresEnPantalla: colindancias,
