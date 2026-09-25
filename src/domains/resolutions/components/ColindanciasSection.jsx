@@ -34,6 +34,21 @@ function focosDe(detalle, ancho, alto) {
 }
 
 /**
+ * Por qué no se ubicó cada unidad (texto del log de llenado): se muestra en
+ * su tarjeta, para distinguir "el nombre no está escrito en el plano / el OCR
+ * no lo leyó" de "no hay nada al lado".
+ */
+function motivosDe(detalle) {
+  const motivos = {}
+  detalle.busquedas
+    .filter((b) => b.tipo === 'unidad' && !b.encontrada)
+    .forEach((b) => {
+      motivos[b.valor] = b.motivo
+    })
+  return motivos
+}
+
+/**
  * Imagen del plano en la tarjeta de una unidad, con el norte arriba. Si se
  * ubicó el rótulo de la unidad, muestra el plano AMPLIADO sobre esa zona (no
  * un recorte: es el mismo plano con zoom, marcando el rótulo); un clic
@@ -159,7 +174,8 @@ export function ColindanciasSection({
     })
     const sugerencias = analisis.sugerencias
     const focos = focosDe(analisis.detalle, datos.ancho, datos.alto)
-    setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg, focos } }))
+    const motivos = motivosDe(analisis.detalle)
+    setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg, focos, motivos } }))
     setLogPorPagina((prev) =>
       prev[datos.claveLog]
         ? {
@@ -225,6 +241,7 @@ export function ColindanciasSection({
           pagina: p.order_index,
           claveLog,
           focos: focosDe(analisis.detalle, ancho, alto),
+          motivos: motivosDe(analisis.detalle),
         }
         // El zoom usa posiciones de ESTA página: la tarjeta tiene que mostrar
         // la misma imagen (si la planta tiene varias páginas, la precarga
@@ -391,9 +408,20 @@ export function ColindanciasSection({
                 const valores = colindancias[planta]?.[ambiente] || {}
                 return (
                   <div key={ambiente} className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-                    <p className="mb-3 truncate text-sm font-semibold text-slate-700" title={ambiente}>
+                    <p className="truncate text-sm font-semibold text-slate-700" title={ambiente}>
                       {ambiente}
                     </p>
+                    {datos?.motivos?.[ambiente] ? (
+                      <p
+                        className="mb-3 mt-0.5 text-[11px] leading-snug text-state-amber"
+                        title={datos.motivos[ambiente]}
+                      >
+                        No se encontró este nombre en el plano ({datos.motivos[ambiente]}). Complete a mano o revise
+                        el nombre en la tabla de superficies.
+                      </p>
+                    ) : (
+                      <div className="mb-3" />
+                    )}
                     <div
                       className="grid items-center justify-items-stretch gap-2"
                       style={{
