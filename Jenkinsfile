@@ -3,8 +3,9 @@ pipeline {
         label 'windows-runner'
     }
     environment {
-        // Esto le dice a Node.js que ignore la restricción de versión de Windows Server 2012
         NODE_SKIP_PLATFORM_CHECK = '1'
+        // Esto añade temporalmente Node.js al PATH del agente para que Vite encuentre 'node' sin problemas
+        PATH = "C:\\Program Files\\nodejs;${env.PATH}"
     }
     parameters {
         booleanParam(name: 'EJECUTAR_AUTOMATICO', defaultValue: true, description: 'Ejecución fluida automática')
@@ -32,7 +33,6 @@ pipeline {
         stage('Desplegar a IIS') {
             steps {
                 echo 'Copiando archivos compilados del frontend a IIS...'
-                // Si tu compilación usa 'build' en lugar de 'dist', cambia 'dist' por 'build'
                 bat 'xcopy /E /Y /I "%WORKSPACE%\\dist\\*" "C:\\inetpub\\wwwroot\\siscatJenkins\\"'
             }
         }
