@@ -31,6 +31,12 @@ function ChecklistPlantas({ elegidas, onToggle }) {
   )
 }
 
+/** ¿El backend rechazó la planta por ser anterior a la detección automática
+ * (no entiende "" ni "A|B")? Ese backend responde 400 "Planta '…' inválida". */
+function esBackendSinDeteccion(err) {
+  return err?.status === 400 && /planta '.*' inválida/i.test(err.message || '')
+}
+
 const toggle = (lista, planta) => (lista.includes(planta) ? lista.filter((x) => x !== planta) : [...lista, planta])
 
 /** Estado de la planta de una página ya subida (ver PlantaStatus en el backend). */
@@ -167,10 +173,27 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
   const subirPendientes = async () => {
     setSubiendo(true)
     try {
-      await resolutionsApi.addPlanPages(
-        resolutionId,
-        pendientes.map((p) => ({ blob: p.blob, plantas: p.plantas })),
-      )
+      try {
+        await resolutionsApi.addPlanPages(
+          resolutionId,
+          pendientes.map((p) => ({ blob: p.blob, plantas: p.plantas })),
+        )
+      } catch (err) {
+        // Backend anterior a la detección de planta: solo acepta UNA planta
+        // por foto y la exige. Con varias marcadas se reintenta como antes
+        // (la foto una vez por planta); sin planta no hay cómo -- se pide.
+        if (!esBackendSinDeteccion(err)) throw err
+        if (pendientes.some((p) => p.plantas.length === 0)) {
+          throw new Error(
+            'El servidor todavía no lee la planta del título del plano: marque la planta de cada página y vuelva a subir.',
+            { cause: err },
+          )
+        }
+        await resolutionsApi.addPlanPages(
+          resolutionId,
+          pendientes.flatMap((p) => p.plantas.map((planta) => ({ blob: p.blob, plantas: [planta] }))),
+        )
+      }
       const sinPlanta = pendientes.filter((p) => p.plantas.length === 0).length
       pendientes.forEach((p) => URL.revokeObjectURL(p.url))
       setPendientes([])
@@ -273,7 +296,8 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
               )}
 
               <div className="flex items-center gap-2">
-                {p.planta_status !== 'detectando' && editando?.orden !== p.order_index && (
+                {/* Sin planta_status = backend anterior, que no tiene el endpoint para corregirla. */}
+                {p.planta_status && p.planta_status !== 'detectando' && editando?.orden !== p.order_index && (
                   <button
                     type="button"
                     className="text-slate-400 transition-colors hover:text-accent-600"
