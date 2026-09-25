@@ -9,6 +9,69 @@ import { downloadBlob } from '@/domains/resolutions/utils/sheet2Excel'
 import { Alert, Button, Card, SectionHeader } from '@/shared/ui'
 
 /**
+ * Dónde hacer zoom en la tarjeta de cada unidad: el rótulo de la unidad en
+ * el plano (posición en la imagen original) y el ancho de la "ventana"
+ * visible -- 3 veces la distancia al vecino elegido más cercano (se ve la
+ * unidad y lo que la rodea), acotado entre 12% y 40% del plano.
+ */
+function focosDe(detalle, ancho, alto) {
+  const lado = Math.max(ancho, alto)
+  const focos = {}
+  detalle.busquedas
+    .filter((b) => b.tipo === 'unidad' && b.encontrada)
+    .forEach((b) => {
+      const distancias = Object.values(detalle.porUnidad[b.valor] || {})
+        .map((l) => l.candidatos[0]?.distancia)
+        .filter(Boolean)
+      const base = distancias.length ? Math.min(...distancias) * 3 : lado * 0.25
+      focos[b.valor] = {
+        x: b.posicionImagen.x,
+        y: b.posicionImagen.y,
+        ventana: Math.min(lado * 0.4, Math.max(lado * 0.12, base)),
+      }
+    })
+  return focos
+}
+
+/**
+ * Imagen del plano en la tarjeta de una unidad, con el norte arriba. Si se
+ * ubicó el rótulo de la unidad, muestra el plano AMPLIADO sobre esa zona (no
+ * un recorte: es el mismo plano con zoom, marcando el rótulo); un clic
+ * alterna con el plano completo.
+ */
+function PlanoUnidad({ url, planta, angleDeg, ancho, alto, foco }) {
+  const [completo, setCompleto] = useState(false)
+  if (!url) return <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
+  if (!foco || !ancho || !alto || completo) {
+    return (
+      <img
+        src={url}
+        alt={`Plano ${planta}`}
+        className={`max-h-full max-w-full object-contain transition-transform ${foco ? 'cursor-zoom-in' : ''}`}
+        style={{ transform: `rotate(${-angleDeg}deg)` }}
+        onClick={foco ? () => setCompleto(false) : undefined}
+        title={foco ? 'Clic para acercar a la unidad' : undefined}
+      />
+    )
+  }
+  // viewBox centrado en el rótulo: el SVG escala solo al tamaño de la tarjeta.
+  const v = foco.ventana
+  return (
+    <svg
+      viewBox={`${-v / 2} ${-v / 2} ${v} ${v}`}
+      className="h-full w-full cursor-zoom-out"
+      onClick={() => setCompleto(true)}
+    >
+      <title>Clic para ver el plano completo</title>
+      <g transform={`rotate(${-angleDeg}) translate(${-foco.x} ${-foco.y})`}>
+        <image href={url} width={ancho} height={alto} />
+      </g>
+      <circle r={v * 0.04} fill="none" stroke="#dc2626" strokeWidth={v * 0.008} />
+    </svg>
+  )
+}
+
+/**
  * Revisión/confirmación de colindancias (columna E de COLINDANCIAS, ver
  * sheet2Excel.js) a partir de las páginas del plano de división ya subidas
  * (PlanPagesSection). Por cada planta con plano:
@@ -44,7 +107,7 @@ export function ColindanciasSection({
   setColindancias,
 }) {
   const [detectando, setDetectando] = useState(false)
-  const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence } }
+  const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
   const [logPorPagina, setLogPorPagina] = useState({}) // { [order_index]: entrada del log de llenado }
 
@@ -95,6 +158,8 @@ export function ColindanciasSection({
       height: datos.alto,
     })
     const sugerencias = analisis.sugerencias
+    const focos = focosDe(analisis.detalle, datos.ancho, datos.alto)
+    setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg, focos } }))
     setLogPorPagina((prev) =>
       prev[datos.pagina]
         ? {
@@ -146,7 +211,15 @@ export function ColindanciasSection({
           angleDeg: norte.angleDeg,
           confidence: norte.confidence,
           pagina: p.order_index,
+          focos: focosDe(analisis.detalle, ancho, alto),
         }
+        // El zoom usa posiciones de ESTA página: la tarjeta tiene que mostrar
+        // la misma imagen (si la planta tiene varias páginas, la precarga
+        // mostraba la primera).
+        const url = URL.createObjectURL(blob)
+        if (objectUrlsRef.current[p.planta]) URL.revokeObjectURL(objectUrlsRef.current[p.planta])
+        objectUrlsRef.current[p.planta] = url
+        setImagenesPorPlanta((prev) => ({ ...prev, [p.planta]: url }))
         nuevasColindancias[p.planta] = { ...(nuevasColindancias[p.planta] || {}), ...sugerencias }
         nuevoLog[p.order_index] = {
           planta: p.planta,
@@ -348,16 +421,14 @@ export function ColindanciasSection({
                         style={{ gridArea: 'imagen' }}
                         className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white"
                       >
-                        {imagenUrl ? (
-                          <img
-                            src={imagenUrl}
-                            alt={`Plano ${planta}`}
-                            className="max-h-full max-w-full object-contain transition-transform"
-                            style={{ transform: `rotate(${-angleDeg}deg)` }}
-                          />
-                        ) : (
-                          <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
-                        )}
+                        <PlanoUnidad
+                          url={imagenUrl}
+                          planta={planta}
+                          angleDeg={angleDeg}
+                          ancho={datos?.ancho}
+                          alto={datos?.alto}
+                          foco={datos?.focos?.[ambiente]}
+                        />
                       </div>
 
                       <div style={{ gridArea: 'este' }} className="flex min-w-0 flex-col items-center">
