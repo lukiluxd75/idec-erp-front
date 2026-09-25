@@ -40,14 +40,20 @@
 let cvPromise = null
 function getCv() {
   if (!cvPromise) {
-    cvPromise = import('@techstark/opencv-js').then(async ({ default: cvModule }) => {
-      // Mismo comportamiento verificado en tableLineDetector.js: la version
-      // instalada resuelve el default export directo al objeto cv.
-      if (typeof cvModule.then === 'function') return cvModule
+    // Vía opencvLoader.js: importar '@techstark/opencv-js' directo con
+    // import() falla en el navegador (ver ese archivo).
+    cvPromise = import('./opencvLoader').then(async ({ obtenerCv }) => {
+      const cvModule = obtenerCv()
+      if (!cvModule) throw new Error('OpenCV no quedó disponible')
       if (cvModule.Mat) return cvModule
+      if (typeof cvModule.then === 'function') return await cvModule
       return new Promise((resolve) => {
         cvModule['onRuntimeInitialized'] = () => resolve(cvModule)
       })
+    })
+    // Si falla, que el próximo intento vuelva a probar en vez de quedar roto.
+    cvPromise.catch(() => {
+      cvPromise = null
     })
   }
   return cvPromise

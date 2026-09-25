@@ -22,16 +22,20 @@
 let cvPromise = null
 function getCv() {
   if (!cvPromise) {
-    cvPromise = import('@techstark/opencv-js').then(async ({ default: cvModule }) => {
-      // Installed version (5.0.0-release.1) exports default as a Promise that
-      // resolves straight to the cv object (verified in Node: the old
-      // "cv.onRuntimeInitialized = cb" pattern never fires here and hangs
-      // forever). Both formats are supported just in case.
-      if (typeof cvModule.then === 'function') return cvModule
+    // Vía opencvLoader.js: importar '@techstark/opencv-js' directo con
+    // import() falla en el navegador (ver ese archivo).
+    cvPromise = import('./opencvLoader').then(async ({ obtenerCv }) => {
+      const cvModule = obtenerCv()
+      if (!cvModule) throw new Error('OpenCV no quedó disponible')
       if (cvModule.Mat) return cvModule
+      if (typeof cvModule.then === 'function') return await cvModule
       return new Promise((resolve) => {
         cvModule['onRuntimeInitialized'] = () => resolve(cvModule)
       })
+    })
+    // Si falla, que el próximo intento vuelva a probar en vez de quedar roto.
+    cvPromise.catch(() => {
+      cvPromise = null
     })
   }
   return cvPromise

@@ -187,6 +187,73 @@ function claveDe(tokens) {
 }
 
 /**
+ * Nombres compuestos de áreas comunes ("HALL+ASCENSOR+ SHAFT+GRADA"): la
+ * tabla y el plano casi nunca los escriben igual (el plano dice "ESCALERA"
+ * donde la tabla dice "GRADA", el OCR corta "SHAFT" en "SHA", la tabla pega
+ * "YMANIOBRA"...), así que no se exige el nombre entero: alcanza con que la
+ * MAYORÍA de sus palabras (al menos 2) estén escritas juntas en el plano.
+ */
+function buscarCompuestoDetalle(bloques, frase, radio) {
+  // Sin palabras cortas ("Y", "DE") que calzan con cualquier cosa.
+  const tokens = [...new Set(normTexto(frase).split(' ').filter((t) => t.length >= 3))]
+  if (tokens.length === 0) return { pos: null, motivo: 'nombre vacío' }
+  const necesarias = Math.max(2, Math.ceil(tokens.length / 2))
+  if (tokens.length < necesarias) return { pos: null, tokens, motivo: 'nombre compuesto demasiado corto' }
+
+  const conTokens = bloques.map((b) => ({ b, t: tokensBloque(b), c: blockCenter(b) }))
+  const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y)
+  // En estos rótulos el OCR pega las palabras ("HALLASCENSORESCALERA") y
+  // corta la última ("SHA" por SHAFT): una palabra de 4+ letras vale si
+  // aparece DENTRO de lo leído, o si lo leído es su comienzo (3+ letras).
+  const calza = (palabra, t) =>
+    mismaPalabra(palabra, t) ||
+    (palabra.length >= 4 && t.includes(palabra)) ||
+    (t.length >= 3 && t.length >= palabra.length - 2 && palabra.startsWith(t) && !esNumero(t))
+  const tiene = (x, palabra) => x.t.some((t) => calza(palabra, t))
+  const anclas = conTokens.filter((x) => tokens.some((p) => tiene(x, p)))
+  if (anclas.length === 0) {
+    return { pos: null, tokens, motivo: `ninguna palabra de "${tokens.join(' ')}" aparece en el OCR` }
+  }
+
+  let mejor = null
+  for (const ancla of anclas) {
+    const cercanos = conTokens.filter((x) => dist(x.c, ancla.c) <= radio)
+    const usados = [ancla]
+    const encontradas = tokens.filter((p) => {
+      if (usados.some((u) => tiene(u, p))) return true
+      const otro = cercanos.filter((x) => tiene(x, p)).sort((a, b) => dist(a.c, ancla.c) - dist(b.c, ancla.c))[0]
+      if (otro) usados.push(otro)
+      return Boolean(otro)
+    })
+    const puntaje = encontradas.length
+    if (!mejor || puntaje > mejor.puntaje || (puntaje === mejor.puntaje && usados.length < mejor.usados.length)) {
+      mejor = { puntaje, usados, encontradas }
+    }
+  }
+  const faltantes = tokens.filter((p) => !mejor.encontradas.includes(p))
+  if (mejor.puntaje < necesarias) {
+    return {
+      pos: null,
+      tokens,
+      motivo:
+        `de "${tokens.join(' ')}" solo aparecen juntas ${mejor.puntaje} palabra(s) ` +
+        `(${mejor.encontradas.join(', ') || '—'}), hacen falta ${necesarias}`,
+      textoCerca: mejor.usados.map((u) => u.b.text),
+    }
+  }
+  return {
+    pos: {
+      x: mejor.usados.reduce((a, u) => a + u.c.x, 0) / mejor.usados.length,
+      y: mejor.usados.reduce((a, u) => a + u.c.y, 0) / mejor.usados.length,
+    },
+    tokens,
+    bloques: mejor.usados.map((u) => u.b.text),
+    coincidencias: anclas.length,
+    ...(faltantes.length ? { palabrasQueNoEstan: faltantes } : {}),
+  }
+}
+
+/**
  * Busca dónde está escrita `frase` en el plano, juntando bloques de OCR
  * cercanos entre sí. Devuelve en `pos` el centro (promedio) de los bloques
  * que la forman, o null si no aparece.
@@ -202,6 +269,7 @@ function claveDe(tokens) {
  * armó la etiqueta o, si no se encontró, por qué.
  */
 function buscarFraseDetalle(bloques, frase, radio) {
+  if (frase.includes('+')) return buscarCompuestoDetalle(bloques, frase, radio)
   const tokens = normTexto(frase).split(' ').filter(Boolean)
   if (tokens.length === 0) return { pos: null, motivo: 'nombre vacío' }
   const { desde, palabras: clave } = claveDe(tokens)
