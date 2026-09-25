@@ -2,6 +2,10 @@ pipeline {
     agent {
         label 'windows-runner'
     }
+    environment {
+        // Esto le dice a Node.js que ignore la restricción de versión de Windows Server 2012
+        NODE_SKIP_PLATFORM_CHECK = '1'
+    }
     parameters {
         booleanParam(name: 'EJECUTAR_AUTOMATICO', defaultValue: true, description: 'Ejecución fluida automática')
     }
@@ -17,21 +21,18 @@ pipeline {
         }
         stage('Instalar Node Modules') {
             steps {
-                // Se usa la ruta absoluta de npm para evitar errores en el agente de Windows
                 bat '"C:\\Program Files\\nodejs\\npm.cmd" install'
             }
         }
         stage('Compilar Frontend') {
             steps {
-                // Compila el proyecto usando npm
                 bat '"C:\\Program Files\\nodejs\\npm.cmd" run build'
             }
         }
         stage('Desplegar a IIS') {
             steps {
                 echo 'Copiando archivos compilados del frontend a IIS...'
-                // Copia el contenido de la carpeta de compilación (ej. dist o build) hacia IIS
-                // Nota: Si tu framework genera la salida en 'build' en lugar de 'dist', cambia 'dist' por 'build'
+                // Si tu compilación usa 'build' en lugar de 'dist', cambia 'dist' por 'build'
                 bat 'xcopy /E /Y /I "%WORKSPACE%\\dist\\*" "C:\\inetpub\\wwwroot\\siscatJenkins\\"'
             }
         }
