@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
+import { AnalyzingDialog } from '@/domains/folder-analysis/components/AnalyzingDialog'
 import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSection'
 import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
 import { chunkForUpload, splitValidCaptures } from '@/domains/folder-analysis/utils/captureUpload'
@@ -18,6 +19,8 @@ export default function FolderAnalysisPage() {
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  // Folio being read right now, followed in a dialog until it ends.
+  const [watchedId, setWatchedId] = useState(null)
 
   // `loading` only covers the first load; the polling refreshes are silent.
   const refresh = useCallback(
@@ -82,13 +85,17 @@ export default function FolderAnalysisPage() {
     onAddPage: (document, captureId) =>
       run(() => folderAnalysisApi.setPages(document.id, [...document.pages.map((p) => p.capture_id), captureId])),
     onSetPages: (document, captureIds) => run(() => folderAnalysisApi.setPages(document.id, captureIds)),
-    onAnalyze: (document) =>
-      run(
+    onAnalyze: (document) => {
+      // The folio is read here and takes seconds: follow it in a dialog instead
+      // of a toast that is gone before the reading is.
+      if (document.doc_type === 'folio') setWatchedId(document.id)
+      return run(
         () => folderAnalysisApi.analyze(document.id),
         document.doc_type === 'folio'
-          ? 'Leyendo el folio. Los datos aparecerán en menos de un minuto.'
+          ? undefined
           : 'Documento enviado a analizar. Los datos aparecerán en unos minutos.'
-      ),
+      )
+    },
     onDelete: (document) =>
       setConfirm({
         title: '¿Eliminar documento?',
@@ -99,6 +106,9 @@ export default function FolderAnalysisPage() {
         onConfirm: () => run(() => folderAnalysisApi.deleteDocument(document.id)),
       }),
   }
+
+  // Read from the polled list, so the dialog follows the document as it advances.
+  const watched = watchedId ? documents.find((d) => d.id === watchedId) : null
 
   const deleteCapture = (capture) =>
     setConfirm({
@@ -148,6 +158,8 @@ export default function FolderAnalysisPage() {
           </div>
         </div>
       )}
+
+      <AnalyzingDialog document={watched} onClose={() => setWatchedId(null)} />
 
       <ConfirmDialog
         open={Boolean(confirm)}

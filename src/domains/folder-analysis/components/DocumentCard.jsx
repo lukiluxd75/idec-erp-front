@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
+import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { IN_PROGRESS, LANE_ACCENT_CLASS, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/utils/dragData'
 import { Button, IconButton } from '@/shared/ui'
@@ -136,13 +137,12 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
             <DocumentStatusBadge status={document.status} />
           </div>
 
-          {inProgress && (
-            <p className="text-xs text-accent-800">
-              {document.doc_type === 'folio'
-                ? 'Leyendo el folio con OCR en el servidor…'
-                : 'Analizando en las PCs de los arquitectos…'}
-            </p>
-          )}
+          {inProgress &&
+            (document.doc_type === 'folio' ? (
+              <ReadingProgress pages={document.pages} />
+            ) : (
+              <p className="text-xs text-accent-800">Analizando en las PCs de los arquitectos…</p>
+            ))}
           {document.status === 'failed' && document.error && (
             <p className="text-xs text-state-danger">{document.error}</p>
           )}

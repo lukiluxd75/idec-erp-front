@@ -6,6 +6,7 @@ import { toast } from 'react-toastify'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
+import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
 import { JsonEditor } from '@/domains/folder-analysis/components/forms/JsonEditor'
 import { TaxReceiptForm } from '@/domains/folder-analysis/components/forms/TaxReceiptForm'
@@ -121,6 +122,10 @@ export default function DocumentReviewPage() {
 
   const type = DOC_TYPE_BY_ID[document.doc_type]
   const hasData = WITH_DATA.has(document.status)
+  // What the OCR + rules reading flagged (only folios read on the server carry
+  // it). It is a to-do list: once the architect saved the review, the values
+  // were checked by a person and the marks would only be noise.
+  const reading = document.status === 'extracted' ? document.data?.reading : null
 
   return (
     <Card className="animate-card-in">
@@ -151,14 +156,35 @@ export default function DocumentReviewPage() {
         <div className="flex flex-col gap-4">
           {IN_PROGRESS.has(document.status) && (
             <Alert type="info">
-              {document.doc_type === 'folio'
-                ? 'El folio se está leyendo con OCR en el servidor. Esta pantalla se actualiza sola.'
-                : 'El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.'}
+              {document.doc_type === 'folio' ? (
+                <>
+                  <p>El folio se está leyendo con OCR en el servidor. Esta pantalla se actualiza sola.</p>
+                  <ReadingProgress className="mt-2" pages={document.pages} />
+                </>
+              ) : (
+                'El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.'
+              )}
             </Alert>
           )}
           {document.status === 'failed' && <Alert type="error">{document.error}</Alert>}
           {document.status === 'draft' && (
             <Alert type="info">Este documento todavía no fue analizado. Vuelva a la bandeja y presione Analizar.</Alert>
+          )}
+
+          {hasData && reading?.observations?.length > 0 && (
+            <Alert type="warning" title="Qué revisar de esta lectura">
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {reading.observations.map((note, i) => (
+                  <li key={i}>{note}</li>
+                ))}
+              </ul>
+              {reading.unassigned_lines?.length > 0 && (
+                <p className="mt-2">
+                  Líneas leídas que no se pudieron asignar a un asiento:{' '}
+                  <span className="font-mono">{reading.unassigned_lines.join(' · ')}</span>
+                </p>
+              )}
+            </Alert>
           )}
 
           {hasData && (
@@ -174,7 +200,7 @@ export default function DocumentReviewPage() {
               </div>
               <div key={formVersion} className="max-h-[70vh] overflow-y-auto pr-1">
                 {document.doc_type === 'folio' ? (
-                  <FolioForm value={form} onChange={setForm} />
+                  <FolioForm value={form} onChange={setForm} lowConfidence={reading?.low_confidence_fields} />
                 ) : document.doc_type === 'tax_receipt' ? (
                   <TaxReceiptForm value={form} onChange={setForm} />
                 ) : (
