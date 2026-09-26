@@ -1,6 +1,7 @@
 import { CheckCircle2, FileSearch, ScanText, XCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { DOC_TYPE_BY_ID } from '@/domains/folder-analysis/utils/documentMeta'
 import { readingProgress } from '@/domains/folder-analysis/utils/readingProgress'
 import { Button, Modal } from '@/shared/ui'
 import { cn } from '@/shared/utils'
@@ -34,13 +35,16 @@ function Ring({ percent, tone }) {
 }
 
 /**
- * Stays open while a folio is being read and turns into the result when it ends,
- * so the architect sees the whole run without watching the lane.
+ * Stays open while a document read on the server (a folio, a comprobante de
+ * impuestos) is being read and turns into the result when it ends, so the
+ * architect sees the whole run without watching the lane.
  */
 export function AnalyzingDialog({ document, onClose }) {
   const pages = document?.pages || []
   const { percent, done, total, assembling } = readingProgress(pages)
   if (!document) return null
+  // "el folio", "el comprobante": the dialog talks about the document at hand.
+  const noun = DOC_TYPE_BY_ID[document.doc_type]?.noun || 'el documento'
 
   const failed = document.status === 'failed'
   const finished = document.status === 'extracted' || document.status === 'reviewed'
@@ -51,7 +55,7 @@ export function AnalyzingDialog({ document, onClose }) {
       open
       onClose={onClose}
       icon={finished ? CheckCircle2 : failed ? XCircle : ScanText}
-      title={finished ? 'Folio leído' : failed ? 'No se pudo leer el folio' : 'Leyendo el folio'}
+      title={finished ? `Se leyó ${noun}` : failed ? `No se pudo leer ${noun}` : `Leyendo ${noun}`}
     >
       <div className="space-y-4">
         <Ring

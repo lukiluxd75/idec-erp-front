@@ -6,7 +6,9 @@ const E = API_ENDPOINTS.FOLDER_ANALYSIS
 /**
  * "Analizador y extractor de datos de carpetas". Photos arrive from the mobile app
  * into the inbox; here they are sorted into documents (folio, tax_receipt, plan),
- * sent to the architects' PCs for analysis, reviewed and saved as JSON.
+ * analyzed, reviewed and saved as JSON. A folio and a tax receipt are read on the
+ * server with OCR + rules and take seconds (the screen follows them photo by
+ * photo); a plan goes to the architects' PCs and takes minutes.
  */
 export const folderAnalysisApi = {
   inbox: () => httpClient.get(E.CAPTURES),

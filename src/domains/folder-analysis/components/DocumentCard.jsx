@@ -5,7 +5,12 @@ import { Link } from 'react-router-dom'
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
-import { IN_PROGRESS, LANE_ACCENT_CLASS, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
+import {
+  IN_PROGRESS,
+  LANE_ACCENT_CLASS,
+  SERVER_READ,
+  formatDateTime,
+} from '@/domains/folder-analysis/utils/documentMeta'
 import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/utils/dragData'
 import { Button, IconButton } from '@/shared/ui'
 import { cn } from '@/shared/utils'
@@ -138,7 +143,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
           </div>
 
           {inProgress &&
-            (document.doc_type === 'folio' ? (
+            (SERVER_READ.has(document.doc_type) ? (
               <ReadingProgress pages={document.pages} />
             ) : (
               <p className="text-xs text-accent-800">Analizando en las PCs de los arquitectos…</p>

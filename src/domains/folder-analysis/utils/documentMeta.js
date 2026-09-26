@@ -5,6 +5,7 @@ export const DOC_TYPES = [
   {
     id: 'folio',
     label: 'Folio',
+    noun: 'el folio',
     icon: ScrollText,
     hint: 'Folio Real de Derechos Reales. Puede tener varias páginas.',
     multiPage: true,
@@ -12,6 +13,7 @@ export const DOC_TYPES = [
   {
     id: 'tax_receipt',
     label: 'Impuesto',
+    noun: 'el comprobante',
     icon: Receipt,
     hint: 'Comprobante de pago del impuesto a la propiedad (FUR).',
     multiPage: false,
@@ -19,11 +21,19 @@ export const DOC_TYPES = [
   {
     id: 'plan',
     label: 'Plano',
+    noun: 'el plano',
     icon: MapIcon,
     hint: 'Planos arquitectónicos. Por ahora se extrae el texto, los datos y las tablas.',
     multiPage: true,
   },
 ]
+
+/**
+ * Lanes read here on the server with OCR + reglas (segundos): the screen follows
+ * them photo by photo and marks what the reading was unsure about. The rest go to
+ * the architects' PCs through the digitization queue and take minutes.
+ */
+export const SERVER_READ = new Set(['folio', 'tax_receipt'])
 
 export const DOC_TYPE_BY_ID = Object.fromEntries(DOC_TYPES.map((t) => [t.id, t]))
 
