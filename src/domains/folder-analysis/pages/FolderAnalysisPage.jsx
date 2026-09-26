@@ -5,6 +5,7 @@ import { toast } from 'react-toastify'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSection'
 import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
+import { chunkForUpload, splitValidCaptures } from '@/domains/folder-analysis/utils/captureUpload'
 import { DOC_TYPES } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
 import { Alert, Card, ConfirmDialog, SectionHeader, Spinner } from '@/shared/ui'
@@ -15,6 +16,7 @@ export default function FolderAnalysisPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [confirm, setConfirm] = useState(null)
 
   // `loading` only covers the first load; the polling refreshes are silent.
@@ -52,6 +54,29 @@ export default function FolderAnalysisPage() {
     }
   }
 
+  // Photos picked in the computer's file explorer (or dropped on the inbox) go to the
+  // same endpoint the mobile app uses, in batches of MAX_FILES_PER_UPLOAD.
+  const uploadCaptures = async (picked) => {
+    const { files, rejected } = splitValidCaptures(picked)
+    rejected.forEach((reason) => toast.warn(reason))
+    if (files.length === 0) return
+
+    setUploading(true)
+    let uploaded = 0
+    try {
+      for (const chunk of chunkForUpload(files)) {
+        await folderAnalysisApi.uploadCaptures(chunk)
+        uploaded += chunk.length
+      }
+      toast.success(uploaded === 1 ? 'Foto subida a la bandeja.' : `${uploaded} fotos subidas a la bandeja.`)
+    } catch (e) {
+      toast.error(uploaded > 0 ? `Se subieron ${uploaded} de ${files.length} fotos: ${e.message}` : e.message)
+    } finally {
+      setUploading(false)
+      refresh()
+    }
+  }
+
   const handlers = {
     onCreate: (docType, captureId) => run(() => folderAnalysisApi.createDocument(docType, [captureId])),
     onAddPage: (document, captureId) =>
@@ -60,7 +85,9 @@ export default function FolderAnalysisPage() {
     onAnalyze: (document) =>
       run(
         () => folderAnalysisApi.analyze(document.id),
-        'Documento enviado a analizar. Los datos aparecerán en unos minutos.'
+        document.doc_type === 'folio'
+          ? 'Leyendo el folio. Los datos aparecerán en menos de un minuto.'
+          : 'Documento enviado a analizar. Los datos aparecerán en unos minutos.'
       ),
     onDelete: (document) =>
       setConfirm({
@@ -101,6 +128,8 @@ export default function FolderAnalysisPage() {
               <InboxPanel
                 captures={captures}
                 disabled={busy}
+                uploading={uploading}
+                onUpload={uploadCaptures}
                 onSend={handlers.onCreate}
                 onDelete={deleteCapture}
               />

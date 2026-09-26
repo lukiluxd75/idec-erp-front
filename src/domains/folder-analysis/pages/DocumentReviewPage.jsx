@@ -151,7 +151,9 @@ export default function DocumentReviewPage() {
         <div className="flex flex-col gap-4">
           {IN_PROGRESS.has(document.status) && (
             <Alert type="info">
-              El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.
+              {document.doc_type === 'folio'
+                ? 'El folio se está leyendo con OCR en el servidor. Esta pantalla se actualiza sola.'
+                : 'El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.'}
             </Alert>
           )}
           {document.status === 'failed' && <Alert type="error">{document.error}</Alert>}

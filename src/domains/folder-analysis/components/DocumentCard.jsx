@@ -137,7 +137,11 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
           </div>
 
           {inProgress && (
-            <p className="text-xs text-accent-800">Analizando en las PCs de los arquitectos…</p>
+            <p className="text-xs text-accent-800">
+              {document.doc_type === 'folio'
+                ? 'Leyendo el folio con OCR en el servidor…'
+                : 'Analizando en las PCs de los arquitectos…'}
+            </p>
           )}
           {document.status === 'failed' && document.error && (
             <p className="text-xs text-state-danger">{document.error}</p>

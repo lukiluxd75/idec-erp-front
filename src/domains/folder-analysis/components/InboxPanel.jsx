@@ -1,6 +1,7 @@
 import { GripVertical, Inbox, Smartphone, Trash2 } from 'lucide-react'
 
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
+import { CaptureUploader } from '@/domains/folder-analysis/components/CaptureUploader'
 import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { setDraggedCapture } from '@/domains/folder-analysis/utils/dragData'
 import { EmptyState } from '@/shared/ui'
@@ -9,7 +10,7 @@ import { cn } from '@/shared/utils'
 /**
  * Professional capture queue — operational inbox, not module catalog tiles.
  */
-export function InboxPanel({ captures, disabled, onSend, onDelete }) {
+export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, onDelete }) {
   return (
     <section className="workbench-queue max-h-[calc(100dvh-14rem)] lg:max-h-[32rem]" aria-label="Cola de fotos recibidas">
       <div className="workbench-queue__head sticky top-0 z-[1] bg-slate-50/95 backdrop-blur-sm">
@@ -19,8 +20,9 @@ export function InboxPanel({ captures, disabled, onSend, onDelete }) {
           <span className="text-xs font-bold tabular-nums text-slate-600">{captures.length}</span>
         </div>
         <p className="mt-1 text-[11px] leading-snug text-slate-500">
-          Cola móvil · arrastre o asigne a un carril
+          Celular o equipo · arrastre o asigne a un carril
         </p>
+        <CaptureUploader disabled={disabled} uploading={uploading} onFiles={onUpload} />
       </div>
 
       {captures.length === 0 ? (
@@ -30,7 +32,7 @@ export function InboxPanel({ captures, disabled, onSend, onDelete }) {
             iconSize={40}
             className="py-8"
             title="No hay fotos pendientes"
-            subtitle="Tómelas desde la aplicación móvil y aparecerán aquí en unos segundos."
+            subtitle="Tómelas con la aplicación móvil o súbalas desde el explorador de archivos de su equipo."
           />
         </div>
       ) : (

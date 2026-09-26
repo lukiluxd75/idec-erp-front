@@ -11,6 +11,17 @@ const E = API_ENDPOINTS.FOLDER_ANALYSIS
 export const folderAnalysisApi = {
   inbox: () => httpClient.get(E.CAPTURES),
 
+  /**
+   * Same entry point the mobile app uses, from the web: photos picked in the
+   * computer's file explorer (or dropped on the inbox) land in the same inbox.
+   * @param {File[]} files up to MAX_FILES_PER_UPLOAD images per call
+   */
+  uploadCaptures: (files) => {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('files', file))
+    return httpClient.post(E.CAPTURES, formData)
+  },
+
   // Requires Bearer -> cannot be a direct <img src>; downloaded as Blob.
   captureBlob: (id, thumbnail = false) =>
     httpClient.get(thumbnail ? E.CAPTURE_THUMBNAIL(id) : E.CAPTURE_IMAGE(id), { responseType: 'blob' }),
