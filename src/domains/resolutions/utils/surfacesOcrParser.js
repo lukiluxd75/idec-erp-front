@@ -682,6 +682,23 @@ export function parseSuperficiesPage(blocks, opts = {}) {
   }
   flushFragmentoAFilaAnterior()
 
+  // La celda de Planta fusionada (Layout B) no siempre trae su texto en la
+  // PRIMERA fila del tramo que abarca: en una union alta, el OCR suele leerlo
+  // centrado verticalmente -- visto con una foto real, una union de 18 filas
+  // (parqueos + bauleras de una semisótano) mostró "SEMISOTANO" recién en la
+  // fila 11, dejando las 10 de arriba sin planta aunque son del mismo tramo.
+  // El arrastre de arriba solo alcanza hacia ABAJO desde donde se encontró el
+  // texto; acá se completa hacia ATRÁS: de atrás para adelante, una fila sin
+  // planta toma la de la fila siguiente si esa sí la tiene -- así el relleno
+  // se detiene solo en el borde real de cada tramo (la fila siguiente sigue
+  // vacía) y nunca cruza hacia el tramo de otra planta.
+  for (let i = rows.length - 2; i >= 0; i--) {
+    if (!rows[i].planta && rows[i + 1].planta) {
+      rows[i].planta = rows[i + 1].planta
+      rows[i].plantaOcr = rows[i + 1].plantaOcr
+    }
+  }
+
   return { columnCount: grid.columnCount, columnRoles, rows, filaTotal }
 }
 
