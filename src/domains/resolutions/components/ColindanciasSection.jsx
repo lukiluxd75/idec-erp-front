@@ -124,6 +124,11 @@ function PlanoUnidad({ url, planta, angleDeg, ancho, alto, foco }) {
  * colindanciasDetector.js) -- la tarjeta lo marca ("del plano, sin tabla")
  * porque, al no venir de una lista conocida, conviene revisarla con más
  * cuidado.
+ *
+ * Después de detectar, cada planta muestra SOLO las unidades que el OCR
+ * ubicó en SU plano: un nombre de Hoja2 que no aparece ahí no es de esa
+ * planta (pertenece a otra, o la tabla lo trajo mal) y no gana tarjeta --
+ * sigue ofrecido igual en el <input> de "vecino" de las que sí aparecen.
  */
 export function ColindanciasSection({
   resolutionId,
@@ -361,11 +366,20 @@ export function ColindanciasSection({
         const datos = datosPorPlanta[planta]
         // Con tabla, sus nombres de "Ambiente"; sin tabla, los que ya se
         // autodetectaron del plano (vacío hasta que se pulse "Detectar").
-        const nombres = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos?.nombres || []
+        const nombresConocidos = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos?.nombres || []
         const autoDetectadas = !unidadesPorPlanta[planta]?.length
+        // Una tarjeta solo para lo que el OCR SI encontró en ESTA planta: un
+        // nombre de Hoja2 que no aparece en el plano de esa planta no es de
+        // ahí (pertenece a otra planta, o la tabla lo trajo mal) -- antes de
+        // detectar (datos.motivos aún no existe) se listan todos los de la
+        // tabla igual, para poder revisarlos.
+        const nombres = datos?.motivos ? nombresConocidos.filter((a) => !datos.motivos[a]) : nombresConocidos
         const angleDeg = datos?.angleDeg ?? 0
         const imagenUrl = imagenesPorPlanta[planta]
-        const opcionesDatalist = [...LEYENDAS_COLINDANCIA, ...nombres]
+        // El <input list> de "vecino" sigue ofreciendo TODOS los nombres
+        // conocidos (aunque no tengan tarjeta propia): puede ser el vecino de
+        // una unidad de esta planta sin serlo ella misma.
+        const opcionesDatalist = [...LEYENDAS_COLINDANCIA, ...nombresConocidos]
         const datalistId = `colindancia-opciones-${planta.replace(/\s+/g, '-')}`
 
         return (
@@ -433,7 +447,9 @@ export function ColindanciasSection({
               <p className="text-xs text-slate-400">
                 {autoDetectadas
                   ? 'Pulse "Detectar colindancias" para leer las unidades directo del plano.'
-                  : 'Sin unidades en la tabla de superficies para esta planta.'}
+                  : datos?.motivos
+                    ? 'Ninguno de los nombres de la tabla de superficies se encontró en este plano: revise la columna Planta de Hoja2.'
+                    : 'Sin unidades en la tabla de superficies para esta planta.'}
               </p>
             )}
 
@@ -445,17 +461,7 @@ export function ColindanciasSection({
                     <p className="truncate text-sm font-semibold text-slate-700" title={ambiente}>
                       {ambiente}
                     </p>
-                    {datos?.motivos?.[ambiente] ? (
-                      <p
-                        className="mb-3 mt-0.5 text-[11px] leading-snug text-state-amber"
-                        title={datos.motivos[ambiente]}
-                      >
-                        No se encontró este nombre en el plano ({datos.motivos[ambiente]}). Complete a mano o revise
-                        el nombre en la tabla de superficies.
-                      </p>
-                    ) : (
-                      <div className="mb-3" />
-                    )}
+                    <div className="mb-3" />
                     <div
                       className="grid items-center justify-items-stretch gap-2"
                       style={{
