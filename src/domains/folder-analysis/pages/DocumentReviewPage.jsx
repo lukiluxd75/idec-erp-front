@@ -65,7 +65,9 @@ export default function DocumentReviewPage() {
     load()
   }, [load])
 
-  usePollWhile(Boolean(document && IN_PROGRESS.has(document.status)), load)
+  // While it is being analyzed the screen asks more often: the bar moves photo by
+  // photo and a five second gap between answers is felt as a stall.
+  usePollWhile(Boolean(document && IN_PROGRESS.has(document.status)), load, 3000)
 
   const save = async () => {
     setSaving(true)
@@ -160,17 +162,13 @@ export default function DocumentReviewPage() {
         <div className="flex flex-col gap-4">
           {IN_PROGRESS.has(document.status) && (
             <Alert type="info">
-              {SERVER_READ.has(document.doc_type) ? (
-                <>
-                  <p>
-                    {type?.noun ? `Se está leyendo ${type.noun}` : 'Se está leyendo el documento'} con OCR en el
-                    servidor. Esta pantalla se actualiza sola.
-                  </p>
-                  <ReadingProgress className="mt-2" pages={document.pages} />
-                </>
-              ) : (
-                'El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.'
-              )}
+              <p>
+                {SERVER_READ.has(document.doc_type)
+                  ? `Se está analizando ${type?.noun || 'el documento'} con OCR en el servidor.`
+                  : `Se está analizando ${type?.noun || 'el documento'} en las PCs de los arquitectos.`}{' '}
+                Esta pantalla se actualiza sola.
+              </p>
+              <ReadingProgress className="mt-2" document={document} />
             </Alert>
           )}
           {document.status === 'failed' && <Alert type="error">{document.error}</Alert>}

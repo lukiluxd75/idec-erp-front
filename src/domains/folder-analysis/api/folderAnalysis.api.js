@@ -24,9 +24,21 @@ export const folderAnalysisApi = {
     return httpClient.post(E.CAPTURES, formData)
   },
 
-  // Requires Bearer -> cannot be a direct <img src>; downloaded as Blob.
-  captureBlob: (id, thumbnail = false) =>
-    httpClient.get(thumbnail ? E.CAPTURE_THUMBNAIL(id) : E.CAPTURE_IMAGE(id), { responseType: 'blob' }),
+  /**
+   * One of the three copies of a photo: 'thumbnail' for a list row, 'preview'
+   * (web sized) for the viewer, 'original' only when the architect zooms past
+   * what the preview can show -- the upload itself weighs several megabytes.
+   * Requires Bearer -> cannot be a direct <img src>; downloaded as Blob.
+   */
+  captureBlob: (id, variant = 'preview') => {
+    const url =
+      variant === 'thumbnail'
+        ? E.CAPTURE_THUMBNAIL(id)
+        : variant === 'original'
+          ? E.CAPTURE_IMAGE(id)
+          : E.CAPTURE_PREVIEW(id)
+    return httpClient.get(url, { responseType: 'blob' })
+  },
 
   deleteCapture: (id) => httpClient.delete(E.CAPTURE(id)),
 

@@ -7,7 +7,7 @@ import { AnalyzingDialog } from '@/domains/folder-analysis/components/AnalyzingD
 import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSection'
 import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
 import { chunkForUpload, splitValidCaptures } from '@/domains/folder-analysis/utils/captureUpload'
-import { DOC_TYPES, SERVER_READ } from '@/domains/folder-analysis/utils/documentMeta'
+import { DOC_TYPES, IN_PROGRESS } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
 import { Alert, Card, ConfirmDialog, SectionHeader, Spinner } from '@/shared/ui'
 
@@ -40,7 +40,7 @@ export default function FolderAnalysisPage() {
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [confirm, setConfirm] = useState(null)
-  // Folio being read right now, followed in a dialog until it ends.
+  // Document being analyzed right now, followed in a dialog until it ends.
   const [watchedId, setWatchedId] = useState(null)
 
   // Moves being saved right now. A poll that started before one of them would
@@ -68,8 +68,11 @@ export default function FolderAnalysisPage() {
   }, [refresh])
 
   // Always on while the screen is open: new photos from the phone and the analysis
-  // progress both arrive by polling.
-  usePollWhile(true, refresh)
+  // progress both arrive by polling. While something is being analyzed it asks
+  // more often, so the bar of that document advances photo by photo instead of in
+  // five second steps.
+  const analyzing = documents.some((d) => IN_PROGRESS.has(d.status))
+  usePollWhile(true, refresh, analyzing ? 3000 : 6000)
 
   const run = async (action, successMessage) => {
     setBusy(true)
@@ -181,14 +184,11 @@ export default function FolderAnalysisPage() {
       return removed ? done.then(refresh) : done
     },
     onAnalyze: (document) => {
-      // A folio and a comprobante are read here and take seconds: follow them in
-      // a dialog instead of a toast that is gone before the reading is.
-      const onServer = SERVER_READ.has(document.doc_type)
-      if (onServer) setWatchedId(document.id)
-      return run(
-        () => folderAnalysisApi.analyze(document.id),
-        onServer ? undefined : 'Documento enviado a analizar. Los datos aparecerán en unos minutos.'
-      )
+      // Every lane is followed in the dialog: it is the only place that says
+      // whether the document is still waiting its turn or already being read, and
+      // how long it still needs -- a toast is gone before the answer is.
+      setWatchedId(document.id)
+      return run(() => folderAnalysisApi.analyze(document.id))
     },
     onDelete: (document) =>
       setConfirm({

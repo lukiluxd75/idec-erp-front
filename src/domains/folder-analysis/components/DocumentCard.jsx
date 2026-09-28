@@ -3,14 +3,15 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
+import { CaptureLightbox } from '@/domains/folder-analysis/components/CaptureLightbox'
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import {
   IN_PROGRESS,
   LANE_ACCENT_CLASS,
-  SERVER_READ,
   formatDateTime,
 } from '@/domains/folder-analysis/utils/documentMeta'
+import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/utils/dragData'
 import { Button, IconButton } from '@/shared/ui'
 import { cn } from '@/shared/utils'
@@ -26,6 +27,8 @@ function shortRef(id) {
 /** Compact list row for a document in a lane (not a dashboard module tile). */
 export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages, onAnalyze, onDelete }) {
   const [dragOver, setDragOver] = useState(false)
+  // Which page was clicked to be looked at big, before deciding anything about it.
+  const [opened, setOpened] = useState(null)
   const inProgress = IN_PROGRESS.has(document.status)
   const pagesEditable = PAGES_EDITABLE.has(document.status) && !busy
   const acceptsDrop = pagesEditable && multiPage
@@ -73,10 +76,18 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
         <ol className="flex min-w-0 flex-1 list-none gap-1.5 overflow-x-auto pb-0.5 lg:max-w-[55%]">
           {document.pages.map((page, index) => (
             <li key={page.capture_id} className="relative shrink-0">
-              <CaptureImage
-                captureId={page.capture_id}
-                className="h-16 w-12 rounded-md object-cover ring-1 ring-slate-200/90"
-              />
+              <button
+                type="button"
+                title={`Ver la página ${index + 1} en grande`}
+                onClick={() => setOpened(index)}
+                onMouseEnter={() => prefetchCapture(page.capture_id, 'preview')}
+                className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+              >
+                <CaptureImage
+                  captureId={page.capture_id}
+                  className="h-16 w-12 cursor-zoom-in rounded-md object-cover ring-1 ring-slate-200/90 transition hover:ring-2 hover:ring-accent-400"
+                />
+              </button>
               <span className="absolute bottom-1 left-1 rounded bg-slate-900/75 px-1 text-[9px] font-bold text-white">
                 {index + 1}
               </span>
@@ -142,12 +153,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
             <DocumentStatusBadge status={document.status} />
           </div>
 
-          {inProgress &&
-            (SERVER_READ.has(document.doc_type) ? (
-              <ReadingProgress pages={document.pages} />
-            ) : (
-              <p className="text-xs text-accent-800">Analizando en las PCs de los arquitectos…</p>
-            ))}
+          {inProgress && <ReadingProgress document={document} />}
           {document.status === 'failed' && document.error && (
             <p className="text-xs text-state-danger">{document.error}</p>
           )}
@@ -184,6 +190,14 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
           </div>
         </div>
       </div>
+
+      {opened !== null && (
+        <CaptureLightbox
+          items={document.pages.map((p, i) => ({ captureId: p.capture_id, label: `Página ${i + 1}` }))}
+          startAt={opened}
+          onClose={() => setOpened(null)}
+        />
+      )}
     </article>
   )
 }

@@ -1,8 +1,11 @@
 import { GripVertical, Inbox, Smartphone, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
+import { CaptureLightbox } from '@/domains/folder-analysis/components/CaptureLightbox'
 import { CaptureUploader } from '@/domains/folder-analysis/components/CaptureUploader'
 import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
+import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { setDraggedCapture } from '@/domains/folder-analysis/utils/dragData'
 import { EmptyState } from '@/shared/ui'
 import { cn } from '@/shared/utils'
@@ -11,6 +14,12 @@ import { cn } from '@/shared/utils'
  * Professional capture queue — operational inbox, not module catalog tiles.
  */
 export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, onDelete }) {
+  // The photo clicked in the queue, opened big: from a thumbnail this small the
+  // architect cannot tell a folio from a comprobante before sorting it.
+  const [opened, setOpened] = useState(null)
+  const items = captures.map((c) => ({ captureId: c.id, label: c.file_name || 'Captura móvil' }))
+  const openedIndex = opened ? captures.findIndex((c) => c.id === opened) : -1
+
   return (
     <section className="workbench-queue max-h-[calc(100dvh-14rem)] lg:max-h-[32rem]" aria-label="Cola de fotos recibidas">
       <div className="workbench-queue__head sticky top-0 z-[1] bg-slate-50/95 backdrop-blur-sm">
@@ -48,11 +57,20 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
                 <GripVertical className="h-4 w-4" aria-hidden />
               </div>
 
-              <CaptureImage
-                captureId={capture.id}
-                alt={capture.file_name}
-                className="h-[4.25rem] w-[3.25rem] shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-slate-200/90"
-              />
+              <button
+                type="button"
+                title="Ver la foto en grande"
+                onClick={() => setOpened(capture.id)}
+                onMouseEnter={() => prefetchCapture(capture.id, 'preview')}
+                onFocus={() => prefetchCapture(capture.id, 'preview')}
+                className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+              >
+                <CaptureImage
+                  captureId={capture.id}
+                  alt={capture.file_name}
+                  className="h-[4.25rem] w-[3.25rem] cursor-zoom-in rounded-lg object-cover shadow-sm ring-1 ring-slate-200/90 transition hover:ring-2 hover:ring-accent-400"
+                />
+              </button>
 
               <div className="min-w-0 space-y-2">
                 <div>
@@ -93,6 +111,10 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
             </li>
           ))}
         </ul>
+      )}
+
+      {openedIndex >= 0 && (
+        <CaptureLightbox items={items} startAt={openedIndex} onClose={() => setOpened(null)} />
       )}
     </section>
   )
