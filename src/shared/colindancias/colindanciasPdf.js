@@ -60,12 +60,13 @@ function rasterizarFoco(img, angleDeg, foco, ladoPx) {
 }
 
 /**
- * @param {string} resolutionNumber
+ * @param {string} titulo Va en el encabezado y en el nombre del archivo (ej.
+ *   "Resolución 123/2026" en resolutions, "Plano — <folio>" en folder-analysis).
  * @param {Array<{planta: string, unidades: Array<{nombre: string, valores: object, url: string, angleDeg: number, foco: {x,y,ventana}}>}>} secciones
- *   Una entrada por planta, en el mismo orden y con las mismas unidades que
- *   se ven en pantalla (armado en ColindanciasSection con unidadesVisibles).
+ *   Una entrada por planta/página, en el mismo orden y con las mismas
+ *   unidades que se ven en pantalla.
  */
-export async function generarColindanciasPdf(resolutionNumber, secciones) {
+export async function generarColindanciasPdf(titulo, secciones) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const anchoUtil = ANCHO_PAGINA - MARGEN * 2
   const anchoCelda = (anchoUtil - GAP * (COLUMNAS - 1)) / COLUMNAS
@@ -74,7 +75,7 @@ export async function generarColindanciasPdf(resolutionNumber, secciones) {
 
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text(`Colindancias — Resolución ${resolutionNumber || ''}`, MARGEN, y)
+  doc.text(`Colindancias — ${titulo || ''}`, MARGEN, y)
   doc.setFont('helvetica', 'normal')
   y += 10
 
@@ -150,5 +151,5 @@ export async function generarColindanciasPdf(resolutionNumber, secciones) {
     y += 4
   }
 
-  doc.save(`colindancias_${String(resolutionNumber || 'resolucion').replace(/\W+/g, '_')}.pdf`)
+  doc.save(`colindancias_${String(titulo || 'plano').replace(/\W+/g, '_')}.pdf`)
 }

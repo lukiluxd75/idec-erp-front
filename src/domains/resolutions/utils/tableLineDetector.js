@@ -22,9 +22,9 @@
 let cvPromise = null
 function getCv() {
   if (!cvPromise) {
-    // Vía opencvLoader.js: importar '@techstark/opencv-js' directo con
+    // Vía shared/colindancias/opencvLoader.js: importar '@techstark/opencv-js' directo con
     // import() falla en el navegador (ver ese archivo).
-    cvPromise = import('./opencvLoader').then(async ({ obtenerCv }) => {
+    cvPromise = import('@/shared/colindancias/opencvLoader').then(async ({ obtenerCv }) => {
       const cvModule = obtenerCv()
       if (!cvModule) throw new Error('OpenCV no quedó disponible')
       if (cvModule.Mat) return cvModule

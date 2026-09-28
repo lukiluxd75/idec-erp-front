@@ -2,106 +2,19 @@ import { Bug, Compass, FileDown, RotateCcw, RotateCw, ScanSearch } from 'lucide-
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
-import { ocrImage, resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
+import { resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
+import { ColindanciaCard } from '@/shared/colindancias/ColindanciaCard'
+import { focosDe, motivosDe, unidadesVisibles } from '@/shared/colindancias/colindanciasCards'
 import {
   LEYENDAS_COLINDANCIA,
   analizarColindancias,
   autodetectarUnidades,
-} from '@/domains/resolutions/utils/colindanciasDetector'
-import { generarColindanciasPdf } from '@/domains/resolutions/utils/colindanciasPdf'
-import { detectNorth } from '@/domains/resolutions/utils/planNorthDetector'
-import { downloadBlob } from '@/domains/resolutions/utils/sheet2Excel'
+} from '@/shared/colindancias/colindanciasDetector'
+import { generarColindanciasPdf } from '@/shared/colindancias/colindanciasPdf'
+import { ocrImage } from '@/shared/colindancias/ocrClient'
+import { detectNorth } from '@/shared/colindancias/planNorthDetector'
 import { Button, Card, SectionHeader } from '@/shared/ui'
-
-/**
- * Dónde hacer zoom en la tarjeta de cada unidad: el rótulo de la unidad en
- * el plano (posición en la imagen original) y el ancho de la "ventana"
- * visible -- 3 veces la distancia al vecino elegido más cercano (se ve la
- * unidad y lo que la rodea), acotado entre 12% y 40% del plano.
- */
-function focosDe(detalle, ancho, alto) {
-  const lado = Math.max(ancho, alto)
-  const focos = {}
-  detalle.busquedas
-    .filter((b) => b.tipo === 'unidad' && b.encontrada)
-    .forEach((b) => {
-      const distancias = Object.values(detalle.porUnidad[b.valor] || {})
-        .map((l) => l.candidatos[0]?.distancia)
-        .filter(Boolean)
-      const base = distancias.length ? Math.min(...distancias) * 3 : lado * 0.25
-      focos[b.valor] = {
-        x: b.posicionImagen.x,
-        y: b.posicionImagen.y,
-        ventana: Math.min(lado * 0.4, Math.max(lado * 0.12, base)),
-      }
-    })
-  return focos
-}
-
-/**
- * Por qué no se ubicó cada unidad (texto del log de llenado): se muestra en
- * su tarjeta, para distinguir "el nombre no está escrito en el plano / el OCR
- * no lo leyó" de "no hay nada al lado".
- */
-function motivosDe(detalle) {
-  const motivos = {}
-  detalle.busquedas
-    .filter((b) => b.tipo === 'unidad' && !b.encontrada)
-    .forEach((b) => {
-      motivos[b.valor] = b.motivo
-    })
-  return motivos
-}
-
-/**
- * Unidades con tarjeta propia de una planta: con tabla, sus nombres de
- * "Ambiente"; sin tabla, los ya autodetectados del plano (`datos.nombres`).
- * Después de detectar (`datos.motivos` existe), se saca lo que el OCR no
- * encontró en ESE plano -- no es de esa planta. Misma función para la
- * pantalla y el PDF, para que muestren exactamente lo mismo.
- */
-function unidadesVisibles(planta, unidadesPorPlanta, datos) {
-  const nombresConocidos = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos?.nombres || []
-  return datos?.motivos ? nombresConocidos.filter((a) => !datos.motivos[a]) : nombresConocidos
-}
-
-/**
- * Imagen del plano en la tarjeta de una unidad, con el norte arriba. Si se
- * ubicó el rótulo de la unidad, muestra el plano AMPLIADO sobre esa zona (no
- * un recorte: es el mismo plano con zoom, marcando el rótulo); un clic
- * alterna con el plano completo.
- */
-function PlanoUnidad({ url, planta, angleDeg, ancho, alto, foco }) {
-  const [completo, setCompleto] = useState(false)
-  if (!url) return <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
-  if (!foco || !ancho || !alto || completo) {
-    return (
-      <img
-        src={url}
-        alt={`Plano ${planta}`}
-        className={`max-h-full max-w-full object-contain transition-transform ${foco ? 'cursor-zoom-in' : ''}`}
-        style={{ transform: `rotate(${-angleDeg}deg)` }}
-        onClick={foco ? () => setCompleto(false) : undefined}
-        title={foco ? 'Clic para acercar a la unidad' : undefined}
-      />
-    )
-  }
-  // viewBox centrado en el rótulo: el SVG escala solo al tamaño de la tarjeta.
-  const v = foco.ventana
-  return (
-    <svg
-      viewBox={`${-v / 2} ${-v / 2} ${v} ${v}`}
-      className="h-full w-full cursor-zoom-out"
-      onClick={() => setCompleto(true)}
-    >
-      <title>Clic para ver el plano completo</title>
-      <g transform={`rotate(${-angleDeg}) translate(${-foco.x} ${-foco.y})`}>
-        <image href={url} width={ancho} height={alto} />
-      </g>
-      <circle r={v * 0.04} fill="none" stroke="#dc2626" strokeWidth={v * 0.008} />
-    </svg>
-  )
-}
+import { downloadBlob } from '@/shared/utils'
 
 /**
  * Revisión/confirmación de colindancias (columna E de COLINDANCIAS, ver
@@ -357,7 +270,7 @@ export function ColindanciasSection({
     // cruda.
     const secciones = plantasConPlano.map((planta) => {
       const datos = datosPorPlanta[planta]
-      const nombres = unidadesVisibles(planta, unidadesPorPlanta, datos)
+      const nombres = unidadesVisibles(unidadesPorPlanta[planta] || [], datos)
       return {
         planta,
         unidades: nombres.map((ambiente) => ({
@@ -371,7 +284,7 @@ export function ColindanciasSection({
     })
     setGenerandoPdf(true)
     try {
-      await generarColindanciasPdf(resolutionNumber, secciones)
+      await generarColindanciasPdf(`Resolución ${resolutionNumber || ''}`, secciones)
     } catch (e) {
       toast.error(`No se pudo generar el PDF: ${e.message}`)
     } finally {
@@ -420,7 +333,7 @@ export function ColindanciasSection({
         const datos = datosPorPlanta[planta]
         const autoDetectadas = !unidadesPorPlanta[planta]?.length
         const nombresConocidos = autoDetectadas ? datos?.nombres || [] : unidadesPorPlanta[planta]
-        const nombres = unidadesVisibles(planta, unidadesPorPlanta, datos)
+        const nombres = unidadesVisibles(unidadesPorPlanta[planta] || [], datos)
         const angleDeg = datos?.angleDeg ?? 0
         const imagenUrl = imagenesPorPlanta[planta]
         // El <input list> de "vecino" sigue ofreciendo TODOS los nombres
@@ -501,93 +414,20 @@ export function ColindanciasSection({
             )}
 
             <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(26rem, 1fr))' }}>
-              {nombres.map((ambiente) => {
-                const valores = colindancias[planta]?.[ambiente] || {}
-                return (
-                  <div key={ambiente} className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-                    <p className="truncate text-sm font-semibold text-slate-700" title={ambiente}>
-                      {ambiente}
-                    </p>
-                    <div className="mb-3" />
-                    <div
-                      className="grid items-center justify-items-stretch gap-2"
-                      style={{
-                        gridTemplateAreas: '". norte ." "oeste imagen este" ". sud ."',
-                        gridTemplateColumns: '8rem 10rem 8rem',
-                        gridTemplateRows: 'auto 10rem auto',
-                      }}
-                    >
-                      <div style={{ gridArea: 'norte' }} className="flex min-w-0 flex-col items-center">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Norte
-                        </span>
-                        <input
-                          list={datalistId}
-                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
-                          value={valores.norte || ''}
-                          title={valores.norte || ''}
-                          onChange={(e) => onCambioValor(planta, ambiente, 'norte', e.target.value)}
-                          placeholder="Sin detectar…"
-                        />
-                      </div>
-
-                      <div style={{ gridArea: 'oeste' }} className="flex min-w-0 flex-col items-center">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Oeste
-                        </span>
-                        <input
-                          list={datalistId}
-                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
-                          value={valores.oeste || ''}
-                          title={valores.oeste || ''}
-                          onChange={(e) => onCambioValor(planta, ambiente, 'oeste', e.target.value)}
-                          placeholder="Sin detectar…"
-                        />
-                      </div>
-
-                      <div
-                        style={{ gridArea: 'imagen' }}
-                        className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white"
-                      >
-                        <PlanoUnidad
-                          url={imagenUrl}
-                          planta={planta}
-                          angleDeg={angleDeg}
-                          ancho={datos?.ancho}
-                          alto={datos?.alto}
-                          foco={datos?.focos?.[ambiente]}
-                        />
-                      </div>
-
-                      <div style={{ gridArea: 'este' }} className="flex min-w-0 flex-col items-center">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          Este
-                        </span>
-                        <input
-                          list={datalistId}
-                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
-                          value={valores.este || ''}
-                          title={valores.este || ''}
-                          onChange={(e) => onCambioValor(planta, ambiente, 'este', e.target.value)}
-                          placeholder="Sin detectar…"
-                        />
-                      </div>
-
-                      <div style={{ gridArea: 'sud' }} className="flex min-w-0 flex-col items-center">
-                        <input
-                          list={datalistId}
-                          className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
-                          value={valores.sud || ''}
-                          title={valores.sud || ''}
-                          onChange={(e) => onCambioValor(planta, ambiente, 'sud', e.target.value)}
-                          placeholder="Sin detectar…"
-                        />
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Sud</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+              {nombres.map((ambiente) => (
+                <ColindanciaCard
+                  key={ambiente}
+                  ambiente={ambiente}
+                  valores={colindancias[planta]?.[ambiente] || {}}
+                  onCambioValor={(direccion, valor) => onCambioValor(planta, ambiente, direccion, valor)}
+                  datalistId={datalistId}
+                  imagenUrl={imagenUrl}
+                  angleDeg={angleDeg}
+                  ancho={datos?.ancho}
+                  alto={datos?.alto}
+                  foco={datos?.focos?.[ambiente]}
+                />
+              ))}
             </div>
           </div>
         )

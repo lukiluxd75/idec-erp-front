@@ -333,13 +333,6 @@ export function buildRows(paginas) {
   return filas
 }
 
-export function downloadBlob(blob, nombre) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = nombre
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
+// Re-exportado por compatibilidad: quedó acá antes de que downloadBlob se
+// volviera compartido (ver src/shared/utils/download.util.js).
+export { downloadBlob } from '@/shared/utils'
