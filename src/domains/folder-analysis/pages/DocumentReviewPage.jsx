@@ -6,6 +6,7 @@ import { toast } from 'react-toastify'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
+import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
 import { JsonEditor } from '@/domains/folder-analysis/components/forms/JsonEditor'
 import { TaxReceiptForm } from '@/domains/folder-analysis/components/forms/TaxReceiptForm'
@@ -14,6 +15,7 @@ import {
   DOC_TYPE_BY_ID,
   FALLBACK_ICON,
   IN_PROGRESS,
+  SERVER_READ,
   formatDateTime,
 } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
@@ -121,6 +123,13 @@ export default function DocumentReviewPage() {
 
   const type = DOC_TYPE_BY_ID[document.doc_type]
   const hasData = WITH_DATA.has(document.status)
+  // What the OCR + rules reading flagged (only the lanes read on the server
+  // carry it). It is a to-do list: once the architect saved the review, the
+  // values were checked by a person and the marks would only be noise.
+  const reading = document.status === 'extracted' ? document.data?.reading : null
+  // Fields to compare against the photo: the ones the OCR was unsure about, plus
+  // the ones the AI placed from the text instead of a rule.
+  const flagged = [...(reading?.low_confidence_fields || []), ...(reading?.fields_filled_by_ai || [])]
 
   return (
     <Card className="animate-card-in">
@@ -151,12 +160,44 @@ export default function DocumentReviewPage() {
         <div className="flex flex-col gap-4">
           {IN_PROGRESS.has(document.status) && (
             <Alert type="info">
-              El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.
+              {SERVER_READ.has(document.doc_type) ? (
+                <>
+                  <p>
+                    {type?.noun ? `Se está leyendo ${type.noun}` : 'Se está leyendo el documento'} con OCR en el
+                    servidor. Esta pantalla se actualiza sola.
+                  </p>
+                  <ReadingProgress className="mt-2" pages={document.pages} />
+                </>
+              ) : (
+                'El documento se está analizando en las PCs de los arquitectos. Esta pantalla se actualiza sola.'
+              )}
             </Alert>
           )}
           {document.status === 'failed' && <Alert type="error">{document.error}</Alert>}
           {document.status === 'draft' && (
             <Alert type="info">Este documento todavía no fue analizado. Vuelva a la bandeja y presione Analizar.</Alert>
+          )}
+
+          {hasData && reading?.observations?.length > 0 && (
+            <Alert type="warning" title="Qué revisar de esta lectura">
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {reading.observations.map((note, i) => (
+                  <li key={i}>{note}</li>
+                ))}
+              </ul>
+              {reading.unassigned_lines?.length > 0 && (
+                <p className="mt-2">
+                  Líneas leídas que no se pudieron asignar a un asiento:{' '}
+                  <span className="font-mono">{reading.unassigned_lines.join(' · ')}</span>
+                </p>
+              )}
+              {reading.labels_not_found?.length > 0 && (
+                <p className="mt-2">
+                  Casillas cuyo rótulo no se encontró en la foto (quedaron vacías):{' '}
+                  <span className="font-mono">{reading.labels_not_found.join(' · ')}</span>
+                </p>
+              )}
+            </Alert>
           )}
 
           {hasData && (
@@ -172,9 +213,9 @@ export default function DocumentReviewPage() {
               </div>
               <div key={formVersion} className="max-h-[70vh] overflow-y-auto pr-1">
                 {document.doc_type === 'folio' ? (
-                  <FolioForm value={form} onChange={setForm} />
+                  <FolioForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : document.doc_type === 'tax_receipt' ? (
-                  <TaxReceiptForm value={form} onChange={setForm} />
+                  <TaxReceiptForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : (
                   <JsonEditor value={form} onChange={setForm} onInvalid={setJsonInvalid} />
                 )}

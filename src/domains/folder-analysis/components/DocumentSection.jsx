@@ -67,7 +67,9 @@ export function DocumentSection({ type, documents, busy, onCreate, ...cardHandle
                 <DocumentCard
                   document={document}
                   multiPage={type.multiPage}
-                  busy={busy}
+                  // A document still being created has no id of its own yet: it
+                  // takes no pages and no analysis until the server names it.
+                  busy={busy || Boolean(document.pending)}
                   {...cardHandlers}
                 />
               </li>

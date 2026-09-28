@@ -6,10 +6,23 @@ const E = API_ENDPOINTS.FOLDER_ANALYSIS
 /**
  * "Analizador y extractor de datos de carpetas". Photos arrive from the mobile app
  * into the inbox; here they are sorted into documents (folio, tax_receipt, plan),
- * sent to the architects' PCs for analysis, reviewed and saved as JSON.
+ * analyzed, reviewed and saved as JSON. A folio and a tax receipt are read on the
+ * server with OCR + rules and take seconds (the screen follows them photo by
+ * photo); a plan goes to the architects' PCs and takes minutes.
  */
 export const folderAnalysisApi = {
   inbox: () => httpClient.get(E.CAPTURES),
+
+  /**
+   * Same entry point the mobile app uses, from the web: photos picked in the
+   * computer's file explorer (or dropped on the inbox) land in the same inbox.
+   * @param {File[]} files up to MAX_FILES_PER_UPLOAD images per call
+   */
+  uploadCaptures: (files) => {
+    const formData = new FormData()
+    files.forEach((file) => formData.append('files', file))
+    return httpClient.post(E.CAPTURES, formData)
+  },
 
   // Requires Bearer -> cannot be a direct <img src>; downloaded as Blob.
   captureBlob: (id, thumbnail = false) =>
