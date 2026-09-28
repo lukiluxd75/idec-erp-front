@@ -1,4 +1,4 @@
-import { Bug, Compass, RotateCcw, RotateCw, ScanSearch } from 'lucide-react'
+import { Bug, Compass, FileDown, RotateCcw, RotateCw, ScanSearch } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
@@ -8,6 +8,7 @@ import {
   analizarColindancias,
   autodetectarUnidades,
 } from '@/domains/resolutions/utils/colindanciasDetector'
+import { generarColindanciasPdf } from '@/domains/resolutions/utils/colindanciasPdf'
 import { detectNorth } from '@/domains/resolutions/utils/planNorthDetector'
 import { downloadBlob } from '@/domains/resolutions/utils/sheet2Excel'
 import { Button, Card, SectionHeader } from '@/shared/ui'
@@ -50,6 +51,18 @@ function motivosDe(detalle) {
       motivos[b.valor] = b.motivo
     })
   return motivos
+}
+
+/**
+ * Unidades con tarjeta propia de una planta: con tabla, sus nombres de
+ * "Ambiente"; sin tabla, los ya autodetectados del plano (`datos.nombres`).
+ * Después de detectar (`datos.motivos` existe), se saca lo que el OCR no
+ * encontró en ESE plano -- no es de esa planta. Misma función para la
+ * pantalla y el PDF, para que muestren exactamente lo mismo.
+ */
+function unidadesVisibles(planta, unidadesPorPlanta, datos) {
+  const nombresConocidos = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos?.nombres || []
+  return datos?.motivos ? nombresConocidos.filter((a) => !datos.motivos[a]) : nombresConocidos
 }
 
 /**
@@ -129,6 +142,12 @@ function PlanoUnidad({ url, planta, angleDeg, ancho, alto, foco }) {
  * ubicó en SU plano: un nombre de Hoja2 que no aparece ahí no es de esa
  * planta (pertenece a otra, o la tabla lo trajo mal) y no gana tarjeta --
  * sigue ofrecido igual en el <input> de "vecino" de las que sí aparecen.
+ *
+ * "Generar PDF" (colindanciasPdf.js) vuelca TODO lo detectado -- todas las
+ * plantas, cada unidad con la misma imagen ampliada/rotada de su tarjeta y
+ * sus 4 valores -- en un único documento para repasar o compartir sin abrir
+ * la pantalla con decenas de tarjetas. Usa lo que quedó en `colindancias`
+ * (con las correcciones a mano ya aplicadas), no la sugerencia cruda.
  */
 export function ColindanciasSection({
   resolutionId,
@@ -139,6 +158,7 @@ export function ColindanciasSection({
   setColindancias,
 }) {
   const [detectando, setDetectando] = useState(false)
+  const [generandoPdf, setGenerandoPdf] = useState(false)
   const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, nombres, autoDetectadas, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
   const [logPorPagina, setLogPorPagina] = useState({}) // { ["orden|planta"]: entrada del log de llenado }
@@ -330,6 +350,35 @@ export function ColindanciasSection({
     downloadBlob(new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' }), `colindancias_log_${nombre}.json`)
   }
 
+  const generarPdf = async () => {
+    // Mismas plantas y las mismas unidades que se ven en pantalla ahora
+    // mismo (unidadesVisibles), con los valores YA corregidos a mano si los
+    // hubo -- es un reporte de lo que el usuario dejó, no de la sugerencia
+    // cruda.
+    const secciones = plantasConPlano.map((planta) => {
+      const datos = datosPorPlanta[planta]
+      const nombres = unidadesVisibles(planta, unidadesPorPlanta, datos)
+      return {
+        planta,
+        unidades: nombres.map((ambiente) => ({
+          nombre: ambiente,
+          valores: colindancias[planta]?.[ambiente] || {},
+          url: imagenesPorPlanta[planta],
+          angleDeg: datos?.angleDeg ?? 0,
+          foco: datos?.focos?.[ambiente],
+        })),
+      }
+    })
+    setGenerandoPdf(true)
+    try {
+      await generarColindanciasPdf(resolutionNumber, secciones)
+    } catch (e) {
+      toast.error(`No se pudo generar el PDF: ${e.message}`)
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
+
   const onCambioValor = (planta, ambiente, direccion, valor) => {
     setColindancias((prev) => ({
       ...prev,
@@ -355,6 +404,11 @@ export function ColindanciasSection({
         <Button icon={ScanSearch} onClick={detectar} loading={detectando}>
           Detectar colindancias
         </Button>
+        {Object.keys(datosPorPlanta).length > 0 && (
+          <Button variant="secondary" icon={FileDown} onClick={generarPdf} loading={generandoPdf}>
+            Generar PDF
+          </Button>
+        )}
         {Object.keys(logPorPagina).length > 0 && (
           <Button variant="secondary" icon={Bug} onClick={descargarLog}>
             Descargar log de llenado
@@ -364,16 +418,9 @@ export function ColindanciasSection({
 
       {plantasConPlano.map((planta) => {
         const datos = datosPorPlanta[planta]
-        // Con tabla, sus nombres de "Ambiente"; sin tabla, los que ya se
-        // autodetectaron del plano (vacío hasta que se pulse "Detectar").
-        const nombresConocidos = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos?.nombres || []
         const autoDetectadas = !unidadesPorPlanta[planta]?.length
-        // Una tarjeta solo para lo que el OCR SI encontró en ESTA planta: un
-        // nombre de Hoja2 que no aparece en el plano de esa planta no es de
-        // ahí (pertenece a otra planta, o la tabla lo trajo mal) -- antes de
-        // detectar (datos.motivos aún no existe) se listan todos los de la
-        // tabla igual, para poder revisarlos.
-        const nombres = datos?.motivos ? nombresConocidos.filter((a) => !datos.motivos[a]) : nombresConocidos
+        const nombresConocidos = autoDetectadas ? datos?.nombres || [] : unidadesPorPlanta[planta]
+        const nombres = unidadesVisibles(planta, unidadesPorPlanta, datos)
         const angleDeg = datos?.angleDeg ?? 0
         const imagenUrl = imagenesPorPlanta[planta]
         // El <input list> de "vecino" sigue ofreciendo TODOS los nombres
