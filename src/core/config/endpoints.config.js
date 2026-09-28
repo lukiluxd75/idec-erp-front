@@ -49,6 +49,10 @@ export const API_ENDPOINTS = {
     MANUAL_ALIGN_PREVIEW: (jobId) => `/api/detection/jobs/${jobId}/manual-align/preview`,
     MANUAL_ALIGN_APPLY: (jobId) => `/api/detection/jobs/${jobId}/manual-align/apply`,
     CADASTRAL_RECORD: (id) => `/api/detection/cadastre/cadastral-record/${id}`,
+    CAMPAIGNS: '/api/detection/campaigns',
+    AFFECTED_PARCEL_REVIEW: (id) => `/api/detection/affected-parcels/${id}/review`,
+    SECTORS: '/api/detection/sectors',
+    SECTOR_DETAIL: (id) => `/api/detection/sectors/${id}`,
   },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',

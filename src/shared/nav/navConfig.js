@@ -8,6 +8,7 @@ import {
   KeyRound,
   Building2,
   ScanSearch,
+  History,
   FileSpreadsheet,
   Bot,
   MessageCircle,
@@ -43,6 +44,7 @@ export const NAV_SECTIONS = [
     path: '/detection',
     children: [
       { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
+      { label: 'Historial', path: '/detection/history', icon: History },
     ],
   },
   {

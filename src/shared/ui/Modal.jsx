@@ -20,7 +20,11 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
+      // z-[2000]: Leaflet's own panes/controls go up to z-index 1000 (see
+      // leaflet.css .leaflet-pane/.leaflet-top/.leaflet-bottom); z-50 let the
+      // map (DetectionMap, ValidateEvidenceMaps, CompareZoomPanel) render on
+      // top of every modal in the app, including ConfirmDialog.
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
