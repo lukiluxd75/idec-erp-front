@@ -561,6 +561,17 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     anterior.cells = anterior.cells.map((c) => ({ ...c, text: '' }))
   }
 
+  // "CUBIERTA" (terraza/techo con áreas comunes) existe en tablas reales pero
+  // la plantilla plantilla-ph.xlsm NO la tiene entre sus 35 plantas fijas
+  // (SOTANO/SEMISOTANO/BAJA/1º-32º PISO): RESUMEN busca esos nombres exactos
+  // con VLOOKUP y MODEL SISCAT arma una columna aparte por cada uno a mano,
+  // así que agregarla ahí significaría tocar fórmulas del .xlsm oficial a
+  // ciegas. Mientras eso no se resuelva en la plantilla, sus filas se omiten
+  // enteras (no entran a la tabla ni al Excel) en vez de quedar en rojo
+  // pidiendo una planta que no existe.
+  const CUBIERTA_RE = /\bCUBIERTA\b/i
+  const PLANTA_OMITIDA = '\0omitida'
+
   const rows = []
   let plantaActual = ''
   // Texto crudo leido por el OCR para la planta actual, para mostrarlo de
@@ -626,7 +637,7 @@ export function parseSuperficiesPage(blocks, opts = {}) {
       const v = cells[plantaColIdx]?.text?.trim()
       if (v) {
         plantaActualRaw = v
-        plantaActual = guessPlantaCanonica(v) || plantaActual
+        plantaActual = CUBIERTA_RE.test(v) ? PLANTA_OMITIDA : guessPlantaCanonica(v) || plantaActual
       }
     }
 
@@ -640,13 +651,22 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     // tiene nada que ver.
     if (soloPrimera && PLANTA_RE.test(primeraTxt)) {
       plantaActualRaw = cells[ambienteIdx >= 0 ? ambienteIdx : 0].text.trim()
-      plantaActual = guessPlantaCanonica(plantaActualRaw) || plantaActual
+      plantaActual = CUBIERTA_RE.test(plantaActualRaw) ? PLANTA_OMITIDA : guessPlantaCanonica(plantaActualRaw) || plantaActual
       continue
     }
 
     const ambienteTxt = (cells[ambienteIdx >= 0 ? ambienteIdx : 0]?.text || '').trim()
     const tieneNumero = rowTieneNumero(cells)
     if (!ambienteTxt && !tieneNumero) continue // fila realmente vacia (sin texto ni numeros)
+
+    // Tramo de una planta omitida (CUBIERTA, ver arriba): ni sus filas-fragmento
+    // ni su fila de datos entran a la tabla -- se descarta también lo que
+    // hubiera quedado pendiente, para que no se le pegue a la siguiente fila
+    // real cuando el tramo omitido termine.
+    if (plantaActual === PLANTA_OMITIDA) {
+      fragmentoPendiente = ''
+      continue
+    }
 
     // Fila-fragmento: una celda de ambiente escrita en varias lineas (p.ej.
     // "HALL + ASCENSOR + GRADA + SHAFT + BAÑOS H y M") se corta en varias filas
