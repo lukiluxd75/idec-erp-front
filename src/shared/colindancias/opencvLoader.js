@@ -1,8 +1,8 @@
 /**
- * Único punto de carga de OpenCV (@techstark/opencv-js) para esta pantalla
- * (planNorthDetector.js, tableLineDetector.js). Se importa con import()
- * dinámico desde getCv(), así los varios MB de OpenCV no entran al bundle
- * principal.
+ * Único punto de carga de OpenCV (@techstark/opencv-js), compartido entre
+ * módulos y dominios (planNorthDetector.js aquí mismo, y
+ * resolutions/utils/tableLineDetector.js). Se importa con import() dinámico
+ * desde getCv(), así los varios MB de OpenCV no entran al bundle principal.
  *
  * Por qué este módulo intermedio en vez de `import('@techstark/opencv-js')`
  * directo (verificado en Chrome, 2026-09-25):

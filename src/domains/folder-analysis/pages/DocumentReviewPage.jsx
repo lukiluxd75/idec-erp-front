@@ -6,6 +6,7 @@ import { toast } from 'react-toastify'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
+import { PlanColindancias } from '@/domains/folder-analysis/components/PlanColindancias'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
 import { JsonEditor } from '@/domains/folder-analysis/components/forms/JsonEditor'
@@ -225,6 +226,12 @@ export default function DocumentReviewPage() {
           )}
         </div>
       </div>
+
+      {document.doc_type === 'plan' && document.pages.length > 0 && (
+        <div className="mt-5">
+          <PlanColindancias documentId={document.id} pages={document.pages} />
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmReanalyze}
