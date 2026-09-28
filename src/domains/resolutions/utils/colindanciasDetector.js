@@ -358,6 +358,13 @@ function buscarFraseDetalle(bloques, frase, radio) {
 // "ESC"...).
 const RUIDO_ROTULO = new Set(['SUP', 'ESC', 'Y', 'DE', 'M', 'M2', 'N'])
 
+// Un bloque mal leído casi siempre sale con confianza más baja que uno bien
+// leído: contra un plano real de 8 plantas, rótulos genuinos (DEPOSITO, BAÑO,
+// SALA DE...) salieron 0.75+ mientras que ruido inventado por el OCR sobre
+// texto chico o rotado ("HOOOO", "CASIKIO", "FECTRRON", "POOROOORO") salió
+// por debajo de 0.65 -- se descartan antes de tokenizar.
+const UMBRAL_CONFIANZA_ROTULO = 0.68
+
 // ¿Los tokens de un bloque son (o contienen completa) una de las 7 leyendas
 // fijas? Esas ya se buscan aparte (LEYENDAS_COLINDANCIA) y no son "Ambiente".
 function esLeyenda(tokens) {
@@ -385,6 +392,7 @@ export function autodetectarUnidades(bloquesOcr) {
   const vistos = new Set()
   const nombres = []
   bloquesOcr.forEach((b) => {
+    if ((b.confidence ?? 1) < UMBRAL_CONFIANZA_ROTULO) return
     const tokens = tokensBloque(b)
     if (tokens.length === 0 || esLeyenda(tokens)) return
     if (tokens[0] === 'PLANTA') return // título de la planta, no una unidad
