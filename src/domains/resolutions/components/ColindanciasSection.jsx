@@ -3,10 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
 import { ocrImage, resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
-import { LEYENDAS_COLINDANCIA, analizarColindancias } from '@/domains/resolutions/utils/colindanciasDetector'
+import {
+  LEYENDAS_COLINDANCIA,
+  analizarColindancias,
+  autodetectarUnidades,
+} from '@/domains/resolutions/utils/colindanciasDetector'
 import { detectNorth } from '@/domains/resolutions/utils/planNorthDetector'
 import { downloadBlob } from '@/domains/resolutions/utils/sheet2Excel'
-import { Alert, Button, Card, SectionHeader } from '@/shared/ui'
+import { Button, Card, SectionHeader } from '@/shared/ui'
 
 /**
  * Dónde hacer zoom en la tarjeta de cada unidad: el rótulo de la unidad en
@@ -112,6 +116,14 @@ function PlanoUnidad({ url, planta, angleDeg, ancho, alto, foco }) {
  * sugerencia (norte detectado y por qué, bloques del OCR, dónde se ubicó cada
  * unidad o por qué no, candidatos por lado) más lo que quedó en pantalla,
  * para depurar con resoluciones reales sin tener que reproducirlas.
+ *
+ * No hace falta la tabla de superficies (Hoja2) para detectar: cada planta
+ * se detecta por su cuenta, sin depender de la otra. Con filas ya cargadas en
+ * Hoja2 para esa planta, busca esos nombres de "Ambiente"; sin ellas, saca
+ * los nombres de unidad directo del plano (autodetectarUnidades en
+ * colindanciasDetector.js) -- la tarjeta lo marca ("del plano, sin tabla")
+ * porque, al no venir de una lista conocida, conviene revisarla con más
+ * cuidado.
  */
 export function ColindanciasSection({
   resolutionId,
@@ -122,16 +134,17 @@ export function ColindanciasSection({
   setColindancias,
 }) {
   const [detectando, setDetectando] = useState(false)
-  const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, focos } }
+  const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, nombres, autoDetectadas, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
   const [logPorPagina, setLogPorPagina] = useState({}) // { ["orden|planta"]: entrada del log de llenado }
 
   const cargadasRef = useRef(new Set())
   const objectUrlsRef = useRef({})
 
-  const plantasConPlano = [...new Set(planPages.map((p) => p.planta))].filter(
-    (planta) => (unidadesPorPlanta[planta] || []).length > 0,
-  )
+  // Toda planta con página de plano entra, tenga o no filas ya cargadas en
+  // Hoja2: sin tabla, "Detectar colindancias" saca los nombres de unidad del
+  // propio plano (autodetectarUnidades) en vez de saltarse la planta.
+  const plantasConPlano = [...new Set(planPages.map((p) => p.planta))]
 
   // Precarga la foto de cada planta apenas hay página de plano, sin esperar
   // a "Detectar colindancias" -- así el usuario ya ve el plano (sin rotar)
@@ -167,7 +180,9 @@ export function ColindanciasSection({
     const datos = datosPorPlanta[planta]
     setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg } }))
     if (!datos?.ancho || !datos?.alto) return // aun no corrio el OCR -- solo gira la vista previa
-    const nombres = unidadesPorPlanta[planta] || []
+    // Igual que en detectar(): con tabla, sus nombres; sin tabla, los que ya
+    // se autodetectaron del plano (guardados en datos.nombres).
+    const nombres = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos.nombres || []
     const analisis = analizarColindancias(datos.bloques, nombres, { angleDeg }, {
       width: datos.ancho,
       height: datos.alto,
@@ -210,9 +225,6 @@ export function ColindanciasSection({
       // OCR y el norte de esa imagen se calculan una sola vez.
       const leidas = {}
       for (const p of planPages) {
-        const nombres = unidadesPorPlanta[p.planta] || []
-        if (nombres.length === 0) continue // planta sin unidades cargadas todavia en Hoja2
-
         if (!leidas[p.order_index]) {
           const blobPagina = await resolutionsApi.planPageBlob(resolutionId, p.order_index)
           const bitmap = await createImageBitmap(blobPagina)
@@ -228,6 +240,12 @@ export function ColindanciasSection({
           }
         }
         const { blob, ancho, alto, bloques, norte } = leidas[p.order_index]
+        // Con tabla, sus nombres de "Ambiente"; sin tabla (todavía no se
+        // cargó Hoja2 para esta planta), los rótulos que el propio plano deja
+        // leer -- cada planta se detecta por su cuenta, sin depender de la
+        // otra.
+        const deTabla = unidadesPorPlanta[p.planta] || []
+        const nombres = deTabla.length > 0 ? deTabla : autodetectarUnidades(bloques)
         const claveLog = `${p.order_index}|${p.planta}`
         const analisis = analizarColindancias(bloques, nombres, norte, { width: ancho, height: alto })
         const sugerencias = analisis.sugerencias
@@ -240,6 +258,8 @@ export function ColindanciasSection({
           confidence: norte.confidence,
           pagina: p.order_index,
           claveLog,
+          nombres,
+          autoDetectadas: deTabla.length === 0,
           focos: focosDe(analisis.detalle, ancho, alto),
           motivos: motivosDe(analisis.detalle),
         }
@@ -337,16 +357,12 @@ export function ColindanciasSection({
         )}
       </div>
 
-      {plantasConPlano.length === 0 && (
-        <Alert type="info" className="mt-3">
-          Cargue primero la tabla de superficies (Hoja2) de al menos una planta con página de plano para poder
-          sugerir colindancias.
-        </Alert>
-      )}
-
       {plantasConPlano.map((planta) => {
-        const nombres = unidadesPorPlanta[planta] || []
         const datos = datosPorPlanta[planta]
+        // Con tabla, sus nombres de "Ambiente"; sin tabla, los que ya se
+        // autodetectaron del plano (vacío hasta que se pulse "Detectar").
+        const nombres = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos?.nombres || []
+        const autoDetectadas = !unidadesPorPlanta[planta]?.length
         const angleDeg = datos?.angleDeg ?? 0
         const imagenUrl = imagenesPorPlanta[planta]
         const opcionesDatalist = [...LEYENDAS_COLINDANCIA, ...nombres]
@@ -355,7 +371,17 @@ export function ColindanciasSection({
         return (
           <div key={planta} className="mt-6 border-t border-slate-100 pt-5 first:mt-4 first:border-0 first:pt-0">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-slate-700">{planta}</p>
+              <p className="text-sm font-semibold text-slate-700">
+                {planta}
+                {autoDetectadas && datos && (
+                  <span
+                    className="ml-2 rounded-full bg-accent-50 px-2 py-0.5 text-[10px] font-normal normal-case text-accent-600"
+                    title="Esta planta todavía no tiene filas en la tabla de superficies (Hoja2): las unidades se leyeron directo del plano, revíselas con más cuidado."
+                  >
+                    del plano, sin tabla
+                  </span>
+                )}
+              </p>
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span>
                   Norte detectado: {Math.round(angleDeg)}°{' '}
@@ -402,6 +428,14 @@ export function ColindanciasSection({
                 <option key={op} value={op} />
               ))}
             </datalist>
+
+            {nombres.length === 0 && (
+              <p className="text-xs text-slate-400">
+                {autoDetectadas
+                  ? 'Pulse "Detectar colindancias" para leer las unidades directo del plano.'
+                  : 'Sin unidades en la tabla de superficies para esta planta.'}
+              </p>
+            )}
 
             <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(26rem, 1fr))' }}>
               {nombres.map((ambiente) => {

@@ -353,6 +353,55 @@ function buscarFraseDetalle(bloques, frase, radio) {
   }
 }
 
+// Palabras sueltas que sobreviven a limpiarMedidas() pero no son parte de
+// ningún nombre de ambiente ("SUP 13.44m2" deja "SUP", "ESC: 1:100" deja
+// "ESC"...).
+const RUIDO_ROTULO = new Set(['SUP', 'ESC', 'Y', 'DE', 'M', 'M2', 'N'])
+
+// ¿Los tokens de un bloque son (o contienen completa) una de las 7 leyendas
+// fijas? Esas ya se buscan aparte (LEYENDAS_COLINDANCIA) y no son "Ambiente".
+function esLeyenda(tokens) {
+  return LEYENDAS_COLINDANCIA.some((leyenda) => {
+    const tLeyenda = normTexto(leyenda).split(' ').filter(Boolean)
+    return tLeyenda.every((t) => tokens.includes(t))
+  })
+}
+
+/**
+ * Candidatos a "Ambiente" leídos directamente del plano, para una planta que
+ * todavía no tiene filas en Hoja2 -- así ColindanciasSection puede detectar
+ * esa planta por su cuenta, sin depender de que la tabla de superficies esté
+ * cargada. Cada bloque del OCR que no sea una medida, una leyenda fija ni
+ * ruido se toma como rótulo de unidad; buscarFraseDetalle() lo vuelve a
+ * ubicar después igual que a un nombre de Hoja2, así que el resultado y el
+ * log de llenado salen con el mismo formato.
+ *
+ * Es deliberadamente más permisivo que preciso (puede sacar algún rótulo de
+ * más, como un "PARQUEO" suelto de una etiqueta partida en dos líneas): el
+ * usuario revisa y edita cada tarjeta antes de guardar, así que conviene más
+ * una unidad de más -- se ignora -- que una de menos -- no se ve.
+ */
+export function autodetectarUnidades(bloquesOcr) {
+  const vistos = new Set()
+  const nombres = []
+  bloquesOcr.forEach((b) => {
+    const tokens = tokensBloque(b)
+    if (tokens.length === 0 || esLeyenda(tokens)) return
+    if (tokens[0] === 'PLANTA') return // título de la planta, no una unidad
+    const tieneAlgoUtil = tokens.some((t) => !esNumero(t) && t.length >= 4 && !RUIDO_ROTULO.has(t))
+    if (!tieneAlgoUtil) return
+    const nombre = tokens.join(' ')
+    if (vistos.has(nombre)) return
+    vistos.add(nombre)
+    nombres.push(nombre)
+  })
+  // Un rótulo sin número ("PARQUEO") suele ser el resto de una etiqueta que
+  // el OCR partió en dos líneas y cuya versión completa ("PARQUEO 6") ya
+  // quedó como candidato aparte -- se descarta el suelto para no duplicar.
+  const conNumero = nombres.filter((n) => /\d/.test(n))
+  return nombres.filter((n) => /\d/.test(n) || !conNumero.some((c) => c.startsWith(`${n} `)))
+}
+
 // Sector cardinal (frame "arriba = norte") del vector (dx,dy) -- ver
 // convencion de angulo en planNorthDetector.js: coords de imagen, Y hacia
 // abajo. Divide el circulo en 4 conos de 90 centrados en cada eje.
