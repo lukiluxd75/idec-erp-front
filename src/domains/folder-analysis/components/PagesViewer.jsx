@@ -5,9 +5,12 @@ import { CaptureViewer } from '@/domains/folder-analysis/components/CaptureViewe
 import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { cn } from '@/shared/utils'
 
-/** The document's original photos, one tab per page, to compare against the form. */
-export function PagesViewer({ pages }) {
-  const [current, setCurrent] = useState(0)
+/**
+ * The document's original photos, one tab per page, to compare against the form.
+ * The selected page is controlled by the parent, which also shows what was read
+ * from that same page.
+ */
+export function PagesViewer({ pages, current, onChange }) {
   const [expanded, setExpanded] = useState(false)
   const index = Math.min(current, Math.max(pages.length - 1, 0))
   const page = pages[index]
@@ -28,7 +31,7 @@ export function PagesViewer({ pages }) {
             <button
               key={p.capture_id}
               type="button"
-              onClick={() => setCurrent(i)}
+              onClick={() => onChange(i)}
               className={cn(
                 'rounded-lg px-2.5 py-1 text-xs font-semibold transition',
                 i === index ? 'bg-brand-800 text-white' : 'bg-white/70 text-slate-600 hover:bg-white'
