@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { LoginPage } from '@/auth/pages'
 import { ProtectedRoute, PublicRoute } from '@/auth/guards'
@@ -7,14 +8,19 @@ import { DOMAIN_ROUTES } from '@/domains'
 import { AppShell } from './layout'
 import { DashboardPage, DomainHome, ModulePlaceholder } from './pages'
 
-// Paths with a real screen (see src/domains/index.js) — excluded from the generic placeholder.
+// ▼ Import defensivo: si el archivo no existe o falla, no rompe la app
+import * as cadastralViewerModule from '@/domains/cadastralviewer/routes'
+
+// Normaliza: acepta tanto `export const cadastralViewerRoutes` como `export default`
+const cadastralViewerRoutes =
+  cadastralViewerModule?.cadastralViewerRoutes ||
+  (Array.isArray(cadastralViewerModule?.default) ? cadastralViewerModule.default : [])
+
+// Debug temporal — borrar cuando funcione
+console.log('[AppRoutes] cadastralViewerRoutes =', cadastralViewerRoutes)
+
 const IMPLEMENTED_PATHS = new Set(DOMAIN_ROUTES.map((route) => route.path))
 
-/**
- * Blocks direct URL entry into a module that `permisos` does not allow (hiding the
- * sidebar/dashboard link is not enough — without this someone could type the path
- * by hand). `section` is the NAV_SECTIONS entry that owns the route (see getCurrentDomain).
- */
 function ModuleGuard({ section, children }) {
   const { user } = useAuth()
   if (!canViewModule(user?.permisos, section)) {
@@ -23,16 +29,11 @@ function ModuleGuard({ section, children }) {
   return children
 }
 
-/**
- * Main app router with public vs protected route separation.
- * Every protected route mounts inside <AppShell/> (sidebar + header), which exposes
- * the rest of the tree via <Outlet/>.
- */
 export function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Login route (if already authenticated, redirects to /dashboard) */}
+
         <Route
           path="/"
           element={
@@ -42,7 +43,30 @@ export function AppRoutes() {
           }
         />
 
-        {/* Protected area: requires a valid Keycloak token; navigated from the sidebar */}
+        {/* Prueba temporal */}
+        <Route
+          path="/kiosk-test"
+          element={
+            <div style={{ padding: 40, fontSize: 24, fontFamily: 'sans-serif' }}>
+              ✅ /kiosk-test funciona
+            </div>
+          }
+        />
+
+        <Route element={<ProtectedRoute />}>
+          {Array.isArray(cadastralViewerRoutes) && cadastralViewerRoutes.map((route) => (
+            <Route
+              key={route.path}
+              path={route.path}
+              element={
+                <Suspense fallback={<div style={{ height: '100dvh' }} />}>
+                  {route.element}
+                </Suspense>
+              }
+            />
+          ))}
+        </Route>
+
         <Route
           element={
             <ProtectedRoute>
@@ -52,7 +76,6 @@ export function AppRoutes() {
         >
           <Route path="dashboard" element={<DashboardPage />} />
 
-          {/* Domain entry: redirects to the module's first accessible function */}
           {DOMAIN_SECTIONS.map((domain) => (
             <Route
               key={domain.path}
@@ -65,7 +88,6 @@ export function AppRoutes() {
             />
           ))}
 
-          {/* Domains with a real screen (see src/domains/index.js) */}
           {DOMAIN_ROUTES.map((route) => (
             <Route
               key={route.path}
@@ -74,7 +96,6 @@ export function AppRoutes() {
             />
           ))}
 
-          {/* ERP modules without real functionality yet (see shared/nav/navConfig.js) */}
           {PLACEHOLDER_ROUTES.filter((route) => !IMPLEMENTED_PATHS.has(route.path)).map((route) => (
             <Route
               key={route.path}
@@ -88,7 +109,6 @@ export function AppRoutes() {
           ))}
         </Route>
 
-        {/* Redirect for any unrecognized route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
