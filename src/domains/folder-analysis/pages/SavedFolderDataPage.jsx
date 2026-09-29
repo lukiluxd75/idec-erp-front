@@ -1,10 +1,20 @@
-import { FileSearch, FolderSearch, RefreshCw, Search } from 'lucide-react'
+import { FileSearch, FolderSearch, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { toast } from 'react-toastify'
 
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { DOC_TYPES, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
-import { Alert, Button, Card, EmptyState, SectionHeader, Spinner } from '@/shared/ui'
+import {
+  Alert,
+  Button,
+  Card,
+  ConfirmDialog,
+  EmptyState,
+  IconButton,
+  SectionHeader,
+  Spinner,
+} from '@/shared/ui'
 
 const LABELS = {
   registration_number: 'Matrícula', registration_status: 'Estado de matrícula', administrative_location: 'Ubicación administrativa',
@@ -80,6 +90,9 @@ export default function SavedFolderDataPage() {
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  // La revisión que se pidió borrar, junto al nombre con que se la muestra,
+  // para que el diálogo pueda nombrarla.
+  const [porEliminar, setPorEliminar] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -100,6 +113,20 @@ export default function SavedFolderDataPage() {
       return normalizeSearch(`${findRegistrationNumber(data)} ${document.id} ${JSON.stringify(data)}`).includes(term)
     })
   }, [documents, query])
+
+  // Un folio, un impuesto y un plano son el mismo documento con otro doc_type,
+  // así que los tres se borran por el mismo endpoint. El backend se lleva con
+  // él la fila de reviewed_* (ON DELETE CASCADE) y devuelve las fotos a
+  // "Fotos recibidas", donde se las puede volver a clasificar.
+  const eliminar = async ({ document, nombre }) => {
+    try {
+      await folderAnalysisApi.deleteDocument(document.id)
+      setDocuments((prev) => prev.filter((d) => d.id !== document.id))
+      toast.success(`${nombre}: revisión eliminada.`)
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -143,7 +170,12 @@ export default function SavedFolderDataPage() {
                 {(registrationNumber || planName || receiptNumber) && <p className="mt-0.5 text-xs text-slate-500">{type?.label || document.doc_type}{registrationNumber ? ` · Matrícula ${registrationNumber}` : ''}</p>}
                 <p className="mt-0.5 text-xs text-slate-500">Guardado {formatDateTime(document.reviewed_at)} · {document.id.slice(0, 8).toUpperCase()}</p></div>
             </div>
-            <Link to={`/folder-analysis/documents/${document.id}`}><Button size="sm" variant="secondary">Abrir revisión</Button></Link>
+            <div className="flex items-center gap-1.5">
+              <Link to={`/folder-analysis/documents/${document.id}`}><Button size="sm" variant="secondary">Abrir revisión</Button></Link>
+              <IconButton icon={Trash2} tone="danger" title="Eliminar revisión"
+                aria-label={`Eliminar ${displayName}`}
+                onClick={() => setPorEliminar({ document, nombre: displayName })} />
+            </div>
           </div>
           <details className="group">
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-accent-700 hover:bg-slate-50 sm:px-5">
@@ -156,6 +188,19 @@ export default function SavedFolderDataPage() {
           </details>
         </Card>
       })}</div>}
+
+      <ConfirmDialog
+        open={Boolean(porEliminar)}
+        onClose={() => setPorEliminar(null)}
+        onConfirm={() => eliminar(porEliminar)}
+        title="Eliminar revisión"
+        message={
+          porEliminar
+            ? `Se eliminarán los datos guardados de "${porEliminar.nombre}". Las fotos vuelven a "Fotos recibidas" para clasificarlas de nuevo.`
+            : ''
+        }
+        confirmLabel="Eliminar"
+      />
     </div>
   )
 }
