@@ -186,25 +186,33 @@ export default function DetectionPage() {
     }
   }, [])
 
+  // Scoped to the selected campaign: a polygon drawn under one campaign
+  // belongs to it, so switching campaigns must make the map overlay show
+  // only that campaign's sectors. campaignId === null is "Sin campaña" --
+  // sectors with no campaign at all, not "no filter" (Historial is the one
+  // screen that still wants everything, via its own unscoped call).
   const loadProcessedSectors = useCallback(async () => {
     try {
-      const data = await detectionApi.listProcessedSectors()
+      const data = await detectionApi.listProcessedSectors(campaignId, { unassignedOnly: !campaignId })
       setProcessedSectors(Array.isArray(data) ? data : [])
     } catch (err) {
       // Non-blocking: the map overlay is a convenience, not required to run
       // a new detection -- a failed refresh here should not interrupt the page.
       console.warn('No se pudieron cargar los sectores procesados', err)
     }
-  }, [])
+  }, [campaignId])
 
   useEffect(() => {
     loadMeta()
-    loadProcessedSectors()
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
       objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
     }
-  }, [loadMeta, loadProcessedSectors])
+  }, [loadMeta])
+
+  useEffect(() => {
+    loadProcessedSectors()
+  }, [loadProcessedSectors])
 
   async function hydrateAssets(payload) {
     objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))

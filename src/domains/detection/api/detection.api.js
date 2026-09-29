@@ -55,9 +55,12 @@ function reviewAffectedParcel(affectedParcelId, payload) {
   return httpClient.post(API_ENDPOINTS.DETECTION.AFFECTED_PARCEL_REVIEW(affectedParcelId), payload)
 }
 
-function listProcessedSectors(campaignId) {
-  const query = campaignId ? `?campaign_id=${campaignId}` : ''
-  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}${query}`)
+function listProcessedSectors(campaignId, { unassignedOnly = false } = {}) {
+  const params = new URLSearchParams()
+  if (campaignId) params.set('campaign_id', campaignId)
+  else if (unassignedOnly) params.set('unassigned_only', 'true')
+  const query = params.toString()
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}${query ? `?${query}` : ''}`)
 }
 
 function getProcessedSectorDetail(sectorId) {

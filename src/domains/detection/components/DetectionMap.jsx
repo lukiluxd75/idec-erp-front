@@ -2,7 +2,7 @@ import { Component, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import '../styles/detection-precision-cursor.css'
-import { Alert, Button } from '@/shared/ui'
+import { Alert, Badge, Button } from '@/shared/ui'
 import {
   createProcessedSectorsLayer,
   renderProcessedSectors,
@@ -400,6 +400,10 @@ function DetectionMapInner({
                 onChange={(v) => setLayer(d.key, v)}
               />
             ))}
+            <Badge variant="accent" className="ml-auto">
+              {processedSectors.length} sector{processedSectors.length === 1 ? '' : 'es'} procesado
+              {processedSectors.length === 1 ? '' : 's'}
+            </Badge>
           </div>
         </div>
         <div
