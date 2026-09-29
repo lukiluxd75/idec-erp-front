@@ -206,6 +206,9 @@ export default function FolderAnalysisPage() {
 
   // Read from the polled list, so the dialog follows the document as it advances.
   const watched = watchedId ? documents.find((d) => d.id === watchedId) : null
+  // Confirmed reviews belong in "Datos guardados"; keep them in the API state
+  // for polling/actions, but remove them from the active workbench lanes.
+  const activeDocuments = documents.filter((document) => document.status !== 'reviewed')
 
   const deleteCapture = (capture) =>
     setConfirm({
@@ -245,7 +248,7 @@ export default function FolderAnalysisPage() {
                   <DocumentSection
                     key={type.id}
                     type={type}
-                    documents={documents.filter((d) => d.doc_type === type.id)}
+                    documents={activeDocuments.filter((d) => d.doc_type === type.id)}
                     busy={busy}
                     {...handlers}
                   />
