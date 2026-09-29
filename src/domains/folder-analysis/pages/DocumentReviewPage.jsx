@@ -9,7 +9,7 @@ import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
 import { PlanColindancias } from '@/domains/folder-analysis/components/PlanColindancias'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
-import { JsonEditor } from '@/domains/folder-analysis/components/forms/JsonEditor'
+import { PlanPageInfo } from '@/domains/folder-analysis/components/forms/PlanPageInfo'
 import { TaxReceiptForm } from '@/domains/folder-analysis/components/forms/TaxReceiptForm'
 import { withFolioDefaults, withTaxReceiptDefaults } from '@/domains/folder-analysis/utils/formDefaults'
 import {
@@ -34,9 +34,9 @@ export default function DocumentReviewPage() {
   const [document, setDocument] = useState(null)
   const [form, setForm] = useState(null)
   const [planName, setPlanName] = useState('')
+  const [pageIndex, setPageIndex] = useState(0)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [jsonInvalid, setJsonInvalid] = useState(false)
   const [confirmReanalyze, setConfirmReanalyze] = useState(false)
   // Bumped when the data is replaced from the server, to remount the editors.
   const [formVersion, setFormVersion] = useState(0)
@@ -54,6 +54,7 @@ export default function DocumentReviewPage() {
             formStatus.current = doc.status
             setForm(initialForm(doc))
             setPlanName(doc.data?.plan_name || doc.data?.name || doc.data?.title || '')
+            setPageIndex(0)
             setFormVersion((v) => v + 1)
           }
           setDocument(doc)
@@ -161,7 +162,7 @@ export default function DocumentReviewPage() {
       />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <PagesViewer pages={document.pages} />
+        <PagesViewer pages={document.pages} current={pageIndex} onChange={setPageIndex} />
 
         <div className="flex flex-col gap-4">
           {IN_PROGRESS.has(document.status) && (
@@ -203,7 +204,7 @@ export default function DocumentReviewPage() {
           {hasData && (
             <>
               <div className="flex flex-wrap gap-2">
-                <Button icon={Save} loading={saving} disabled={jsonInvalid} onClick={save}>
+                <Button icon={Save} loading={saving} onClick={save}>
                   Guardar revisión
                 </Button>
                 <Button variant="secondary" icon={Download} onClick={download}>Descargar JSON</Button>
@@ -228,7 +229,7 @@ export default function DocumentReviewPage() {
                 ) : document.doc_type === 'tax_receipt' ? (
                   <TaxReceiptForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : (
-                  <JsonEditor value={form} onChange={setForm} onInvalid={setJsonInvalid} />
+                  <PlanPageInfo key={pageIndex} value={form} onChange={setForm} pageIndex={pageIndex} />
                 )}
               </div>
             </>
