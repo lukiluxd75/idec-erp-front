@@ -1,6 +1,6 @@
-import { ArrowLeft, Bug, FileSpreadsheet, Landmark, Save, ScanText, Table2 } from 'lucide-react'
+import { ArrowLeft, Bug, FileSpreadsheet, Landmark, Save, ScanText, Table2, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
 import { ENV } from '@/core/config/env.config'
@@ -14,7 +14,7 @@ import { buildRows, downloadBlob, fillSheet2 } from '@/domains/resolutions/utils
 import { parseSuperficiesPage } from '@/domains/resolutions/utils/surfacesOcrParser'
 import { detectAndDeskewTable } from '@/domains/resolutions/utils/tableLineDetector'
 import { ocrImage } from '@/shared/colindancias/ocrClient'
-import { Alert, Button, Card, Input, SectionHeader, Spinner } from '@/shared/ui'
+import { Alert, Button, Card, ConfirmDialog, Input, SectionHeader, Spinner } from '@/shared/ui'
 
 const TEMPLATE_URL = '/plantilla-ph.xlsm'
 
@@ -53,7 +53,9 @@ function Campo({ campo, datosGenerales, setDatosGenerales, ...props }) {
 
 export default function ResolutionPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
 
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false)
   const [resolucion, setResolucion] = useState(null)
   const [paginasImg, setPaginasImg] = useState([]) // [{ orden, url, blob }]
   const [loadingPage, setLoadingPage] = useState(true)
@@ -307,6 +309,18 @@ export default function ResolutionPage() {
     )
   }
 
+  // Borrada la resolución, esta pantalla ya no tiene qué mostrar: vuelve a la
+  // lista en vez de quedarse con un detalle que el backend ya no sirve.
+  const eliminarResolucion = async () => {
+    try {
+      await resolutionsApi.remove(id)
+      toast.success('Resolución eliminada.')
+      navigate('/resolutions')
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="animate-card-in">
@@ -323,7 +337,19 @@ export default function ResolutionPage() {
           subtitle={`${resolucion.total_pages} ${
             resolucion.total_pages === 1 ? 'página escaneada' : 'páginas escaneadas'
           }`}
-          actions={<StatusBadge status={resolucion.status} />}
+          actions={
+            <div className="flex items-center gap-2">
+              <StatusBadge status={resolucion.status} />
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={() => setConfirmarEliminar(true)}
+              >
+                Eliminar
+              </Button>
+            </div>
+          }
         />
 
         <div className="flex flex-wrap gap-3">
@@ -531,6 +557,15 @@ export default function ResolutionPage() {
           </p>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={confirmarEliminar}
+        onClose={() => setConfirmarEliminar(false)}
+        onConfirm={eliminarResolucion}
+        title="Eliminar resolución"
+        message={`Se eliminará "${resolucion.name}" (N° ${resolucion.resolution_number}) con sus páginas escaneadas, el plano y la tabla de superficies.`}
+        confirmLabel="Eliminar"
+      />
     </div>
   )
 }
