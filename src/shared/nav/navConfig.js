@@ -8,6 +8,7 @@ import {
   KeyRound,
   Building2,
   ScanSearch,
+  Crosshair,
   Bot,
   MessageCircle,
   ClipboardList,
@@ -50,7 +51,10 @@ export const NAV_SECTIONS = [
     label: 'Detección de construcciones',
     icon: Building2,
     path: '/detection',
-    children: [{ label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch }],
+    children: [
+      { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
+      { label: 'Alineación', path: '/alignment/map', icon: Crosshair },
+    ],
   },
   {
     label: 'Herramientas OCR+IA',
