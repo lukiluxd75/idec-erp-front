@@ -33,6 +33,7 @@ export default function DocumentReviewPage() {
   const { id } = useParams()
   const [document, setDocument] = useState(null)
   const [form, setForm] = useState(null)
+  const [planName, setPlanName] = useState('')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [jsonInvalid, setJsonInvalid] = useState(false)
@@ -52,6 +53,7 @@ export default function DocumentReviewPage() {
           if (formStatus.current !== doc.status) {
             formStatus.current = doc.status
             setForm(initialForm(doc))
+            setPlanName(doc.data?.plan_name || doc.data?.name || doc.data?.title || '')
             setFormVersion((v) => v + 1)
           }
           setDocument(doc)
@@ -72,9 +74,11 @@ export default function DocumentReviewPage() {
   const save = async () => {
     setSaving(true)
     try {
-      const doc = await folderAnalysisApi.review(id, form)
+      const reviewedData = document.doc_type === 'plan' ? { ...form, plan_name: planName.trim() } : form
+      const doc = await folderAnalysisApi.review(id, reviewedData)
       formStatus.current = doc.status
       setDocument(doc)
+      setForm(doc.reviewed_data || reviewedData)
       toast.success('Datos guardados.')
     } catch (e) {
       toast.error(e.message)
@@ -208,6 +212,17 @@ export default function DocumentReviewPage() {
                 </Button>
               </div>
               <div key={formVersion} className="max-h-[70vh] overflow-y-auto pr-1">
+                {document.doc_type === 'plan' && (
+                  <label className="mb-4 flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                    Nombre del plano
+                    <input
+                      value={planName}
+                      onChange={(event) => setPlanName(event.target.value)}
+                      placeholder="Ej.: Plano de ubicación"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none focus:border-accent-500/60"
+                    />
+                  </label>
+                )}
                 {document.doc_type === 'folio' ? (
                   <FolioForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : document.doc_type === 'tax_receipt' ? (
