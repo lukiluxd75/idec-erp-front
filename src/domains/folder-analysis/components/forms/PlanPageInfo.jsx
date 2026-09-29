@@ -1,4 +1,17 @@
+import { DoorOpen, Hash, Layers, MapPin, Ruler, Scaling } from 'lucide-react'
 import { useState } from 'react'
+
+import { categorizePlanChunk, chunkPlanNote, formatArea } from '@/domains/folder-analysis/utils/planFieldChunks'
+
+// One look per kind of note, so the eye sorts them before even reading the text.
+const CATEGORY_META = {
+  area: { icon: Ruler, classes: 'bg-emerald-600/10 text-emerald-800' },
+  scale: { icon: Scaling, classes: 'bg-accent-600/10 text-accent-800' },
+  planta: { icon: Layers, classes: 'bg-brand-900/10 text-brand-900' },
+  lote: { icon: MapPin, classes: 'bg-brand-900/10 text-brand-900' },
+  room: { icon: DoorOpen, classes: 'bg-slate-100 text-slate-700' },
+  other: { icon: Hash, classes: 'bg-slate-100 text-slate-700' },
+}
 
 /**
  * What the server read from the plano page currently shown in PagesViewer, in
@@ -6,12 +19,19 @@ import { useState } from 'react'
  */
 export function PlanPageInfo({ value, onChange, pageIndex }) {
   const [showText, setShowText] = useState(false)
+  const [editingField, setEditingField] = useState(null)
   const pages = Array.isArray(value?.pages) ? value.pages : []
   const page = pages[pageIndex]
 
   if (!page) {
     return <p className="text-sm text-slate-500">Esta página todavía no tiene datos leídos.</p>
   }
+
+  // Every superficie mentioned on the page, wherever its field put it -- the
+  // number an architect looks for first, pulled to the top as its own tile.
+  const areas = (page.fields || [])
+    .flatMap((field) => chunkPlanNote(field.value))
+    .filter((chunk) => categorizePlanChunk(chunk) === 'area')
 
   const updateField = (fieldIndex, nextValue) => {
     const nextFields = page.fields.map((field, i) =>
@@ -32,21 +52,80 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
         </h3>
       </div>
 
-      {page.fields?.length > 0 ? (
-        <div className="flex flex-col gap-3">
-          {page.fields.map((field, i) => (
-            <label key={i} className="flex flex-col gap-1 text-sm">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {field.name}
-              </span>
-              <textarea
-                value={field.value}
-                onChange={(e) => updateField(i, e.target.value)}
-                rows={Math.min(6, Math.max(2, Math.ceil((field.value?.length || 0) / 70)))}
-                className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-accent-300/40"
-              />
-            </label>
+      {areas.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {areas.map((area, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2"
+            >
+              <Ruler className="h-4 w-4 shrink-0 text-emerald-700" />
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                  Superficie
+                </p>
+                <p className="text-sm font-bold leading-tight text-emerald-900">{formatArea(area)}</p>
+              </div>
+            </div>
           ))}
+        </div>
+      )}
+
+      {page.fields?.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          <p className="text-xs text-slate-500">
+            Lo que se leyó en esta página, agrupado para que se entienda. Toque un campo para corregirlo.
+          </p>
+          {page.fields.map((field, i) => {
+            const chunks = chunkPlanNote(field.value)
+            const isEditing = editingField === i
+            return (
+              <div key={i} className="flex flex-col gap-1.5 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {field.name}
+                </span>
+
+                {isEditing ? (
+                  <textarea
+                    autoFocus
+                    value={field.value}
+                    onChange={(e) => updateField(i, e.target.value)}
+                    onBlur={() => setEditingField(null)}
+                    rows={Math.min(6, Math.max(2, Math.ceil((field.value?.length || 0) / 70)))}
+                    className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-accent-300/40"
+                  />
+                ) : chunks.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditingField(i)}
+                    className="flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-white p-2.5 text-left"
+                  >
+                    {chunks.map((chunk, ci) => {
+                      const meta = CATEGORY_META[categorizePlanChunk(chunk)]
+                      const Icon = meta.icon
+                      return (
+                        <span
+                          key={ci}
+                          className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium ${meta.classes}`}
+                        >
+                          <Icon className="h-3 w-3 shrink-0" />
+                          {chunk}
+                        </span>
+                      )
+                    })}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingField(i)}
+                    className="rounded-xl border border-slate-200 bg-white p-2.5 text-left text-slate-800"
+                  >
+                    {field.value || '—'}
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
       ) : (
         <p className="text-sm text-slate-500">No se detectaron datos etiquetados en esta página.</p>
