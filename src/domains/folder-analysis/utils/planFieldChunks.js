@@ -43,3 +43,37 @@ export function formatArea(chunk) {
   if (!match) return chunk
   return match[0].replace(/\s*m[2²]/i, ' m²').replace(/^(\d)/, '$1')
 }
+
+// The OCR's own label, as it comes off the sheet ("ESC", "SUP", "COD CAT") --
+// an architect reads these fine, but someone who has never opened a plano
+// would not. Spanish words for the ones common enough to be worth it; an
+// unlisted label is shown as the OCR read it, not guessed at.
+const PLAN_FIELD_LABELS = {
+  ESC: 'Escala',
+  ESCALA: 'Escala',
+  SUP: 'Superficie',
+  'SUP.': 'Superficie',
+  PLANTA: 'Planta',
+  LOTE: 'Lote',
+  PROPIETARIO: 'Propietario',
+  'COD CAT': 'Código catastral',
+  'COD. CAT': 'Código catastral',
+  'COD.CAT': 'Código catastral',
+  MANZANO: 'Manzana',
+  MANZANA: 'Manzana',
+}
+
+export function planFieldLabel(name) {
+  const key = (name || '').trim().toUpperCase().replace(/\.$/, '')
+  return PLAN_FIELD_LABELS[key] || name
+}
+
+const LOTE_ID_RE = /LOTE\s*N?°?\s*([A-Z0-9-]+)/i
+
+/** "Lote N°I", pulled out of whatever text on the page mentions it -- the one
+ * thing besides the surface an architect wants to see before reading anything
+ * else, and today it is buried in the middle of a chunk. */
+export function extractLoteId(text) {
+  const match = LOTE_ID_RE.exec(text || '')
+  return match ? match[1] : null
+}

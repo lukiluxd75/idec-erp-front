@@ -1,7 +1,13 @@
 import { DoorOpen, Hash, Layers, MapPin, Ruler, Scaling } from 'lucide-react'
 import { useState } from 'react'
 
-import { categorizePlanChunk, chunkPlanNote, formatArea } from '@/domains/folder-analysis/utils/planFieldChunks'
+import {
+  categorizePlanChunk,
+  chunkPlanNote,
+  extractLoteId,
+  formatArea,
+  planFieldLabel,
+} from '@/domains/folder-analysis/utils/planFieldChunks'
 
 // One look per kind of note, so the eye sorts them before even reading the text.
 const CATEGORY_META = {
@@ -11,6 +17,17 @@ const CATEGORY_META = {
   lote: { icon: MapPin, classes: 'bg-brand-900/10 text-brand-900' },
   room: { icon: DoorOpen, classes: 'bg-slate-100 text-slate-700' },
   other: { icon: Hash, classes: 'bg-slate-100 text-slate-700' },
+}
+
+// What each icon means, spelled out once so a first-time viewer does not have
+// to guess it from color alone.
+const CATEGORY_LABELS = {
+  area: 'Superficie',
+  scale: 'Escala',
+  planta: 'Planta',
+  lote: 'Lote',
+  room: 'Ambiente',
+  other: 'Otro dato',
 }
 
 /**
@@ -33,6 +50,8 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
     .flatMap((field) => chunkPlanNote(field.value))
     .filter((chunk) => categorizePlanChunk(chunk) === 'area')
 
+  const loteId = extractLoteId(page.full_text || (page.fields || []).map((f) => f.value).join(' '))
+
   const updateField = (fieldIndex, nextValue) => {
     const nextFields = page.fields.map((field, i) =>
       i === fieldIndex ? { ...field, value: nextValue } : field
@@ -50,7 +69,13 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
         <h3 className="text-base font-semibold text-slate-800">
           {page.document_type || 'Sin título detectado en esta página'}
         </h3>
+        {loteId && <p className="text-sm text-slate-500">Lote N°{loteId}</p>}
       </div>
+
+      <p className="text-xs text-slate-500">
+        Esto es lo que el sistema leyó automáticamente de la foto. Compárelo con la imagen y
+        corrija lo que haga falta antes de guardar.
+      </p>
 
       {areas.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -73,16 +98,25 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
 
       {page.fields?.length > 0 ? (
         <div className="flex flex-col gap-4">
-          <p className="text-xs text-slate-500">
-            Lo que se leyó en esta página, agrupado para que se entienda. Toque un campo para corregirlo.
-          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {Object.entries(CATEGORY_LABELS).map(([key, label]) => {
+              const Icon = CATEGORY_META[key].icon
+              return (
+                <span key={key} className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                  <Icon className="h-3 w-3 shrink-0" />
+                  {label}
+                </span>
+              )
+            })}
+          </div>
+          <p className="text-xs text-slate-500">Toque un campo para corregirlo.</p>
           {page.fields.map((field, i) => {
             const chunks = chunkPlanNote(field.value)
             const isEditing = editingField === i
             return (
               <div key={i} className="flex flex-col gap-1.5 text-sm">
                 <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {field.name}
+                  {planFieldLabel(field.name)}
                 </span>
 
                 {isEditing ? (
