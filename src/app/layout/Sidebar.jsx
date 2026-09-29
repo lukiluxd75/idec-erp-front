@@ -1,7 +1,13 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { NAV_SECTIONS, canViewChild, getCurrentDomain } from '@/shared/nav'
+import {
+  NAV_SECTIONS,
+  canViewChild,
+  compareNavLabels,
+  getCurrentDomain,
+  getVisibleNavChildren,
+} from '@/shared/nav'
 
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
@@ -10,10 +16,38 @@ const linkBase =
 const linkActive = 'bg-brand-800 text-white shadow-sm shadow-brand-800/20'
 const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
 
+function FunctionLinks({ items, permissions, depth = 0 }) {
+  return items.map((child) => {
+    const ChildIcon = child.icon
+    const nested = (child.children || [])
+      .filter((item) => canViewChild(permissions, item))
+      .sort(compareNavLabels)
+    return (
+      <div key={child.path} className={depth ? 'space-y-1 pl-3' : 'space-y-1'}>
+        <NavLink
+          to={child.path}
+          end={nested.length > 0}
+          className={({ isActive }) =>
+            `${linkBase} ${depth ? 'text-[13px] font-medium' : ''} ${isActive ? linkActive : linkInactive}`
+          }
+        >
+          <ChildIcon className="h-[18px] w-[18px] shrink-0" />
+          <span>{child.label}</span>
+        </NavLink>
+        {nested.length > 0 ? (
+          <FunctionLinks items={nested} permissions={permissions} depth={depth + 1} />
+        ) : null}
+      </div>
+    )
+  })
+}
+
 /**
- * Contextual sidebar: high contrast on white (readable over the ERP light-blue background).
+ * Contextual sidebar: frosted glass (misma familia "liquid glass" que el resto del ERP),
+ * pero con opacidad alta a propósito — es navegación densa de lectura constante, necesita
+ * más contraste que una tarjeta de contenido.
  */
-export function Sidebar({ open = true, onNavigate }) {
+export function Sidebar({ open = true }) {
   const { pathname } = useLocation()
   const { user } = useAuth()
   const currentDomain = getCurrentDomain(pathname)
@@ -21,7 +55,7 @@ export function Sidebar({ open = true, onNavigate }) {
   if (!currentDomain) return null
 
   const DomainIcon = currentDomain.icon
-  const visibleChildren = (currentDomain.children || []).filter((child) => canViewChild(user?.permisos, child))
+  const visibleChildren = getVisibleNavChildren(user?.permisos, currentDomain.children)
 
   return (
     <div
@@ -30,7 +64,7 @@ export function Sidebar({ open = true, onNavigate }) {
       }`}
     >
       <aside
-        className={`flex h-dvh w-64 flex-col border-r border-slate-200/90 bg-white shadow-[4px_0_24px_rgba(15,23,42,0.06)] transition-opacity duration-200 ease-in-out ${
+        className={`liquid-glass-bar flex h-dvh w-64 flex-col border-r transition-opacity duration-200 ease-in-out ${
           open ? 'opacity-100 delay-100' : 'opacity-0'
         }`}
       >
@@ -58,24 +92,11 @@ export function Sidebar({ open = true, onNavigate }) {
 
           {visibleChildren.length > 0 && (
             <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-              Funciones
+              Funciones · A–Z
             </p>
           )}
 
-          {visibleChildren.map((child) => {
-            const ChildIcon = child.icon
-            return (
-              <NavLink
-                key={child.path}
-                to={child.path}
-                onClick={onNavigate}
-                className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkInactive}`}
-              >
-                <ChildIcon className="h-[18px] w-[18px] shrink-0" />
-                <span>{child.label}</span>
-              </NavLink>
-            )
-          })}
+          <FunctionLinks items={visibleChildren} permissions={user?.permisos} />
         </nav>
       </aside>
     </div>

@@ -15,7 +15,7 @@ export function Header({ onLogout, onToggleSidebar, user }) {
   const initial = String(displayName).charAt(0).toUpperCase()
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/92 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-md">
+    <header className="liquid-glass-bar sticky top-0 z-20 border-b">
       <div className="flex h-14 items-center justify-between gap-3 px-3 sm:h-16 sm:px-6">
         <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
           {onToggleSidebar ? (

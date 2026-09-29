@@ -1,4 +1,5 @@
 import ResolutionsListPage from './pages/ResolutionsListPage'
+import NewResolutionPage from './pages/NewResolutionPage'
 import ResolutionPage from './pages/ResolutionPage'
 
 /**
@@ -6,5 +7,6 @@ import ResolutionPage from './pages/ResolutionPage'
  */
 export const resolutionsRoutes = [
   { path: '/resolutions', element: <ResolutionsListPage /> },
+  { path: '/resolutions/new', element: <NewResolutionPage />, wide: true },
   { path: '/resolutions/:id', element: <ResolutionPage />, wide: true },
 ]

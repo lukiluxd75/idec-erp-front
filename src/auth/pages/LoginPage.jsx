@@ -9,7 +9,7 @@ export function LoginPage() {
       <GisBackdrop />
 
       <div className="w-full max-w-sm animate-card-in">
-        <div className="rounded-3xl border border-white/50 bg-white/55 p-8 backdrop-blur-md shadow-[0_8px_32px_rgba(100,116,139,0.2),inset_0_1px_1px_rgba(255,255,255,0.6)] sm:p-9">
+        <div className="liquid-glass-panel rounded-3xl p-8 sm:p-9">
           <div className="mb-8 flex flex-col items-center text-center">
             <img
               src={BRAND.logoSrc}

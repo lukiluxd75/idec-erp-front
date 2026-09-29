@@ -70,6 +70,10 @@ export function UserAssignmentModal({ open, onClose, user, roles, areas }) {
           ))}
         </Select>
 
+        <p className="text-xs text-slate-500">
+          El área organiza al usuario; los permisos de los roles marcados aplican en todo el ERP.
+        </p>
+
         <div>
           <p className="mb-1.5 text-sm font-medium text-slate-700">Roles</p>
           {roles.length === 0 ? (

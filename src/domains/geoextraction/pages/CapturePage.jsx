@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import {
-  FileUp, Trash2, XCircle, FileSpreadsheet,
+  Camera, FileUp, Trash2, XCircle, FileSpreadsheet,
   Save, ScanLine, ZoomIn, ZoomOut, RotateCcw,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { toast } from 'react-toastify'
 import ReactCrop from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
-import { Card, Button, IconButton, EmptyState } from '@/shared/ui'
+import { Card, Button, IconButton, EmptyState, PhoneConnectedBadge } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 import { geoextractionApi } from '../api/geoextraction.api'
 import { CoordinatesTable } from '../components/CoordinatesTable'
@@ -64,6 +64,7 @@ export default function CapturePage() {
   const [isAppendMode, setIsAppendMode] = useState(false)
   const [mobileCaptures, setMobileCaptures] = useState([])
   const [loadingCaptureId, setLoadingCaptureId] = useState(null)
+  const [phoneConnected, setPhoneConnected] = useState(false)
 
   const getShortTS = () => {
     const d = new Date()
@@ -176,7 +177,7 @@ export default function CapturePage() {
   // its own socket registry — see CapturesConnectionManager). As a fallback,
   // polling every 10s keeps the list fresh without depending on which worker
   // each connection hit, instead of staying stale until a manual reload.
-  useCapturesUpdates(refreshMobileCaptures)
+  useCapturesUpdates(refreshMobileCaptures, setPhoneConnected)
   useEffect(() => {
     const interval = setInterval(refreshMobileCaptures, 10000)
     return () => clearInterval(interval)
@@ -520,10 +521,11 @@ export default function CapturePage() {
       <p className="text-[10px] font-bold uppercase tracking-widest text-accent-600">Nota: Seleccione solo el área de números de las coordenadas</p>
 
       <div className={cn('grid grid-cols-1 gap-6', showTable && 'xl:grid-cols-12')}>
-        <Card glass={false} className={showTable ? 'xl:col-span-5' : 'mx-auto w-full max-w-2xl'}>
+        <Card className={showTable ? 'xl:col-span-5' : 'mx-auto w-full max-w-2xl'}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-widest">
             <div className="flex flex-wrap items-center gap-4">
               <span className="text-slate-400">Visor Documental</span>
+              <PhoneConnectedBadge connected={phoneConnected} />
               <MobileCaptures
                 captures={mobileCaptures}
                 loadingId={loadingCaptureId}
@@ -617,10 +619,22 @@ export default function CapturePage() {
                   subtitle={!isDragging ? 'o, si lo prefiere…' : undefined}
                 />
 
-                <label className="pointer-events-auto mt-6 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-800 px-8 py-3.5 text-[10px] font-black uppercase text-white shadow-md shadow-brand-800/20 transition-all hover:bg-brand-600">
-                  <FileUp size={16} /> Explorar Archivos
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-                </label>
+                <div className="pointer-events-auto mt-6 flex flex-wrap items-center justify-center gap-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-800 px-8 py-3.5 text-[10px] font-black uppercase text-white shadow-md shadow-brand-800/20 transition-all hover:bg-brand-600">
+                    <Camera size={16} /> Escanear
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                  </label>
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-[10px] font-black uppercase text-slate-600 transition-all hover:bg-slate-50">
+                    <FileUp size={16} /> Explorar Archivos
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                  </label>
+                </div>
               </div>
             )}
           </div>

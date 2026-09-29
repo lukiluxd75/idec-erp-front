@@ -6,7 +6,13 @@ import { X } from 'lucide-react'
  * Generic design-system modal (see CLAUDE.md §3 — shared/ for domain-agnostic pieces).
  * Closes on Escape or click outside the panel.
  */
-export function Modal({ open, onClose, title, icon: Icon, children, className = '' }) {
+const SIZE_CLASS = {
+  md: 'max-w-md',
+  lg: 'max-w-2xl',
+  xl: 'max-w-3xl',
+}
+
+export function Modal({ open, onClose, title, icon: Icon, children, className = '', size = 'md' }) {
   useEffect(() => {
     if (!open) return
     const handleKeyDown = (event) => {
@@ -17,6 +23,8 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
   }, [open, onClose])
 
   if (!open) return null
+
+  const widthClass = SIZE_CLASS[size] || SIZE_CLASS.md
 
   return createPortal(
     <div
@@ -32,7 +40,7 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className={`animate-card-in w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl ${className}`}
+        className={`animate-card-in w-full ${widthClass} rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl ${className}`}
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
