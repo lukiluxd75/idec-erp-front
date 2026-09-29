@@ -16,7 +16,6 @@ import {
   DOC_TYPE_BY_ID,
   FALLBACK_ICON,
   IN_PROGRESS,
-  SERVER_READ,
   formatDateTime,
 } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
@@ -164,10 +163,8 @@ export default function DocumentReviewPage() {
           {IN_PROGRESS.has(document.status) && (
             <Alert type="info">
               <p>
-                {SERVER_READ.has(document.doc_type)
-                  ? `Se está analizando ${type?.noun || 'el documento'} con OCR en el servidor.`
-                  : `Se está analizando ${type?.noun || 'el documento'} en las PCs de los arquitectos.`}{' '}
-                Esta pantalla se actualiza sola.
+                {`Se está analizando ${type?.noun || 'el documento'} con OCR en el servidor.`} Esta
+                pantalla se actualiza sola.
               </p>
               <ReadingProgress className="mt-2" document={document} />
             </Alert>

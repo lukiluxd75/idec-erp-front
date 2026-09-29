@@ -44,6 +44,9 @@ export const folderAnalysisApi = {
 
   documents: () => httpClient.get(E.DOCUMENTS),
 
+  reviewedDocuments: (docType) =>
+    httpClient.get(docType ? `${E.REVIEWED_DOCUMENTS}?doc_type=${encodeURIComponent(docType)}` : E.REVIEWED_DOCUMENTS),
+
   document: (id) => httpClient.get(E.DOCUMENT(id)),
 
   createDocument: (docType, captureIds) =>

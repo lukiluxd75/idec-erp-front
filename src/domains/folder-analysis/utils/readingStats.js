@@ -9,14 +9,14 @@
 const STORAGE_KEY = 'idec.folder-analysis.reading-stats.v1'
 
 /** Seconds per photo before anything has been measured, per lane. */
-const SEED_PER_PAGE = { folio: 22, tax_receipt: 14, plan: 150 }
+const SEED_PER_PAGE = { folio: 22, tax_receipt: 14, plan: 35 }
 const SEED_PER_PAGE_FALLBACK = 25
 
 /**
- * How long the document usually waits before the first photo starts: a lane read
- * on the server starts almost at once; a plano waits for a free PC.
+ * How long the document usually waits before its first photo starts. Every lane
+ * is read on the server now, so nothing waits for a free PC.
  */
-const QUEUE_WAIT = { folio: 3, tax_receipt: 3, plan: 45 }
+const QUEUE_WAIT = { folio: 3, tax_receipt: 3, plan: 4 }
 const QUEUE_WAIT_FALLBACK = 10
 
 /** Putting the data together after the last photo (page order, header, AI pass). */

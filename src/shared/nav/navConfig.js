@@ -71,6 +71,9 @@ export const NAV_SECTIONS = [
         icon: FolderSearch,
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
+        children: [
+          { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
+        ],
       },
       {
         label: 'Geo-Extract',

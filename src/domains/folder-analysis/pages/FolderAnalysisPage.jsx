@@ -87,8 +87,10 @@ export default function FolderAnalysisPage() {
     }
   }
 
-  // Photos picked in the computer's file explorer (or dropped on the inbox) go to the
-  // same endpoint the mobile app uses, in batches of MAX_FILES_PER_UPLOAD.
+  // Files picked in the computer's file explorer (or dropped on the inbox) go to
+  // the same endpoint the mobile app uses, in batches of MAX_FILES_PER_UPLOAD.
+  // A PDF comes back as one photo per page, so what arrived is counted from the
+  // server's answer and not from what was sent.
   const uploadCaptures = async (picked) => {
     const { files, rejected } = splitValidCaptures(picked)
     rejected.forEach((reason) => toast.warn(reason))
@@ -98,12 +100,13 @@ export default function FolderAnalysisPage() {
     let uploaded = 0
     try {
       for (const chunk of chunkForUpload(files)) {
-        await folderAnalysisApi.uploadCaptures(chunk)
-        uploaded += chunk.length
+        const created = await folderAnalysisApi.uploadCaptures(chunk)
+        uploaded += created?.length || chunk.length
       }
-      toast.success(uploaded === 1 ? 'Foto subida a la bandeja.' : `${uploaded} fotos subidas a la bandeja.`)
+      const photos = uploaded === 1 ? 'Foto subida a la bandeja.' : `${uploaded} fotos subidas a la bandeja.`
+      toast.success(uploaded > files.length ? `${photos} Los PDF se separaron en una foto por página.` : photos)
     } catch (e) {
-      toast.error(uploaded > 0 ? `Se subieron ${uploaded} de ${files.length} fotos: ${e.message}` : e.message)
+      toast.error(uploaded > 0 ? `Se subieron ${uploaded} fotos y el resto falló: ${e.message}` : e.message)
     } finally {
       setUploading(false)
       refresh()

@@ -91,6 +91,7 @@ export const API_ENDPOINTS = {
     CAPTURE_PREVIEW: (id) => `/api/folder-analysis/captures/${id}/preview`,
     CAPTURE_THUMBNAIL: (id) => `/api/folder-analysis/captures/${id}/thumbnail`,
     DOCUMENTS: '/api/folder-analysis/documents',
+    REVIEWED_DOCUMENTS: '/api/folder-analysis/documents/reviewed',
     DOCUMENT: (id) => `/api/folder-analysis/documents/${id}`,
     DOCUMENT_PAGES: (id) => `/api/folder-analysis/documents/${id}/pages`,
     DOCUMENT_ANALYZE: (id) => `/api/folder-analysis/documents/${id}/analyze`,
