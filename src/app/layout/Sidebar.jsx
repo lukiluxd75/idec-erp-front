@@ -12,9 +12,7 @@ import {
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
 const linkBase =
-  'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-150'
-const linkActive = 'bg-brand-800 text-white shadow-sm shadow-brand-800/20'
-const linkInactive = 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+  'group flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150'
 
 function FunctionLinks({ items, permissions, depth = 0 }) {
   return items.map((child) => {
@@ -23,19 +21,36 @@ function FunctionLinks({ items, permissions, depth = 0 }) {
       .filter((item) => canViewChild(permissions, item))
       .sort(compareNavLabels)
     return (
-      <div key={child.path} className={depth ? 'space-y-1 pl-3' : 'space-y-1'}>
+      <div key={child.path} className="space-y-1">
         <NavLink
           to={child.path}
-          end={nested.length > 0}
-          className={({ isActive }) =>
-            `${linkBase} ${depth ? 'text-[13px] font-medium' : ''} ${isActive ? linkActive : linkInactive}`
-          }
+          end={nested.length === 0}
+          className={({ isActive }) => `${linkBase} ${
+            isActive
+              ? nested.length > 0
+                ? 'bg-brand-50 font-semibold text-brand-900'
+                : 'bg-brand-800 font-semibold text-white shadow-sm shadow-brand-900/15'
+              : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+          }`}
         >
-          <ChildIcon className="h-[18px] w-[18px] shrink-0" />
-          <span>{child.label}</span>
+          {({ isActive }) => (
+            <>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                isActive
+                  ? nested.length > 0 ? 'bg-white text-brand-800' : 'bg-white/15 text-white'
+                  : 'bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-brand-800'
+              }`}>
+                <ChildIcon className="h-[17px] w-[17px]" />
+              </span>
+              <span className="min-w-0 flex-1 leading-snug">{child.label}</span>
+              {nested.length > 0 && <span className={`text-xs ${isActive ? 'text-brand-700' : 'text-slate-400'}`} aria-hidden>›</span>}
+            </>
+          )}
         </NavLink>
         {nested.length > 0 ? (
-          <FunctionLinks items={nested} permissions={permissions} depth={depth + 1} />
+          <div className="ml-[1.35rem] border-l border-slate-200 py-1 pl-3">
+            <FunctionLinks items={nested} permissions={permissions} depth={depth + 1} />
+          </div>
         ) : null}
       </div>
     )
@@ -68,31 +83,33 @@ export function Sidebar({ open = true }) {
           open ? 'opacity-100 delay-100' : 'opacity-0'
         }`}
       >
-        <div className="border-b border-slate-100 px-4 py-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Navegación</p>
-          <div className="mt-2 flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-800 text-white">
-              <DomainIcon className="h-4 w-4" />
+        <div className="border-b border-slate-200/80 px-4 py-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Estás en</p>
+          <div className="mt-2.5 flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-800 to-brand-700 text-white shadow-sm shadow-brand-900/20">
+              <DomainIcon className="h-[18px] w-[18px]" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-slate-900">{currentDomain.label}</p>
-              <p className="truncate text-[11px] text-slate-500">Módulo activo</p>
+              <p className="truncate text-[13px] font-bold leading-snug text-slate-900">{currentDomain.label}</p>
+              <p className="mt-0.5 truncate text-[11px] text-slate-500">Módulo actual</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           <NavLink
             to={INICIO.path}
-            className={`${linkBase} ${linkInactive} mb-2`}
+            className={`${linkBase} mb-4 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950`}
           >
-            <ArrowLeft className="h-[18px] w-[18px] shrink-0 text-slate-500" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+              <ArrowLeft className="h-4 w-4" />
+            </span>
             <span>Volver a Inicio</span>
           </NavLink>
 
           {visibleChildren.length > 0 && (
-            <p className="px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-              Funciones · A–Z
+            <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+              Navegación del módulo
             </p>
           )}
 
