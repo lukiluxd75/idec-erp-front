@@ -1,4 +1,3 @@
-import { SERVER_READ } from '@/domains/folder-analysis/utils/documentMeta'
 import { PHASE_META, formatEta, readingHeadline } from '@/domains/folder-analysis/utils/readingProgress'
 import { useReadingProgress } from '@/domains/folder-analysis/utils/useReadingProgress'
 import { cn } from '@/shared/utils'
@@ -12,14 +11,13 @@ export function ReadingProgress({ document, className = '' }) {
   const { phase, percent, etaSec } = progress
   if (!progress.live) return null
 
-  const onServer = SERVER_READ.has(document?.doc_type)
   const queued = phase === 'queued'
 
   return (
     <div className={cn('flex flex-col gap-1', className)} role="status" aria-live="polite">
       <div className="flex items-center justify-between gap-2 text-[11px]">
         <span className={cn('font-semibold', queued ? 'text-slate-600' : 'text-accent-800')}>
-          {readingHeadline(progress, { onServer })}
+          {readingHeadline(progress)}
         </span>
         <span className="font-bold tabular-nums text-slate-600">{percent}%</span>
       </div>

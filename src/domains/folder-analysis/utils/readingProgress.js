@@ -133,24 +133,16 @@ export const PHASE_META = {
 }
 
 /**
- * What the document is doing, in one line. Says where the work is happening,
- * because "en cola" means a different wait in each lane: a folio waits seconds
- * for the server, a plano waits for a free PC.
- *
- * @param onServer the lane is read here on the server (see SERVER_READ)
+ * What the document is doing, in one line. The three lanes are read on the
+ * server now (OCR + OpenCV), so the wait is always the server's own queue.
  */
-export function readingHeadline({ phase, currentPage, total }, { onServer = true } = {}) {
+export function readingHeadline({ phase, currentPage, total }) {
   if (phase === 'draft') return 'Enviando el documento a la cola…'
-  if (phase === 'queued') {
-    return onServer
-      ? 'En cola: esperando su turno en el servidor…'
-      : 'En cola: esperando una PC libre de los arquitectos…'
-  }
+  if (phase === 'queued') return 'En cola: esperando su turno en el servidor…'
   if (phase === 'reading') {
-    const where = onServer ? 'con OCR en el servidor' : 'en las PCs de los arquitectos'
     return total > 1
-      ? `Analizando la foto ${currentPage} de ${total} ${where}…`
-      : `Analizando la foto ${where}…`
+      ? `Analizando la foto ${currentPage} de ${total} con OCR en el servidor…`
+      : 'Analizando la foto con OCR en el servidor…'
   }
   if (phase === 'assembling') return 'Interpretando los datos leídos…'
   return ''

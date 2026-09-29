@@ -1,7 +1,7 @@
 import { Check, CheckCircle2, Clock, FileSearch, Loader2, ScanText, XCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { DOC_TYPE_BY_ID, SERVER_READ } from '@/domains/folder-analysis/utils/documentMeta'
+import { DOC_TYPE_BY_ID } from '@/domains/folder-analysis/utils/documentMeta'
 import {
   PHASE_META,
   formatDuration,
@@ -88,10 +88,8 @@ export function AnalyzingDialog({ document, onClose }) {
   if (!document) return null
 
   const { phase, percent, done, total, etaSec, elapsedSec, perPageSec, samples } = progress
-  const onServer = SERVER_READ.has(document.doc_type)
   // "el folio", "el comprobante": the dialog talks about the document at hand.
   const noun = DOC_TYPE_BY_ID[document.doc_type]?.noun || 'el documento'
-  const verb = onServer ? 'Leyendo' : 'Analizando'
 
   const failed = phase === 'failed'
   const finished = phase === 'done'
@@ -106,11 +104,7 @@ export function AnalyzingDialog({ document, onClose }) {
       onClose={onClose}
       icon={finished ? CheckCircle2 : failed ? XCircle : ScanText}
       title={
-        finished
-          ? `Se ${onServer ? 'leyó' : 'analizó'} ${noun}`
-          : failed
-            ? `No se pudo leer ${noun}`
-            : `${verb} ${noun}`
+        finished ? `Se leyó ${noun}` : failed ? `No se pudo leer ${noun}` : `Leyendo ${noun}`
       }
     >
       <div className="space-y-4">
@@ -139,7 +133,7 @@ export function AnalyzingDialog({ document, onClose }) {
             ? `Se leyeron ${total} ${total === 1 ? 'foto' : 'fotos'}. Revise los datos antes de guardarlos.`
             : failed
               ? document.error || 'La lectura falló.'
-              : readingHeadline(progress, { onServer })}
+              : readingHeadline(progress)}
         </p>
 
         {working && <PageTicks pages={document.pages || []} currentPage={progress.currentPage} />}
@@ -172,9 +166,7 @@ export function AnalyzingDialog({ document, onClose }) {
 
         {working && (
           <p className="text-center text-xs text-slate-500">
-            {phase === 'queued' && !onServer
-              ? 'El plano espera su turno en la cola de las PCs. Puede cerrar esta ventana: el carril se actualiza solo.'
-              : 'Puede cerrar esta ventana: la lectura sigue y el carril se actualiza solo.'}
+            Puede cerrar esta ventana: la lectura sigue y el carril se actualiza solo.
           </p>
         )}
 

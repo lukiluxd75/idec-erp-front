@@ -9,8 +9,9 @@ import { cn } from '@/shared/utils'
 const isFileDrag = (event) => Array.from(event.dataTransfer?.types || []).includes('Files')
 
 /**
- * Second way into the inbox, next to the mobile app: photos chosen in the
- * computer's file explorer or dropped here from the desktop.
+ * Second way into the inbox, next to the mobile app: photos and PDFs chosen in
+ * the computer's file explorer or dropped here from the desktop. A PDF is
+ * separated on the server into one photo per page.
  */
 export function CaptureUploader({ disabled, uploading, onFiles }) {
   const [isDragging, setIsDragging] = useState(false)
@@ -56,10 +57,10 @@ export function CaptureUploader({ disabled, uploading, onFiles }) {
       )}
       <span className="min-w-0 flex-1">
         <span className="block text-xs font-bold text-slate-700">
-          {uploading ? 'Subiendo fotos…' : isDragging ? 'Suelte las fotos aquí' : 'Subir desde el equipo'}
+          {uploading ? 'Subiendo archivos…' : isDragging ? 'Suelte los archivos aquí' : 'Subir desde el equipo'}
         </span>
         <span className="block text-[11px] leading-snug text-slate-500">
-          Explorador de archivos o arrastre · JPG, PNG o WEBP
+          Explorador o arrastre · JPG, PNG, WEBP o PDF (una foto por página)
         </span>
       </span>
       <input

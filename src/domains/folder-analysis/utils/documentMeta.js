@@ -23,17 +23,18 @@ export const DOC_TYPES = [
     label: 'Plano',
     noun: 'el plano',
     icon: MapIcon,
-    hint: 'Planos arquitectónicos. Por ahora se extrae el texto, los datos y las tablas.',
+    hint: 'Planos arquitectónicos. Se extrae el texto, los datos y los cuadros con OCR + OpenCV.',
     multiPage: true,
   },
 ]
 
 /**
- * Lanes read here on the server with OCR + reglas (segundos): the screen follows
- * them photo by photo and marks what the reading was unsure about. The rest go to
- * the architects' PCs through the digitization queue and take minutes.
+ * Every lane is read on the server with the GAMC PaddleOCR service and OpenCV
+ * (seconds), and the screen follows them photo by photo. Nothing goes to the
+ * architects' PCs any more: the plano used to be read there by the vision model
+ * and took minutes per hoja.
  */
-export const SERVER_READ = new Set(['folio', 'tax_receipt'])
+export const SERVER_READ = new Set(['folio', 'tax_receipt', 'plan'])
 
 export const DOC_TYPE_BY_ID = Object.fromEntries(DOC_TYPES.map((t) => [t.id, t]))
 
