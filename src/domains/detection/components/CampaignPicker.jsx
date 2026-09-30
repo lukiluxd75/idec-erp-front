@@ -137,6 +137,7 @@ export default function CampaignPicker({ campaignId, onChange, yearOptions = [] 
             onChange={(e) => setName(e.target.value)}
             maxLength={150}
           />
+          
           <div>
             <p className="mb-1.5 text-sm font-medium text-slate-700">
               Años de comparación (quedan fijos para toda la campaña)
@@ -160,7 +161,8 @@ export default function CampaignPicker({ campaignId, onChange, yearOptions = [] 
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input
               label="Desde"
               type="date"
@@ -174,6 +176,7 @@ export default function CampaignPicker({ campaignId, onChange, yearOptions = [] 
               onChange={(e) => setPeriodEnd(e.target.value)}
             />
           </div>
+
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="secondary" onClick={closeCreate} disabled={saving}>
               Cancelar

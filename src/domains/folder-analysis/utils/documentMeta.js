@@ -1,6 +1,22 @@
-import { FileSpreadsheet, Map as MapIcon, Receipt, ScrollText } from 'lucide-react'
+import {
+  Calculator,
+  ClipboardList,
+  FileSpreadsheet,
+  IdCard,
+  Map as MapIcon,
+  Receipt,
+  ScrollText,
+  Signature,
+} from 'lucide-react'
 
-/** The three sections of the screen, in display order. */
+/**
+ * Every kind of document the module can classify, in display order.
+ *
+ * Which of them a carpeta actually shows is the catalogue's business (the back's
+ * domain/folder_types.py, read through utils/catalog.js): a carpeta de
+ * poseedores has no folio lane. What lives here is only how each one looks --
+ * its icon, its colour and the words the screen puts around it.
+ */
 export const DOC_TYPES = [
   {
     id: 'folio',
@@ -26,6 +42,38 @@ export const DOC_TYPES = [
     hint: 'Planos arquitectónicos. Se extrae el texto, los datos y los cuadros con OCR + OpenCV.',
     multiPage: true,
   },
+  {
+    id: 'appraisal',
+    label: 'Avalúo',
+    noun: 'el avalúo',
+    icon: Calculator,
+    hint: 'Avalúo del inmueble. Puede tener varias páginas.',
+    multiPage: true,
+  },
+  {
+    id: 'form',
+    label: 'Formulario',
+    noun: 'el formulario',
+    icon: ClipboardList,
+    hint: 'Formulario del trámite. Puede tener varias páginas.',
+    multiPage: true,
+  },
+  {
+    id: 'sworn_statement',
+    label: 'Declaración jurada',
+    noun: 'la declaración jurada',
+    icon: Signature,
+    hint: 'Declaración jurada ante notario. Puede tener varias páginas.',
+    multiPage: true,
+  },
+  {
+    id: 'id_card',
+    label: 'Carnets',
+    noun: 'el carnet',
+    icon: IdCard,
+    hint: 'Carnets de identidad. Un documento por persona, anverso y reverso.',
+    multiPage: true,
+  },
 ]
 
 /**
@@ -34,7 +82,7 @@ export const DOC_TYPES = [
  * architects' PCs any more: the plano used to be read there by the vision model
  * and took minutes per hoja.
  */
-export const SERVER_READ = new Set(['folio', 'tax_receipt', 'plan'])
+export const SERVER_READ = new Set(DOC_TYPES.map((type) => type.id))
 
 export const DOC_TYPE_BY_ID = Object.fromEntries(DOC_TYPES.map((t) => [t.id, t]))
 
@@ -63,6 +111,38 @@ export const LANE_THEME = {
     workAccent: 'border-l-accent-600',
     assignBtn:
       'ring-accent-600/15 text-accent-800 hover:bg-accent-600/10 hover:ring-accent-600/30 focus-visible:ring-accent-600/40',
+  },
+  appraisal: {
+    accentBar: 'bg-amber-600',
+    iconWrap: 'bg-amber-600/10 text-amber-800 ring-amber-600/20',
+    lane: 'workbench-lane--appraisal',
+    workAccent: 'border-l-amber-600',
+    assignBtn:
+      'ring-amber-600/15 text-amber-800 hover:bg-amber-600/10 hover:ring-amber-600/30 focus-visible:ring-amber-600/40',
+  },
+  form: {
+    accentBar: 'bg-indigo-600',
+    iconWrap: 'bg-indigo-600/10 text-indigo-800 ring-indigo-600/20',
+    lane: 'workbench-lane--form',
+    workAccent: 'border-l-indigo-600',
+    assignBtn:
+      'ring-indigo-600/15 text-indigo-800 hover:bg-indigo-600/10 hover:ring-indigo-600/30 focus-visible:ring-indigo-600/40',
+  },
+  sworn_statement: {
+    accentBar: 'bg-rose-600',
+    iconWrap: 'bg-rose-600/10 text-rose-800 ring-rose-600/20',
+    lane: 'workbench-lane--sworn',
+    workAccent: 'border-l-rose-600',
+    assignBtn:
+      'ring-rose-600/15 text-rose-800 hover:bg-rose-600/10 hover:ring-rose-600/30 focus-visible:ring-rose-600/40',
+  },
+  id_card: {
+    accentBar: 'bg-teal-600',
+    iconWrap: 'bg-teal-600/10 text-teal-800 ring-teal-600/20',
+    lane: 'workbench-lane--id',
+    workAccent: 'border-l-teal-600',
+    assignBtn:
+      'ring-teal-600/15 text-teal-800 hover:bg-teal-600/10 hover:ring-teal-600/30 focus-visible:ring-teal-600/40',
   },
 }
 

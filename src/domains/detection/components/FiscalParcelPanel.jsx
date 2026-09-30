@@ -268,7 +268,7 @@ export default function FiscalParcelPanel({ row, onOpenFullExpediente }) {
               </div>
             )}
             {tecnicos[0] && (
-              <div className="mt-2 grid grid-cols-2 gap-2 rounded-lg bg-slate-50 px-2.5 py-2">
+              <div className="mt-2 grid gap-2 rounded-lg bg-slate-50 px-2.5 py-2 sm:grid-cols-2">
                 <Fact
                   label="Sup. predio (inf. técnico)"
                   value={tecnicos[0].superficiePredio}

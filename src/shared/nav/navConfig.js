@@ -18,11 +18,13 @@ import {
   Sparkles,
   FileSpreadsheet,
   FolderSearch,
+  FolderTree,
   FileText,
   Braces,
   Hash,
   FileOutput,
   MonitorCog,
+  BarChart3,
 } from 'lucide-react'
 
 /**
@@ -76,6 +78,7 @@ export const NAV_SECTIONS = [
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
         children: [
+          { label: 'Carpetas registradas', path: '/folder-analysis/folders', icon: FolderTree },
           { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
         ],
       },
@@ -115,6 +118,11 @@ export const NAV_SECTIONS = [
       { label: 'Plantillas', path: '/templates/catalog', icon: FileText, blurb: 'Formatos institucionales reutilizables' },
       { label: 'Variables', path: '/templates/variables', icon: Braces, blurb: 'Datos dinámicos de los documentos' },
     ],
+  },
+  {
+    label: 'Reportes',
+    icon: BarChart3,
+    path: '/procedurereports',
   },
   {
     label: 'Revisión Avalúos',

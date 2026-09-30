@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
 import { CaptureLightbox } from '@/domains/folder-analysis/components/CaptureLightbox'
 import { CaptureUploader } from '@/domains/folder-analysis/components/CaptureUploader'
-import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
+import { LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { setDraggedCapture } from '@/domains/folder-analysis/utils/dragData'
 import { EmptyState } from '@/shared/ui'
@@ -12,8 +12,12 @@ import { cn } from '@/shared/utils'
 
 /**
  * Professional capture queue — operational inbox, not module catalog tiles.
+ *
+ * `types` son los carriles a los que se puede mandar una foto: los del tipo de
+ * carpeta en la que se está trabajando. La bandeja en sí es siempre la misma --
+ * las fotos llegan del celular sin saber a qué carpeta van.
  */
-export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, onDelete }) {
+export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, onDelete, onClearAll, types }) {
   // The photo clicked in the queue, opened big: from a thumbnail this small the
   // architect cannot tell a folio from a comprobante before sorting it.
   const [opened, setOpened] = useState(null)
@@ -27,6 +31,20 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
           <Inbox className="h-4 w-4 shrink-0 text-accent-600" aria-hidden />
           <h3 className="flex-1 text-sm font-bold text-slate-900">Fotos recibidas</h3>
           <span className="text-xs font-bold tabular-nums text-slate-600">{captures.length}</span>
+          {/* Vaciar toda la bandeja: con treinta fotos subidas de más, borrarlas
+              de a una es el trabajo que este botón evita. */}
+          {captures.length > 0 && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={onClearAll}
+              title="Eliminar todas las fotos de la bandeja"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-slate-500 transition hover:bg-state-danger/10 hover:text-state-danger disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+              Vaciar
+            </button>
+          )}
         </div>
         <p className="mt-1 text-[11px] leading-snug text-slate-500">
           Celular o equipo · arrastre o asigne a un carril
@@ -80,7 +98,7 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
                   <p className="text-[11px] text-slate-500">{formatDateTime(capture.created_at)}</p>
                 </div>
                 <div className="workbench-assign" role="group" aria-label="Asignar a carril">
-                  {DOC_TYPES.map((type) => {
+                  {types.map((type) => {
                     const theme = LANE_THEME[type.id]
                     return (
                       <button

@@ -89,6 +89,7 @@ export const API_ENDPOINTS = {
     STOP_WORKER: '/api/digitization/workers/stop',
   },
   FOLDER_ANALYSIS: {
+    CATALOG: '/api/folder-analysis/catalog',
     CAPTURES: '/api/folder-analysis/captures',
     CAPTURE: (id) => `/api/folder-analysis/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
@@ -101,6 +102,16 @@ export const API_ENDPOINTS = {
     DOCUMENT_ANALYZE: (id) => `/api/folder-analysis/documents/${id}/analyze`,
     DOCUMENT_REVIEW: (id) => `/api/folder-analysis/documents/${id}/review`,
     DOCUMENT_EXPORT: (id) => `/api/folder-analysis/documents/${id}/export`,
+    FOLDERS: '/api/folder-analysis/folders',
+    FOLDER: (id) => `/api/folder-analysis/folders/${id}`,
+    FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
+    FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,
+  },
+  REPORTS: {
+    FILTERS: '/api/procedurereports/filters',
+    REPORT: '/api/procedurereports/reports',
+    EXPORT_EXCEL: '/api/procedurereports/reports/export/excel',
+    EXPORT_PDF: '/api/procedurereports/reports/export/pdf',
   },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
@@ -110,5 +121,13 @@ export const API_ENDPOINTS = {
     PROCEDURE: (code) => `/api/chatbot/procedures/${code}`,
     INGESTS: '/api/chatbot/ingests',
     REINDEX_EMBEDDINGS: '/api/chatbot/embeddings/reindex',
+  },
+  ALIGNMENT: {
+    WMS_LAYERS: '/api/alignment/wms/layers',
+    WMS_IMAGE: '/api/alignment/wms/image',
+    BLOCKS: '/api/alignment/blocks',
+    BLOCK: (id) => `/api/alignment/blocks/${id}`,
+    BLOCK_CONFIRM: (id) => `/api/alignment/blocks/${id}/confirm`,
+    COVERAGE: '/api/alignment/coverage',
   },
 }
