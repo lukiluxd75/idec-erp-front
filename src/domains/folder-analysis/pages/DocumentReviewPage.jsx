@@ -9,14 +9,15 @@ import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
 import { PlanColindancias } from '@/domains/folder-analysis/components/PlanColindancias'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
-import { JsonEditor } from '@/domains/folder-analysis/components/forms/JsonEditor'
+import { PlanPageInfo } from '@/domains/folder-analysis/components/forms/PlanPageInfo'
 import { TaxReceiptForm } from '@/domains/folder-analysis/components/forms/TaxReceiptForm'
+import { FieldInput } from '@/domains/folder-analysis/components/forms/FieldInput'
 import { withFolioDefaults, withTaxReceiptDefaults } from '@/domains/folder-analysis/utils/formDefaults'
+import { folderTypeOf, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import {
   DOC_TYPE_BY_ID,
   FALLBACK_ICON,
   IN_PROGRESS,
-  SERVER_READ,
   formatDateTime,
 } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
@@ -32,11 +33,13 @@ function initialForm(document) {
 
 export default function DocumentReviewPage() {
   const { id } = useParams()
+  const { catalog } = useCatalog()
   const [document, setDocument] = useState(null)
   const [form, setForm] = useState(null)
+  const [planName, setPlanName] = useState('')
+  const [pageIndex, setPageIndex] = useState(0)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
-  const [jsonInvalid, setJsonInvalid] = useState(false)
   const [confirmReanalyze, setConfirmReanalyze] = useState(false)
   // Bumped when the data is replaced from the server, to remount the editors.
   const [formVersion, setFormVersion] = useState(0)
@@ -53,6 +56,8 @@ export default function DocumentReviewPage() {
           if (formStatus.current !== doc.status) {
             formStatus.current = doc.status
             setForm(initialForm(doc))
+            setPlanName(doc.data?.plan_name || doc.data?.name || doc.data?.title || '')
+            setPageIndex(0)
             setFormVersion((v) => v + 1)
           }
           setDocument(doc)
@@ -70,12 +75,24 @@ export default function DocumentReviewPage() {
   // photo and a five second gap between answers is felt as a stall.
   usePollWhile(Boolean(document && IN_PROGRESS.has(document.status)), load, 3000)
 
+  // Los valores que la carpeta pide de este documento: los declara el catálogo
+  // para el par (tipo de carpeta, tipo de documento), y el análisis los dejó en
+  // `values`. Un documento de un par que no declara nada no muestra este bloque
+  // y se revisa con la vista de siempre.
+  const values =
+    folderTypeOf(catalog, document?.folder_type)?.document_values?.[document?.doc_type] || []
+
+  const setValue = (key, value) =>
+    setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), [key]: value } }))
+
   const save = async () => {
     setSaving(true)
     try {
-      const doc = await folderAnalysisApi.review(id, form)
+      const reviewedData = document.doc_type === 'plan' ? { ...form, plan_name: planName.trim() } : form
+      const doc = await folderAnalysisApi.review(id, reviewedData)
       formStatus.current = doc.status
       setDocument(doc)
+      setForm(doc.reviewed_data || reviewedData)
       toast.success('Datos guardados.')
     } catch (e) {
       toast.error(e.message)
@@ -158,16 +175,14 @@ export default function DocumentReviewPage() {
       />
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <PagesViewer pages={document.pages} />
+        <PagesViewer pages={document.pages} current={pageIndex} onChange={setPageIndex} />
 
         <div className="flex flex-col gap-4">
           {IN_PROGRESS.has(document.status) && (
             <Alert type="info">
               <p>
-                {SERVER_READ.has(document.doc_type)
-                  ? `Se está analizando ${type?.noun || 'el documento'} con OCR en el servidor.`
-                  : `Se está analizando ${type?.noun || 'el documento'} en las PCs de los arquitectos.`}{' '}
-                Esta pantalla se actualiza sola.
+                {`Se está analizando ${type?.noun || 'el documento'} con OCR en el servidor.`} Esta
+                pantalla se actualiza sola.
               </p>
               <ReadingProgress className="mt-2" document={document} />
             </Alert>
@@ -202,7 +217,7 @@ export default function DocumentReviewPage() {
           {hasData && (
             <>
               <div className="flex flex-wrap gap-2">
-                <Button icon={Save} loading={saving} disabled={jsonInvalid} onClick={save}>
+                <Button icon={Save} loading={saving} onClick={save}>
                   Guardar revisión
                 </Button>
                 <Button variant="secondary" icon={Download} onClick={download}>Descargar JSON</Button>
@@ -211,12 +226,42 @@ export default function DocumentReviewPage() {
                 </Button>
               </div>
               <div key={formVersion} className="max-h-[70vh] overflow-y-auto pr-1">
+                {values.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                    <p className="text-sm font-bold text-slate-800">Datos para la carpeta</p>
+                    <p className="mb-3 text-xs text-slate-500">
+                      Lo que la lectura encontró en esta hoja. Lo que quedó vacío no estaba rotulado:
+                      escríbalo comparando con la foto.
+                    </p>
+                    <div className="grid gap-x-5 gap-y-3.5 sm:grid-cols-2">
+                      {values.map((field) => (
+                        <FieldInput
+                          key={field.key}
+                          label={field.label}
+                          value={form?.values?.[field.key] ?? null}
+                          onChange={(value) => setValue(field.key, value)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {document.doc_type === 'plan' && (
+                  <label className="mb-4 flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
+                    Nombre del plano
+                    <input
+                      value={planName}
+                      onChange={(event) => setPlanName(event.target.value)}
+                      placeholder="Ej.: Plano de ubicación"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none focus:border-accent-500/60"
+                    />
+                  </label>
+                )}
                 {document.doc_type === 'folio' ? (
                   <FolioForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : document.doc_type === 'tax_receipt' ? (
                   <TaxReceiptForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : (
-                  <JsonEditor value={form} onChange={setForm} onInvalid={setJsonInvalid} />
+                  <PlanPageInfo key={pageIndex} value={form} onChange={setForm} pageIndex={pageIndex} />
                 )}
               </div>
             </>

@@ -24,6 +24,11 @@ import SiscatFileModal from '../components/SiscatFileModal'
 import ManualAlignPanel from '../components/ManualAlignPanel'
 import ResultGallery from '../components/ResultGallery'
 import DetectionProgressModal from '../components/DetectionProgressModal'
+import CampaignPicker from '../components/CampaignPicker'
+import ParcelValidationButtons from '../components/ParcelValidationButtons'
+import ParcelValidationModal from '../components/ParcelValidationModal'
+import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
+import { polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
 
@@ -86,6 +91,7 @@ export default function DetectionPage() {
   const [prediosBuffer, setPrediosBuffer] = useState('10')
   const [gpu, setGpu] = useState(0)
   const [polygon, setPolygon] = useState(null)
+  const [campaignId, setCampaignId] = useState(null)
 
   const [jobId, setJobId] = useState(null)
   const [progress, setProgress] = useState(null)
@@ -102,12 +108,25 @@ export default function DetectionPage() {
   const [resultTab, setResultTab] = useState('validacion')
   const [cancelling, setCancelling] = useState(false)
   const [runStartedAt, setRunStartedAt] = useState(null)
+  const [processedSectors, setProcessedSectors] = useState([])
+  const [selectedSectorId, setSelectedSectorId] = useState(null)
+  const [presetPolygon, setPresetPolygon] = useState(null)
+  const [validationTarget, setValidationTarget] = useState(null)
+  const [highlightParcelGeom, setHighlightParcelGeom] = useState(null)
 
   const pollRef = useRef(null)
   const objectUrlsRef = useRef([])
   const resultsRef = useRef(null)
   /** After applying manual alignment, do not reopen the modal automatically when re-detection finishes. */
   const skipAutoAlignOpenRef = useRef(false)
+  /** setInterval fires every POLL_MS regardless of whether the previous
+   * pollJob() call (an HTTP round-trip) already returned. If the engine
+   * reports "done" while a prior overlapping call is still in flight, both
+   * can reach the done-branch and both call finishWithResult() concurrently
+   * -- each hydrateAssets() revokes the other's still-in-use blob URLs
+   * (ERR_FILE_NOT_FOUND, random depending on network timing). This guard
+   * makes only the first overlapping call actually finish the job. */
+  const finishingRef = useRef(false)
 
   const yearOptions = useMemo(() => {
     const layers = wmsMeta.layers || []
@@ -125,6 +144,14 @@ export default function DetectionPage() {
     const rows = result?.reporte_arquitecto || []
     return rows.filter((r) => Number(r.prob_pct || 0) >= minPct - 1e-9)
   }, [result, minProb])
+
+  const SECTOR_STATUS_LABELS = {
+    awaiting_validation: { variant: 'warning', label: 'Pendiente de validación' },
+    awaiting_manual_alignment: { variant: 'warning', label: 'Requiere alineación manual' },
+    completed: { variant: 'accent', label: 'Sector procesado' },
+    error: { variant: 'danger', label: 'Error en el pipeline' },
+  }
+  const sectorStatusBadge = SECTOR_STATUS_LABELS[result?.processed_sector_status] || null
 
   const loadMeta = useCallback(async () => {
     setLoadingMeta(true)
@@ -159,6 +186,22 @@ export default function DetectionPage() {
     }
   }, [])
 
+  // Scoped to the selected campaign: a polygon drawn under one campaign
+  // belongs to it, so switching campaigns must make the map overlay show
+  // only that campaign's sectors. campaignId === null is "Sin campaña" --
+  // sectors with no campaign at all, not "no filter" (Historial is the one
+  // screen that still wants everything, via its own unscoped call).
+  const loadProcessedSectors = useCallback(async () => {
+    try {
+      const data = await detectionApi.listProcessedSectors(campaignId, { unassignedOnly: !campaignId })
+      setProcessedSectors(Array.isArray(data) ? data : [])
+    } catch (err) {
+      // Non-blocking: the map overlay is a convenience, not required to run
+      // a new detection -- a failed refresh here should not interrupt the page.
+      console.warn('No se pudieron cargar los sectores procesados', err)
+    }
+  }, [campaignId])
+
   useEffect(() => {
     loadMeta()
     return () => {
@@ -166,6 +209,10 @@ export default function DetectionPage() {
       objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
     }
   }, [loadMeta])
+
+  useEffect(() => {
+    loadProcessedSectors()
+  }, [loadProcessedSectors])
 
   async function hydrateAssets(payload) {
     objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
@@ -199,6 +246,10 @@ export default function DetectionPage() {
   async function finishWithResult(id) {
     const res = await detectionApi.getResult(id)
     setResult(res)
+    // By the time GET .../result returns, the backend has already persisted
+    // the sector (see job_result's ingestion) — refresh the map overlay so
+    // it shows up without the architect having to reload the page.
+    loadProcessedSectors()
     await hydrateAssets(res)
     const level = String(
       res.align_quality?.level || res.resumen_confiabilidad?.align_level || ''
@@ -253,6 +304,8 @@ export default function DetectionPage() {
       const status = (prog.status || '').toLowerCase()
       if (status === 'done' || prog.result_ready) {
         stopPolling()
+        if (finishingRef.current) return // an overlapping tick already got here first
+        finishingRef.current = true
         setProgress((prev) => ({
           ...(prev || {}),
           ...prog,
@@ -266,6 +319,7 @@ export default function DetectionPage() {
         } finally {
           setRunning(false)
           setRunStartedAt(null)
+          finishingRef.current = false
         }
         return
       }
@@ -336,6 +390,7 @@ export default function DetectionPage() {
         min_prob_pct: Number(minProb),
         predios_buffer_m: Number(prediosBuffer),
         gpu: Number(gpu),
+        campaign_id: campaignId || undefined,
       }
       const started = await detectionApi.startDetectWms(payload)
       startPolling(started.job_id, {
@@ -372,6 +427,42 @@ export default function DetectionPage() {
   function handleRowClick(row) {
     const bbox = findBboxForRow(result, row)
     setSelectedRow({ ...row, bbox_px: bbox || row.bbox_px || row.bbox })
+  }
+
+  /** Reflects a review/feedback verdict locally (both raw arrays + the
+   * selected row) without re-polling the job, matching by affected_parcel_id
+   * (present on every row once the backend has persisted the result — see
+   * job_result's response enrichment). */
+  function handleParcelReviewed(affectedParcelId, validationStatus) {
+    setResult((prev) => {
+      if (!prev) return prev
+      const patchArray = (arr) =>
+        (arr || []).map((r) =>
+          r.affected_parcel_id === affectedParcelId ? { ...r, validation_status: validationStatus } : r
+        )
+      const cambios = patchArray(prev.cambios)
+      // Mirrors the backend's own rule (SqlAffectedParcelReviewRepository.
+      // _maybe_complete_sector): completed once every row with an
+      // affected_parcel_id stopped being 'pending', regardless of verdict.
+      const allReviewed =
+        cambios.length > 0 &&
+        cambios.every((r) => !r.affected_parcel_id || r.validation_status !== 'pending')
+      const completableStatus =
+        prev.processed_sector_status === 'awaiting_validation' ||
+        prev.processed_sector_status === 'awaiting_manual_alignment'
+      return {
+        ...prev,
+        cambios,
+        reporte_arquitecto: patchArray(prev.reporte_arquitecto),
+        processed_sector_status:
+          allReviewed && completableStatus ? 'completed' : prev.processed_sector_status,
+      }
+    })
+    setSelectedRow((prev) =>
+      prev?.affected_parcel_id === affectedParcelId
+        ? { ...prev, validation_status: validationStatus }
+        : prev
+    )
   }
 
   const viewGeom = result?.view_geometry || {}
@@ -549,6 +640,9 @@ export default function DetectionPage() {
                 <option value="80">≥ 80 %</option>
               </Select>
             </div>
+            <div className="min-w-[160px] flex-1 basis-[160px] sm:max-w-[220px]">
+              <CampaignPicker campaignId={campaignId} onChange={setCampaignId} />
+            </div>
 
             <button
               type="button"
@@ -662,11 +756,48 @@ export default function DetectionPage() {
                 basemapYear={basemapYear}
                 onBasemapYearChange={setBasemapYear}
                 height={620}
+                processedSectors={processedSectors}
+                onViewSectorDetail={setSelectedSectorId}
+                presetPolygon={presetPolygon}
+                highlightParcelGeom={highlightParcelGeom}
               />
             </Suspense>
           </div>
         </Card>
       </section>
+
+      <ProcessedSectorDetailModal
+        open={!!selectedSectorId}
+        sectorId={selectedSectorId}
+        onClose={() => setSelectedSectorId(null)}
+        allowReprocess
+        onReprocess={(detail) => {
+          const sector = processedSectors.find((s) => s.id === detail.id)
+          const ring = sector ? polygonRingFromGeoJson(sector.geom_geojson) : null
+          if (ring) setPresetPolygon(ring)
+          setYearRef(String(detail.year_a))
+          setYearMov(String(detail.year_b))
+          setResult(null)
+          setSelectedRow(null)
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          })
+        }}
+        onViewParcel={(parcel) => {
+          setHighlightParcelGeom(parcel.parcel_geom_geojson)
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          })
+        }}
+      />
+
+      <ParcelValidationModal
+        row={validationTarget?.row}
+        mode={validationTarget?.mode}
+        open={!!validationTarget}
+        onClose={() => setValidationTarget(null)}
+        onReviewed={handleParcelReviewed}
+      />
 
       {/* 3 · Resultados (solo tras detección) */}
       {result && (
@@ -683,6 +814,9 @@ export default function DetectionPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5">
+              {sectorStatusBadge && (
+                <Badge variant={sectorStatusBadge.variant}>{sectorStatusBadge.label}</Badge>
+              )}
               <Badge variant="success">Nuevas {result.n_nueva ?? '—'}</Badge>
               <Badge variant="danger">Eliminadas {result.n_eliminada ?? '—'}</Badge>
               <Badge variant="warning">Cambio {result.n_cambio ?? '—'}</Badge>
@@ -826,12 +960,13 @@ export default function DetectionPage() {
                               <th className="px-2 py-2">Tipo</th>
                               <th className="px-2 py-2">%</th>
                               <th className="px-2 py-2">Código</th>
+                              <th className="px-2 py-2">Validar</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
                             {reportRows.length === 0 ? (
                               <tr>
-                                <td colSpan={4} className="px-3 py-8">
+                                <td colSpan={5} className="px-3 py-8">
                                   <EmptyState
                                     title="Sin hallazgos"
                                     subtitle={`No hay filas ≥ ${minProb} %.`}
@@ -847,17 +982,27 @@ export default function DetectionPage() {
                                   (selectedRow.tipo || selectedRow.tipo_cambio) ===
                                     (row.tipo || row.tipo_cambio)
                                 const tipo = row.tipo || row.tipo_cambio || '—'
+                                const reviewed =
+                                  row.validation_status && row.validation_status !== 'pending'
                                 return (
                                   <tr
                                     key={`${row.codigo_catastral}-${idx}`}
                                     className={`cursor-pointer border-t border-slate-100 transition-colors ${
                                       selected
                                         ? 'bg-accent-50 ring-1 ring-inset ring-accent-200'
-                                        : 'hover:bg-slate-50'
+                                        : reviewed
+                                          ? 'bg-slate-50/70 text-slate-500 hover:bg-slate-100'
+                                          : 'hover:bg-slate-50'
                                     }`}
                                     onClick={() => handleRowClick(row)}
                                   >
                                     <td className="px-2 py-2 text-slate-500">
+                                      {reviewed && (
+                                        <span
+                                          className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-accent-400"
+                                          title={`Revisado: ${row.validation_status}`}
+                                        />
+                                      )}
                                       {row.nro ?? idx + 1}
                                     </td>
                                     <td className="px-2 py-2">
@@ -868,6 +1013,12 @@ export default function DetectionPage() {
                                     </td>
                                     <td className="max-w-[7.5rem] truncate px-2 py-2 font-medium text-slate-900">
                                       {row.codigo_catastral || '—'}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <ParcelValidationButtons
+                                        row={row}
+                                        onOpenValidation={(r, mode) => setValidationTarget({ row: r, mode })}
+                                      />
                                     </td>
                                   </tr>
                                 )

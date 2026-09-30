@@ -73,124 +73,126 @@ export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaCha
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
               Página {pagina.pagina}
             </p>
-            <table className="min-w-full border-separate border-spacing-0 text-sm">
-              <thead>
-                <tr>
-                  <th className="rounded-tl-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs font-semibold text-slate-600">
-                    Planta
-                  </th>
-                  {!bloqueOculto && (
-                    <th className="border border-l-0 border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs font-semibold text-slate-600">
-                      Bloque
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-0 text-sm">
+                <thead>
+                  <tr>
+                    <th className="rounded-tl-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs font-semibold text-slate-600">
+                      Planta
                     </th>
-                  )}
-                  {Array.from({ length: pagina.columnCount }).map(
-                    (_, colIdx) =>
-                      !columnasOcultas[colIdx] && (
-                        <th key={colIdx} className="border border-l-0 border-slate-200 bg-slate-50 px-2 py-1.5">
+                    {!bloqueOculto && (
+                      <th className="border border-l-0 border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs font-semibold text-slate-600">
+                        Bloque
+                      </th>
+                    )}
+                    {Array.from({ length: pagina.columnCount }).map(
+                      (_, colIdx) =>
+                        !columnasOcultas[colIdx] && (
+                          <th key={colIdx} className="border border-l-0 border-slate-200 bg-slate-50 px-2 py-1.5">
+                            <select
+                              className={cn(inputCls, 'w-36')}
+                              value={pagina.columnRoles[colIdx] ?? 'omitir'}
+                              onChange={(e) => onRoleChange(pageIdx, colIdx, e.target.value)}
+                            >
+                              {ROLES.map((r) => (
+                                <option key={r.key} value={r.key}>
+                                  {r.label}
+                                </option>
+                              ))}
+                            </select>
+                          </th>
+                        ),
+                    )}
+                    <th className="rounded-tr-lg border border-l-0 border-slate-200 bg-slate-50 px-2 py-1.5" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagina.rows.map((row, rowIdx) => (
+                    <tr key={row.id}>
+                      {tramosPlanta[rowIdx] > 0 && (
+                        <td
+                          rowSpan={tramosPlanta[rowIdx]}
+                          className="border border-t-0 border-slate-200 px-1.5 py-1 align-top"
+                        >
                           <select
-                            className={cn(inputCls, 'w-36')}
-                            value={pagina.columnRoles[colIdx] ?? 'omitir'}
-                            onChange={(e) => onRoleChange(pageIdx, colIdx, e.target.value)}
+                            className={cn(inputCls, 'w-36', !row.planta && 'border-state-danger/60 bg-state-danger/5')}
+                            value={row.planta || ''}
+                            onChange={(e) => onPlantaChange(pageIdx, row.id, e.target.value)}
                           >
-                            {ROLES.map((r) => (
-                              <option key={r.key} value={r.key}>
-                                {r.label}
+                            <option value="">Seleccionar…</option>
+                            {PLANTAS_RESUMEN.map((p) => (
+                              <option key={p} value={p}>
+                                {p}
                               </option>
                             ))}
                           </select>
-                        </th>
-                      ),
-                  )}
-                  <th className="rounded-tr-lg border border-l-0 border-slate-200 bg-slate-50 px-2 py-1.5" />
-                </tr>
-              </thead>
-              <tbody>
-                {pagina.rows.map((row, rowIdx) => (
-                  <tr key={row.id}>
-                    {tramosPlanta[rowIdx] > 0 && (
-                      <td
-                        rowSpan={tramosPlanta[rowIdx]}
-                        className="border border-t-0 border-slate-200 px-1.5 py-1 align-top"
-                      >
-                        <select
-                          className={cn(inputCls, 'w-36', !row.planta && 'border-state-danger/60 bg-state-danger/5')}
-                          value={row.planta || ''}
-                          onChange={(e) => onPlantaChange(pageIdx, row.id, e.target.value)}
-                        >
-                          <option value="">Seleccionar…</option>
-                          {PLANTAS_RESUMEN.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
-                        {row.plantaOcr && row.plantaOcr !== row.planta && (
-                          <p className="mt-0.5 truncate text-[10px] text-slate-400" title={row.plantaOcr}>
-                            OCR: {row.plantaOcr}
-                          </p>
-                        )}
-                      </td>
-                    )}
-                    {!bloqueOculto && (
-                      <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1">
-                        <input
-                          className={cn(inputCls, 'w-24')}
-                          value={row.bloque || ''}
-                          placeholder="Bloque"
-                          onChange={(e) => onBloqueChange(pageIdx, row.id, e.target.value)}
-                        />
-                      </td>
-                    )}
-                    {row.cells.map((cell, cellIdx) => {
-                      if (columnasOcultas[cellIdx]) return null
-                      const low = cell.text && cell.confidence < ENV.OCR_CONFIDENCE_THRESHOLD
-                      return (
-                        <td key={cellIdx} className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1">
+                          {row.plantaOcr && row.plantaOcr !== row.planta && (
+                            <p className="mt-0.5 truncate text-[10px] text-slate-400" title={row.plantaOcr}>
+                              OCR: {row.plantaOcr}
+                            </p>
+                          )}
+                        </td>
+                      )}
+                      {!bloqueOculto && (
+                        <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1">
                           <input
-                            className={cn(
-                              inputCls,
-                              'w-28',
-                              low && 'border-state-danger/60 bg-state-danger/5 text-state-danger',
-                            )}
-                            value={cell.text}
-                            onChange={(e) => onCellChange(pageIdx, row.id, cellIdx, e.target.value)}
+                            className={cn(inputCls, 'w-24')}
+                            value={row.bloque || ''}
+                            placeholder="Bloque"
+                            onChange={(e) => onBloqueChange(pageIdx, row.id, e.target.value)}
                           />
                         </td>
-                      )
-                    })}
-                    <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1 text-center">
-                      <button
-                        type="button"
-                        className="text-slate-400 transition-colors hover:text-state-danger"
-                        onClick={() => onDeleteRow(pageIdx, row.id)}
-                        title="Quitar fila"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {pagina.filaTotal && (
-                  <tr className="bg-slate-50/80 font-semibold text-slate-600">
-                    <td className="border border-t-0 border-slate-200 px-1.5 py-1.5">TOTAL</td>
-                    {!bloqueOculto && <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1.5" />}
-                    {pagina.filaTotal.cells.map(
-                      (cell, cellIdx) =>
-                        !columnasOcultas[cellIdx] && (
-                          <td
-                            key={cellIdx}
-                            className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1.5"
-                          >
-                            {cell.text}
+                      )}
+                      {row.cells.map((cell, cellIdx) => {
+                        if (columnasOcultas[cellIdx]) return null
+                        const low = cell.text && cell.confidence < ENV.OCR_CONFIDENCE_THRESHOLD
+                        return (
+                          <td key={cellIdx} className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1">
+                            <input
+                              className={cn(
+                                inputCls,
+                                'w-28',
+                                low && 'border-state-danger/60 bg-state-danger/5 text-state-danger',
+                              )}
+                              value={cell.text}
+                              onChange={(e) => onCellChange(pageIdx, row.id, cellIdx, e.target.value)}
+                            />
                           </td>
-                        ),
-                    )}
-                    <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1.5" />
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                        )
+                      })}
+                      <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1 text-center">
+                        <button
+                          type="button"
+                          className="text-slate-400 transition-colors hover:text-state-danger"
+                          onClick={() => onDeleteRow(pageIdx, row.id)}
+                          title="Quitar fila"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {pagina.filaTotal && (
+                    <tr className="bg-slate-50/80 font-semibold text-slate-600">
+                      <td className="border border-t-0 border-slate-200 px-1.5 py-1.5">TOTAL</td>
+                      {!bloqueOculto && <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1.5" />}
+                      {pagina.filaTotal.cells.map(
+                        (cell, cellIdx) =>
+                          !columnasOcultas[cellIdx] && (
+                            <td
+                              key={cellIdx}
+                              className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1.5"
+                            >
+                              {cell.text}
+                            </td>
+                          ),
+                      )}
+                      <td className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1.5" />
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       })}

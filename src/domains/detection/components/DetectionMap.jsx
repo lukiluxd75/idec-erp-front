@@ -2,7 +2,12 @@ import { Component, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import '../styles/detection-precision-cursor.css'
-import { Alert, Button } from '@/shared/ui'
+import { Alert, Badge, Button } from '@/shared/ui'
+import {
+  createProcessedSectorsLayer,
+  renderProcessedSectors,
+} from '../utils/processedSectorsLayer'
+import { createParcelHighlightLayer, renderParcelHighlight } from '../utils/parcelHighlightLayer'
 
 const DEFAULT_CENTER = [-17.39325, -66.15625]
 const DEFAULT_ZOOM = 17
@@ -104,19 +109,27 @@ function DetectionMapInner({
   basemapYear,
   onBasemapYearChange,
   height = 560,
+  processedSectors = [],
+  onViewSectorDetail,
+  presetPolygon = null,
+  highlightParcelGeom = null,
 }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const drawnLayer = useRef(null)
+  const processedLayer = useRef(null)
+  const highlightLayer = useRef(null)
   const baseLayer = useRef(null)
   const overlaysRef = useRef({})
   const pointsRef = useRef([])
   const onPolygonChangeRef = useRef(onPolygonChange)
+  const redrawPolygonRef = useRef(() => {})
   const [ready, setReady] = useState(false)
   const [layersOn, setLayersOn] = useState(() =>
     Object.fromEntries(OVERLAY_DEFS.map((d) => [d.key, d.defaultOn]))
   )
   onPolygonChangeRef.current = onPolygonChange
+  redrawPolygonRef.current = redrawPolygon
 
   const gisHost = (hosts && hosts[0]) || GIS_HOSTS[0]
 
@@ -142,6 +155,8 @@ function DetectionMapInner({
 
     mapInstance.current = map
     drawnLayer.current = L.layerGroup().addTo(map)
+    processedLayer.current = createProcessedSectorsLayer(map)
+    highlightLayer.current = createParcelHighlightLayer(map)
     overlaysRef.current = {}
     map.getContainer().classList.add('detection-precision-cursor')
     map.getContainer().style.cursor = 'crosshair'
@@ -180,12 +195,35 @@ function DetectionMapInner({
       }
       mapInstance.current = null
       drawnLayer.current = null
+      processedLayer.current = null
+      highlightLayer.current = null
       baseLayer.current = null
       overlaysRef.current = {}
       clearLeafletNode(node)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!ready || !mapInstance.current || !processedLayer.current) return
+    renderProcessedSectors(mapInstance.current, processedLayer.current, processedSectors, onViewSectorDetail)
+  }, [ready, processedSectors, onViewSectorDetail])
+
+  // "Ver predio en el mapa" from ProcessedSectorDetailModal -- draws the
+  // parcel's real cadastral polygon and zooms to it (see
+  // parcelHighlightLayer.js).
+  useEffect(() => {
+    if (!ready || !mapInstance.current || !highlightLayer.current) return
+    renderParcelHighlight(mapInstance.current, highlightLayer.current, highlightParcelGeom)
+  }, [ready, highlightParcelGeom])
+
+  // "Reprocesar": pre-fills the drawn area from an already-processed sector's
+  // saved polygon, same as if the architect had clicked those points by hand.
+  useEffect(() => {
+    if (!ready || !presetPolygon) return
+    pointsRef.current = presetPolygon
+    redrawPolygonRef.current(true)
+  }, [ready, presetPolygon])
 
   useEffect(() => {
     if (!ready || !mapInstance.current) return
@@ -362,6 +400,10 @@ function DetectionMapInner({
                 onChange={(v) => setLayer(d.key, v)}
               />
             ))}
+            <Badge variant="accent" className="ml-auto">
+              {processedSectors.length} sector{processedSectors.length === 1 ? '' : 'es'} procesado
+              {processedSectors.length === 1 ? '' : 's'}
+            </Badge>
           </div>
         </div>
         <div

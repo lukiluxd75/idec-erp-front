@@ -3,13 +3,15 @@
 export const MAX_FILES_PER_UPLOAD = 10
 export const MAX_FILE_BYTES = 15 * 1024 * 1024
 
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
+// A PDF is separated on the server into one photo per page, so from the bandeja
+// on it is indistinguishable from photos taken with the phone.
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
 
 /** `accept` for the file explorer dialog and for drag & drop from the desktop. */
 export const CAPTURE_ACCEPT = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_TYPES].join(',')
 
-function isImage(file) {
+function isAccepted(file) {
   if (file.type) return ACCEPTED_TYPES.includes(file.type)
   // Some Windows file pickers hand over an empty type; fall back to the extension.
   return ACCEPTED_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))
@@ -26,8 +28,8 @@ export function splitValidCaptures(picked) {
   const rejected = []
 
   Array.from(picked || []).forEach((file) => {
-    if (!isImage(file)) {
-      rejected.push(`${file.name}: solo se aceptan imágenes JPG, PNG o WEBP.`)
+    if (!isAccepted(file)) {
+      rejected.push(`${file.name}: solo se aceptan imágenes JPG, PNG, WEBP o archivos PDF.`)
     } else if (file.size === 0) {
       rejected.push(`${file.name}: el archivo está vacío.`)
     } else if (file.size > MAX_FILE_BYTES) {
@@ -40,7 +42,7 @@ export function splitValidCaptures(picked) {
   return { files, rejected }
 }
 
-/** The backend accepts MAX_FILES_PER_UPLOAD photos per request; bigger selections go in several. */
+/** The backend accepts MAX_FILES_PER_UPLOAD files per request; bigger selections go in several. */
 export function chunkForUpload(files) {
   const chunks = []
   for (let i = 0; i < files.length; i += MAX_FILES_PER_UPLOAD) {

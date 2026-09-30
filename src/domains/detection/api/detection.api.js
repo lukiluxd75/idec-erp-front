@@ -43,6 +43,30 @@ function getCadastralRecord(idRegistro) {
   return httpClient.get(API_ENDPOINTS.DETECTION.CADASTRAL_RECORD(idRegistro))
 }
 
+function listCampaigns() {
+  return httpClient.get(API_ENDPOINTS.DETECTION.CAMPAIGNS)
+}
+
+function createCampaign(payload) {
+  return httpClient.post(API_ENDPOINTS.DETECTION.CAMPAIGNS, payload)
+}
+
+function reviewAffectedParcel(affectedParcelId, payload) {
+  return httpClient.post(API_ENDPOINTS.DETECTION.AFFECTED_PARCEL_REVIEW(affectedParcelId), payload)
+}
+
+function listProcessedSectors(campaignId, { unassignedOnly = false } = {}) {
+  const params = new URLSearchParams()
+  if (campaignId) params.set('campaign_id', campaignId)
+  else if (unassignedOnly) params.set('unassigned_only', 'true')
+  const query = params.toString()
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}${query ? `?${query}` : ''}`)
+}
+
+function getProcessedSectorDetail(sectorId) {
+  return httpClient.get(API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId))
+}
+
 /**
  * Engine image URLs already come rewritten as `/api/detection/engine/...`.
  * Attach the ERP base URL + bearer via fetch blob URL for <img> tags.
@@ -71,4 +95,9 @@ export const detectionApi = {
   applyAlignManual,
   getCadastralRecord,
   resolveAssetObjectUrl,
+  listCampaigns,
+  createCampaign,
+  reviewAffectedParcel,
+  listProcessedSectors,
+  getProcessedSectorDetail,
 }

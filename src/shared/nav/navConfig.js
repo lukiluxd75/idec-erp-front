@@ -8,7 +8,7 @@ import {
   KeyRound,
   Building2,
   ScanSearch,
-  Crosshair,
+  History,
   Bot,
   MessageCircle,
   ClipboardList,
@@ -18,11 +18,13 @@ import {
   Sparkles,
   FileSpreadsheet,
   FolderSearch,
+  FolderTree,
   FileText,
   Braces,
   Hash,
   FileOutput,
   MonitorCog,
+  BarChart3,
 } from 'lucide-react'
 
 /**
@@ -53,7 +55,7 @@ export const NAV_SECTIONS = [
     path: '/detection',
     children: [
       { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
-      { label: 'Alineación', path: '/alignment/map', icon: Crosshair },
+      { label: 'Historial', path: '/detection/history', icon: History },
     ],
   },
   {
@@ -75,6 +77,10 @@ export const NAV_SECTIONS = [
         icon: FolderSearch,
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
+        children: [
+          { label: 'Carpetas registradas', path: '/folder-analysis/folders', icon: FolderTree },
+          { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
+        ],
       },
       {
         label: 'Geo-Extract',
@@ -112,6 +118,11 @@ export const NAV_SECTIONS = [
       { label: 'Plantillas', path: '/templates/catalog', icon: FileText, blurb: 'Formatos institucionales reutilizables' },
       { label: 'Variables', path: '/templates/variables', icon: Braces, blurb: 'Datos dinámicos de los documentos' },
     ],
+  },
+  {
+    label: 'Reportes',
+    icon: BarChart3,
+    path: '/procedurereports',
   },
   {
     label: 'Revisión Avalúos',
