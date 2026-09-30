@@ -67,6 +67,40 @@ function getProcessedSectorDetail(sectorId) {
   return httpClient.get(API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId))
 }
 
+/** "Continuar validación": the sector's persisted result, shaped just like
+ * a live job's job_result -- feed it straight into the same Hallazgos table. */
+function resumeSectorValidation(sectorId) {
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId)}/resume-validation`)
+}
+
+/** "Exportar" -- downloads the confirmed/rejected parcels of the given
+ * campaign (or unassigned sectors when none) as an .xlsx. A binary file
+ * response, so this bypasses httpClient (JSON-only) the same way
+ * resolveAssetObjectUrl does, but triggers a save instead of an object URL. */
+async function exportCampaignReport(campaignId, { unassignedOnly = false } = {}) {
+  const params = new URLSearchParams()
+  if (campaignId) params.set('campaign_id', campaignId)
+  else if (unassignedOnly) params.set('unassigned_only', 'true')
+  const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/excel?${params.toString()}`
+  const token = storageService.getToken()
+  const response = await fetch(`${ENV.API_BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!response.ok) throw new Error(`No se pudo generar el reporte (${response.status})`)
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="?([^"]+)"?/)
+  const filename = match ? match[1] : 'reporte-predios.xlsx'
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 /**
  * Engine image URLs already come rewritten as `/api/detection/engine/...`.
  * Attach the ERP base URL + bearer via fetch blob URL for <img> tags.
@@ -100,4 +134,6 @@ export const detectionApi = {
   reviewAffectedParcel,
   listProcessedSectors,
   getProcessedSectorDetail,
+  resumeSectorValidation,
+  exportCampaignReport,
 }

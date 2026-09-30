@@ -4,6 +4,7 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
+  FileSpreadsheet,
   Images,
   Info,
   Layers2,
@@ -28,7 +29,7 @@ import CampaignPicker from '../components/CampaignPicker'
 import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
-import { polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
+import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
 
@@ -91,7 +92,24 @@ export default function DetectionPage() {
   const [prediosBuffer, setPrediosBuffer] = useState('10')
   const [gpu, setGpu] = useState(0)
   const [polygon, setPolygon] = useState(null)
+  // Bumped once a run finishes so DetectionMap clears the just-processed
+  // polygon -- left drawn, its points get dragged into the next one.
+  const [drawResetSignal, setDrawResetSignal] = useState(0)
   const [campaignId, setCampaignId] = useState(null)
+  // Fixed for the campaign's whole life (engineer's call) -- while set, Año
+  // A/Año B below are shown but locked to these values, not freely editable.
+  const [campaignYears, setCampaignYears] = useState(null)
+
+  function handleCampaignChange(id, campaign) {
+    setCampaignId(id)
+    if (campaign?.year_a != null && campaign?.year_b != null) {
+      setCampaignYears({ year_a: campaign.year_a, year_b: campaign.year_b })
+      setYearRef(String(campaign.year_a))
+      setYearMov(String(campaign.year_b))
+    } else {
+      setCampaignYears(null)
+    }
+  }
 
   const [jobId, setJobId] = useState(null)
   const [progress, setProgress] = useState(null)
@@ -99,6 +117,7 @@ export default function DetectionPage() {
   const [running, setRunning] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(false)
   const [metaError, setMetaError] = useState('')
+  const [exportingReport, setExportingReport] = useState(false)
   const [assetUrls, setAssetUrls] = useState({})
   const [selectedRow, setSelectedRow] = useState(null)
   const [alignOpen, setAlignOpen] = useState(false)
@@ -214,6 +233,21 @@ export default function DetectionPage() {
     loadProcessedSectors()
   }, [loadProcessedSectors])
 
+  /** "Exportar": confirmed/rejected parcels of the campaign currently
+   * selected (or unassigned sectors when "Sin campaña") -- never a global,
+   * cross-campaign export (see the backend's own docstring for why). */
+  async function handleExportReport() {
+    setExportingReport(true)
+    try {
+      await detectionApi.exportCampaignReport(campaignId, { unassignedOnly: !campaignId })
+      toast.success('Reporte generado.')
+    } catch (err) {
+      toast.error(err.message || 'No se pudo generar el reporte.')
+    } finally {
+      setExportingReport(false)
+    }
+  }
+
   async function hydrateAssets(payload) {
     objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
     objectUrlsRef.current = []
@@ -250,6 +284,9 @@ export default function DetectionPage() {
     // the sector (see job_result's ingestion) — refresh the map overlay so
     // it shows up without the architect having to reload the page.
     loadProcessedSectors()
+    // The area just got processed -- clear it so it doesn't linger and
+    // interfere with the next polygon drawn for a different block.
+    setDrawResetSignal((n) => n + 1)
     await hydrateAssets(res)
     const level = String(
       res.align_quality?.level || res.resumen_confiabilidad?.align_level || ''
@@ -432,8 +469,11 @@ export default function DetectionPage() {
   /** Reflects a review/feedback verdict locally (both raw arrays + the
    * selected row) without re-polling the job, matching by affected_parcel_id
    * (present on every row once the backend has persisted the result — see
-   * job_result's response enrichment). */
-  function handleParcelReviewed(affectedParcelId, validationStatus) {
+   * job_result's response enrichment). `sectorId` defaults to the live job's
+   * own sector, but ProcessedSectorDetailModal's "Continuar validación"
+   * (an older/different sector than whatever job is live here) passes its
+   * own sector id explicitly. */
+  function handleParcelReviewed(affectedParcelId, validationStatus, sectorId) {
     setResult((prev) => {
       if (!prev) return prev
       const patchArray = (arr) =>
@@ -463,6 +503,15 @@ export default function DetectionPage() {
         ? { ...prev, validation_status: validationStatus }
         : prev
     )
+
+    // Also patch processedSectors -- the map polygon's color is computed
+    // from n_confirmed/n_rejected/n_pending on THAT array (see
+    // processedSectorsLayer.js), not from `result` above, so without this
+    // the color only updated after a full page reload.
+    const targetSectorId = sectorId ?? result?.processed_sector_id
+    if (targetSectorId != null) {
+      setProcessedSectors((prev) => applyParcelReviewToSectors(prev, targetSectorId, validationStatus))
+    }
   }
 
   const viewGeom = result?.view_geometry || {}
@@ -556,6 +605,15 @@ export default function DetectionPage() {
           <Badge variant={polygonReady ? 'accent' : 'neutral'} dot>
             {polygonReady ? 'Área lista' : 'Sin área'}
           </Badge>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleExportReport}
+            loading={exportingReport}
+            icon={FileSpreadsheet}
+          >
+            Exportar
+          </Button>
           <Button variant="secondary" size="sm" onClick={loadMeta} disabled={loadingMeta} icon={RefreshCw}>
             Actualizar
           </Button>
@@ -603,7 +661,13 @@ export default function DetectionPage() {
 
           <div className="flex flex-wrap items-end gap-3 px-4 py-3">
             <div className="min-w-[140px] flex-1 basis-[140px] sm:max-w-[180px]">
-              <Select label="Año A · referencia" value={yearRef} onChange={(e) => setYearRef(e.target.value)}>
+              <Select
+                label="Año A · referencia"
+                value={yearRef}
+                onChange={(e) => setYearRef(e.target.value)}
+                disabled={!!campaignYears}
+                title={campaignYears ? 'Fijado por la campaña seleccionada' : undefined}
+              >
                 <option value="">Seleccione…</option>
                 {yearOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -617,6 +681,8 @@ export default function DetectionPage() {
                 label="Año B · comparación"
                 value={yearMov}
                 onChange={(e) => setYearMov(e.target.value)}
+                disabled={!!campaignYears}
+                title={campaignYears ? 'Fijado por la campaña seleccionada' : undefined}
               >
                 <option value="">Seleccione…</option>
                 {yearOptions.map((o) => (
@@ -641,7 +707,11 @@ export default function DetectionPage() {
               </Select>
             </div>
             <div className="min-w-[160px] flex-1 basis-[160px] sm:max-w-[220px]">
-              <CampaignPicker campaignId={campaignId} onChange={setCampaignId} />
+              <CampaignPicker
+                campaignId={campaignId}
+                onChange={handleCampaignChange}
+                yearOptions={yearOptions.map((o) => o.value)}
+              />
             </div>
 
             <button
@@ -760,6 +830,7 @@ export default function DetectionPage() {
                 onViewSectorDetail={setSelectedSectorId}
                 presetPolygon={presetPolygon}
                 highlightParcelGeom={highlightParcelGeom}
+                resetSignal={drawResetSignal}
               />
             </Suspense>
           </div>
@@ -788,6 +859,18 @@ export default function DetectionPage() {
           requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' })
           })
+        }}
+        onResumeValidation={async (payload) => {
+          setResult(payload)
+          setSelectedRow(null)
+          toast.success('Retomando la validación de este sector.')
+          requestAnimationFrame(() => {
+            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          })
+          // Same as finishWithResult -- `result.urls` alone doesn't render
+          // anything, hydrateAssets resolves it into the object URLs the
+          // gallery/A|B check actually read from `assetUrls`.
+          await hydrateAssets(payload)
         }}
       />
 

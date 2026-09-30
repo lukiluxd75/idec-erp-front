@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
-import { History, MapPinned, RefreshCw } from 'lucide-react'
+import { CheckCircle2, History, MapPinned, RefreshCw } from 'lucide-react'
 import { Badge, Button, EmptyState, Modal, Spinner } from '@/shared/ui'
 import { detectionApi } from '../api/detection.api'
 
@@ -51,7 +51,10 @@ function fmtDate(value) {
  * "Ver detalle" (Mapa y detección + Historial) and, with allowReprocess,
  * backs the "Reprocesar" action. Historial never passes allowReprocess (see
  * HistorialPage): that tab is read-only, only "Mapa y detección" can start a
- * new run over an already-processed area.
+ * new run over an already-processed area. `onResumeValidation` backs
+ * "Continuar validación" (also Mapa y detección only, see its own docstring
+ * on that button below) -- Historial doesn't pass it either, so the button
+ * never renders there.
  */
 export default function ProcessedSectorDetailModal({
   open,
@@ -60,10 +63,12 @@ export default function ProcessedSectorDetailModal({
   allowReprocess = false,
   onReprocess,
   onViewParcel,
+  onResumeValidation,
 }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resuming, setResuming] = useState(false)
 
   useEffect(() => {
     if (!open || !sectorId) {
@@ -90,6 +95,24 @@ export default function ProcessedSectorDetailModal({
   }, [open, sectorId])
 
   const statusBadge = detail ? STATUS_BADGE[detail.status] || { variant: 'neutral', label: detail.status } : null
+  const hasPending = !!detail?.runs?.some((run) => run.parcels.some((p) => p.validation_status === 'pending'))
+
+  /** Closes this modal and hands the sector's persisted result (same shape
+   * as a live job_result) up to DetectionPage, which loads it into the same
+   * Hallazgos table/photos a fresh detection uses and scrolls to it -- no
+   * validation UI lives in this modal itself. */
+  async function handleContinueValidation() {
+    setResuming(true)
+    try {
+      const result = await detectionApi.resumeSectorValidation(sectorId)
+      onResumeValidation?.(result)
+      onClose?.()
+    } catch (err) {
+      toast.error(err.message || 'No se pudo retomar la validación de este sector.')
+    } finally {
+      setResuming(false)
+    }
+  }
 
   return (
     <Modal
@@ -205,19 +228,33 @@ export default function ProcessedSectorDetailModal({
               ))}
             </div>
 
-            {allowReprocess && (
-              <div className="flex justify-end border-t border-slate-100 pt-3">
-                <Button
-                  variant="warning"
-                  icon={RefreshCw}
-                  onClick={() => {
-                    onReprocess?.(detail)
-                    onClose?.()
-                    toast.info('Área cargada en el mapa — ajuste los años y presione "Detectar cambios".')
-                  }}
-                >
-                  Reprocesar esta área
-                </Button>
+            {(allowReprocess || (hasPending && onResumeValidation)) && (
+              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                {hasPending && onResumeValidation ? (
+                  <Button
+                    variant="primary"
+                    icon={CheckCircle2}
+                    onClick={handleContinueValidation}
+                    loading={resuming}
+                  >
+                    Continuar validación
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                {allowReprocess && (
+                  <Button
+                    variant="warning"
+                    icon={RefreshCw}
+                    onClick={() => {
+                      onReprocess?.(detail)
+                      onClose?.()
+                      toast.info('Área cargada en el mapa — ajuste los años y presione "Detectar cambios".')
+                    }}
+                  >
+                    Reprocesar esta área
+                  </Button>
+                )}
               </div>
             )}
           </div>
