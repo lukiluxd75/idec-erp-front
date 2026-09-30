@@ -18,6 +18,7 @@ import {
   Sparkles,
   FileSpreadsheet,
   FolderSearch,
+  FolderTree,
   FileText,
   Braces,
   Hash,
@@ -76,6 +77,7 @@ export const NAV_SECTIONS = [
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
         children: [
+          { label: 'Carpetas registradas', path: '/folder-analysis/folders', icon: FolderTree },
           { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
         ],
       },
