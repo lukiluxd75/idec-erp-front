@@ -1,10 +1,12 @@
 import { Component, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
+import { toast } from 'react-toastify'
 import 'leaflet/dist/leaflet.css'
 import '../styles/detection-precision-cursor.css'
 import { Alert, Badge, Button } from '@/shared/ui'
 import {
   createProcessedSectorsLayer,
+  findOverlappingSector,
   renderProcessedSectors,
 } from '../utils/processedSectorsLayer'
 import { createParcelHighlightLayer, renderParcelHighlight } from '../utils/parcelHighlightLayer'
@@ -113,6 +115,7 @@ function DetectionMapInner({
   onViewSectorDetail,
   presetPolygon = null,
   highlightParcelGeom = null,
+  resetSignal = null,
 }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
@@ -124,12 +127,14 @@ function DetectionMapInner({
   const pointsRef = useRef([])
   const onPolygonChangeRef = useRef(onPolygonChange)
   const redrawPolygonRef = useRef(() => {})
+  const processedSectorsRef = useRef(processedSectors)
   const [ready, setReady] = useState(false)
   const [layersOn, setLayersOn] = useState(() =>
     Object.fromEntries(OVERLAY_DEFS.map((d) => [d.key, d.defaultOn]))
   )
   onPolygonChangeRef.current = onPolygonChange
   redrawPolygonRef.current = redrawPolygon
+  processedSectorsRef.current = processedSectors
 
   const gisHost = (hosts && hosts[0]) || GIS_HOSTS[0]
 
@@ -170,7 +175,21 @@ function DetectionMapInner({
 
     const onClick = (event) => {
       const { lat, lng } = event.latlng
-      pointsRef.current.push([lng, lat])
+      const newPoint = [lng, lat]
+      // Engineer's rule: a new area can never touch an already-processed
+      // sector of the active campaign -- interrupt immediately and force a
+      // clean restart instead of letting the architect finish a polygon that
+      // would duplicate/collide with work already done.
+      const hit = findOverlappingSector(newPoint, pointsRef.current, processedSectorsRef.current)
+      if (hit) {
+        pointsRef.current = []
+        redrawPolygon(true)
+        toast.warn(
+          `Esta zona ya tiene un sector procesado (${hit.name || `#${hit.id}`}) en esta campaña. Vuelva a dibujar el polígono evitándolo.`
+        )
+        return
+      }
+      pointsRef.current.push(newPoint)
       redrawPolygon()
     }
     map.on('click', onClick)
@@ -224,6 +243,15 @@ function DetectionMapInner({
     pointsRef.current = presetPolygon
     redrawPolygonRef.current(true)
   }, [ready, presetPolygon])
+
+  // Bumped by DetectionPage once a detection run finishes -- otherwise the
+  // just-processed polygon stays drawn, and its stray points get dragged
+  // into whatever the architect draws next for a different block.
+  useEffect(() => {
+    if (!ready || resetSignal == null) return
+    pointsRef.current = []
+    redrawPolygonRef.current(true)
+  }, [ready, resetSignal])
 
   useEffect(() => {
     if (!ready || !mapInstance.current) return
