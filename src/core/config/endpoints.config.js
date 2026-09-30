@@ -107,6 +107,12 @@ export const API_ENDPOINTS = {
     FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
     FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,
   },
+  REPORTS: {
+    FILTERS: '/api/procedurereports/filters',
+    REPORT: '/api/procedurereports/reports',
+    EXPORT_EXCEL: '/api/procedurereports/reports/export/excel',
+    EXPORT_PDF: '/api/procedurereports/reports/export/pdf',
+  },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
     VISION: '/api/chatbot/vision',

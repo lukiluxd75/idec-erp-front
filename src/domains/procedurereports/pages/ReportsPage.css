@@ -1,4 +1,11 @@
-:root {
+/* Exact port of the standalone "reporte-gerencial" project's index.css --
+ * every selector scoped under .procedure-reports so it can't leak into the
+ * rest of the ERP (the original styled bare body/html/#root, which this app
+ * shell already owns). Do not restyle this to match the ERP's Tailwind
+ * look -- the interface itself is intentionally unchanged, only the plumbing
+ * (auth, English field names, JS not TS) was adapted. */
+
+.procedure-reports {
   --purple: #341a67;
   --purple-2: #584291;
   --cyan: #009ed0;
@@ -10,30 +17,29 @@
   --warn: #b45309;
   --danger: #9f1239;
   --ok: #0f766e;
-}
 
-* { box-sizing: border-box; }
-
-html, body, #root {
-  margin: 0;
-  min-height: 100%;
-}
-
-body {
   font-family: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   color: var(--ink);
   background: var(--paper);
 }
 
-button, input, select { font-family: inherit; }
+.procedure-reports, .procedure-reports * {
+  box-sizing: border-box;
+}
 
-.app {
+.procedure-reports button,
+.procedure-reports input,
+.procedure-reports select {
+  font-family: inherit;
+}
+
+.procedure-reports.app {
   max-width: 1180px;
   margin: 24px auto 64px;
   padding: 0 16px 32px;
 }
 
-.sheet {
+.procedure-reports .sheet {
   position: relative;
   background: var(--card);
   border-radius: 12px;
@@ -42,12 +48,12 @@ button, input, select { font-family: inherit; }
   padding: 28px 28px 36px;
 }
 
-.sheet-body {
+.procedure-reports .sheet-body {
   position: relative;
   min-height: 220px;
 }
 
-.loader-overlay {
+.procedure-reports .loader-overlay {
   position: absolute;
   inset: 0;
   z-index: 8;
@@ -63,32 +69,32 @@ button, input, select { font-family: inherit; }
   color: var(--purple);
 }
 
-.loader-overlay span {
+.procedure-reports .loader-overlay span {
   font-size: 13px;
   color: var(--muted);
 }
 
-.spinner {
+.procedure-reports .spinner {
   width: 42px;
   height: 42px;
   border: 4px solid #e5e7eb;
   border-top-color: var(--purple);
   border-radius: 50%;
-  animation: spin 0.75s linear infinite;
+  animation: procedure-reports-spin 0.75s linear infinite;
 }
 
-@keyframes spin {
+@keyframes procedure-reports-spin {
   to { transform: rotate(360deg); }
 }
 
-.brand {
+.procedure-reports .brand {
   text-align: center;
   border-bottom: 1px solid var(--line);
   padding-bottom: 18px;
   margin-bottom: 18px;
 }
 
-.brand h1 {
+.procedure-reports .brand h1 {
   margin: 0 0 6px;
   font-size: 22px;
   font-weight: 900;
@@ -97,14 +103,14 @@ button, input, select { font-family: inherit; }
   color: var(--purple);
 }
 
-.brand h2 {
+.procedure-reports .brand h2 {
   margin: 0 0 10px;
   font-size: 17px;
   font-weight: 700;
   color: var(--cyan);
 }
 
-.pill {
+.procedure-reports .pill {
   display: inline-block;
   background: var(--cyan);
   color: #fff;
@@ -117,7 +123,7 @@ button, input, select { font-family: inherit; }
   margin-bottom: 10px;
 }
 
-.controls {
+.procedure-reports .controls {
   display: flex;
   gap: 8px;
   align-items: end;
@@ -125,7 +131,7 @@ button, input, select { font-family: inherit; }
   justify-content: center;
 }
 
-.procedure-types {
+.procedure-reports .tipos {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -136,7 +142,7 @@ button, input, select { font-family: inherit; }
   text-align: left;
 }
 
-.procedure-types > span {
+.procedure-reports .tipos > span {
   width: 100%;
   font-size: 11px;
   text-transform: uppercase;
@@ -146,27 +152,27 @@ button, input, select { font-family: inherit; }
   text-align: center;
 }
 
-.procedure-group {
+.procedure-reports .tipo-grupo {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px 12px 12px;
   background: #fafbff;
 }
 
-.procedure-group > b {
+.procedure-reports .tipo-grupo > b {
   display: block;
   font-size: 12px;
   color: var(--cyan);
   margin-bottom: 8px;
 }
 
-.procedure-group-chips {
+.procedure-reports .tipo-grupo-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.chip {
+.procedure-reports .chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -179,54 +185,54 @@ button, input, select { font-family: inherit; }
   color: var(--ink);
 }
 
-.chip.on {
+.procedure-reports .chip.on {
   background: #f4f0fb;
   border-color: var(--purple-2);
   color: var(--purple);
   font-weight: 700;
 }
 
-.chip input { margin: 0; }
+.procedure-reports .chip input { margin: 0; }
 
-.chip .swatch,
-.chip i.swatch {
+.procedure-reports .chip .swatch,
+.procedure-reports .chip i.swatch {
   margin-right: 0;
 }
 
-.color-legend {
+.procedure-reports .color-legend {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 8px 16px;
 }
 
-.legend-item {
+.procedure-reports .legend-item {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
 }
 
-.legend-item small {
+.procedure-reports .legend-item small {
   display: block;
   color: var(--muted);
   font-size: 11px;
 }
 
-.swatch.lg {
+.procedure-reports .swatch.lg {
   width: 14px;
   height: 14px;
   border-radius: 4px;
   flex-shrink: 0;
 }
 
-.pie-layout {
+.procedure-reports .pie-layout {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.9fr);
   gap: 8px 18px;
   align-items: center;
 }
 
-th.procedure-type {
+.procedure-reports th.tipo {
   white-space: normal;
   min-width: 108px;
   max-width: 150px;
@@ -235,17 +241,17 @@ th.procedure-type {
 }
 
 @media (max-width: 960px) {
-  .pie-layout { grid-template-columns: 1fr; }
+  .procedure-reports .pie-layout { grid-template-columns: 1fr; }
 }
 
-.pie-list {
+.procedure-reports .pie-list {
   list-style: none;
   margin: 0 0 8px;
   padding: 0;
   font-size: 12px;
 }
 
-.pie-list li {
+.procedure-reports .pie-list li {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -253,12 +259,12 @@ th.procedure-type {
   border-bottom: 1px solid var(--line);
 }
 
-.pie-list b {
+.procedure-reports .pie-list b {
   margin-left: auto;
   color: var(--purple);
 }
 
-.collapse {
+.procedure-reports .collapse {
   margin-top: 16px;
   background: #fff;
   border: 1px solid var(--line);
@@ -266,7 +272,7 @@ th.procedure-type {
   padding: 0;
 }
 
-.collapse summary {
+.procedure-reports .collapse summary {
   cursor: pointer;
   font-weight: 700;
   color: var(--purple);
@@ -278,15 +284,15 @@ th.procedure-type {
   padding: 12px 14px;
 }
 
-.collapse summary::-webkit-details-marker { display: none; }
+.procedure-reports .collapse summary::-webkit-details-marker { display: none; }
 
-.collapse summary small {
+.procedure-reports .collapse summary small {
   font-weight: 500;
   color: var(--muted);
   font-size: 12px;
 }
 
-.collapse summary em {
+.procedure-reports .collapse summary em {
   margin-left: auto;
   font-style: normal;
   font-size: 12px;
@@ -294,17 +300,17 @@ th.procedure-type {
   color: var(--cyan);
 }
 
-.collapse-body {
+.procedure-reports .collapse-body {
   padding: 0 14px 14px;
 }
 
-.sheet.is-loading .sheet-body > :not(.loader-overlay) {
+.procedure-reports .sheet.is-loading .sheet-body > :not(.loader-overlay) {
   opacity: 0.45;
   transition: opacity 0.2s ease;
   pointer-events: none;
 }
 
-.swatch {
+.procedure-reports .swatch {
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -313,58 +319,34 @@ th.procedure-type {
   vertical-align: middle;
 }
 
-.name-cell { display: inline-flex; align-items: center; }
+.procedure-reports .name-cell { display: inline-flex; align-items: center; }
 
-.chart-tip {
+.procedure-reports .chart-tip {
   background: #fff;
   border: 1px solid #e5e7eb;
   padding: 8px 10px;
   font-size: 12px;
 }
 
-.chart-tip-title {
+.procedure-reports .chart-tip-title {
   font-weight: 700;
   margin-bottom: 4px;
   color: var(--purple);
 }
 
-.chart-tip-row { display: flex; align-items: center; gap: 4px; }
+.procedure-reports .chart-tip-row { display: flex; align-items: center; gap: 4px; }
 
-.procedure-summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.procedure-kpi {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.procedure-kpi b {
-  display: block;
-  color: var(--purple);
-  font-size: 18px;
-}
-
-.procedure-kpi span {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.table-wrap.tall {
+.procedure-reports .table-wrap.tall {
   max-height: 420px;
 }
 
-.field {
+.procedure-reports .field {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.field span {
+.procedure-reports .field span {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -372,8 +354,8 @@ th.procedure-type {
   font-weight: 700;
 }
 
-.field input,
-.field select {
+.procedure-reports .field input,
+.procedure-reports .field select {
   border: 1px solid var(--line);
   background: #fff;
   padding: 8px 10px;
@@ -382,7 +364,7 @@ th.procedure-type {
   color: var(--ink);
 }
 
-.btn {
+.procedure-reports .btn {
   border: 0;
   background: var(--purple-2);
   color: #fff;
@@ -392,47 +374,47 @@ th.procedure-type {
   cursor: pointer;
 }
 
-.btn:disabled { opacity: 0.6; cursor: default; }
+.procedure-reports .btn:disabled { opacity: 0.6; cursor: default; }
 
-.btn.cyan {
+.procedure-reports .btn.cyan {
   background: var(--cyan);
 }
 
-.btn.ghost {
+.procedure-reports .btn.ghost {
   background: transparent;
   color: var(--purple);
   border: 1px solid var(--purple);
 }
 
-.kpis {
+.procedure-reports .kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 22px 0 8px;
 }
 
-.kpi {
+.procedure-reports .kpi {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px 16px 12px;
 }
 
-.kpi b {
+.procedure-reports .kpi b {
   display: block;
   font-size: 26px;
   color: var(--purple);
   font-weight: 800;
 }
 
-.kpi span {
+.procedure-reports .kpi span {
   color: var(--muted);
   font-size: 12px;
 }
 
-.kpi.warn b { color: var(--cyan); }
+.procedure-reports .kpi.warn b { color: var(--cyan); }
 
-.banner {
+.procedure-reports .banner {
   margin: 16px 0 0;
   padding: 12px 14px;
   border-radius: 8px;
@@ -441,60 +423,61 @@ th.procedure-type {
   font-size: 14px;
 }
 
-.banner.warn {
+.procedure-reports .banner.warn {
   background: #fff7ed;
 }
 
-.grid-2 {
+.procedure-reports .grid-2 {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 18px;
   margin-top: 22px;
 }
 
-.panel {
+.procedure-reports .panel {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 16px 16px 8px;
 }
 
-.panel h2,
-.block h2 {
+.procedure-reports .panel h2,
+.procedure-reports .block h2 {
   font-size: 16px;
   margin: 0 0 4px;
   color: var(--purple);
   font-weight: 800;
 }
 
-.caption {
+.procedure-reports .caption {
   margin: 0 0 12px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.block { margin-top: 28px; }
+.procedure-reports .block { margin-top: 28px; }
 
-.table-wrap {
+.procedure-reports .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
 }
 
-table {
+.procedure-reports table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-th, td {
+.procedure-reports th,
+.procedure-reports td {
   padding: 8px 10px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 
-th {
+.procedure-reports th {
   text-align: left;
   font-size: 11px;
   letter-spacing: 0.06em;
@@ -505,13 +488,13 @@ th {
   top: 0;
 }
 
-td.num, th.num { text-align: right; }
+.procedure-reports td.num, .procedure-reports th.num { text-align: right; }
 
-tr.ok td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
-tr.warn td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
-tr.zero td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+.procedure-reports tr.ok td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+.procedure-reports tr.warn td:first-child { box-shadow: inset 3px 0 0 var(--warn); }
+.procedure-reports tr.zero td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
 
-details {
+.procedure-reports details {
   margin-top: 14px;
   background: #fff;
   border: 1px solid var(--line);
@@ -519,20 +502,20 @@ details {
   padding: 10px 14px;
 }
 
-details summary {
+.procedure-reports details summary {
   cursor: pointer;
   font-weight: 700;
   color: var(--purple);
 }
 
-.status {
+.procedure-reports .status {
   margin-top: 18px;
   color: var(--muted);
   font-size: 12px;
   text-align: center;
 }
 
-.error {
+.procedure-reports .error {
   margin-top: 16px;
   padding: 16px;
   border-radius: 8px;
@@ -542,14 +525,13 @@ details summary {
 }
 
 @media (max-width: 960px) {
-  .grid-2, .kpis { grid-template-columns: 1fr; }
-  .brand h1 { font-size: 16px; }
-  .sheet { padding: 18px 14px 28px; }
+  .procedure-reports .grid-2, .procedure-reports .kpis { grid-template-columns: 1fr; }
+  .procedure-reports .brand h1 { font-size: 16px; }
+  .procedure-reports .sheet { padding: 18px 14px 28px; }
 }
 
 @media print {
-  body { background: #fff; }
-  .controls, .btn { display: none !important; }
-  .app { max-width: none; margin: 0; padding: 0; }
-  .sheet { box-shadow: none; }
+  .procedure-reports .controls, .procedure-reports .btn { display: none !important; }
+  .procedure-reports.app { max-width: none; margin: 0; padding: 0; }
+  .procedure-reports .sheet { box-shadow: none; }
 }
