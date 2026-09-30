@@ -61,4 +61,31 @@ export const folderAnalysisApi = {
   review: (id, data) => httpClient.put(E.DOCUMENT_REVIEW(id), { data }),
 
   exportBlob: (id) => httpClient.get(E.DOCUMENT_EXPORT(id), { responseType: 'blob' }),
+
+  /**
+   * "Carpetas registradas": the saved documents grouped by project, each carpeta
+   * under the name the architect gave it. Every call answers with the carpeta (or
+   * the whole list) already carrying its documents and their saved data, so the
+   * screen never has to ask for them one by one.
+   */
+  folders: () => httpClient.get(E.FOLDERS),
+
+  createFolder: ({ name, notes, documentIds }) =>
+    httpClient.post(E.FOLDERS, { name, notes: notes || null, document_ids: documentIds || [] }),
+
+  /** `documentIds` omitted renames only; sent, it becomes the whole content. */
+  updateFolder: (id, { name, notes, documentIds }) =>
+    httpClient.put(E.FOLDER(id), {
+      name,
+      notes: notes || null,
+      ...(documentIds === undefined ? {} : { document_ids: documentIds }),
+    }),
+
+  deleteFolder: (id) => httpClient.delete(E.FOLDER(id)),
+
+  addFolderDocuments: (id, documentIds) =>
+    httpClient.post(E.FOLDER_DOCUMENTS(id), { document_ids: documentIds }),
+
+  /** Takes the document out of the carpeta; the document itself stays saved. */
+  removeFolderDocument: (id, documentId) => httpClient.delete(E.FOLDER_DOCUMENT(id, documentId)),
 }

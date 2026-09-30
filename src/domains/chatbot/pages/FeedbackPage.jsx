@@ -120,17 +120,18 @@ export default function FeedbackPage() {
                 <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
                   <GraduationCap className="h-4 w-4" /> Educar al Asistente
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Input 
                     placeholder="Ej. 'Si el usuario pregunta X, debes responder Y'"
                     value={ruleTexts[m.id] || ''}
                     onChange={(e) => setRuleTexts(prev => ({ ...prev, [m.id]: e.target.value }))}
-                    className="flex-1 text-sm"
+                    containerClassName="min-w-0 flex-1"
+                    className="text-sm"
                   />
                   <button 
                     onClick={() => handleLearn(m.id)}
                     disabled={!ruleTexts[m.id]?.trim() || learningStates[m.id]}
-                    className="flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
+                    className="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-xl bg-slate-800 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
                   >
                     {learningStates[m.id] ? <Spinner className="h-4 w-4" /> : 'Guardar Regla'}
                   </button>

@@ -113,7 +113,7 @@ export default function CampaignPicker({ campaignId, onChange }) {
             onChange={(e) => setName(e.target.value)}
             maxLength={150}
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <Input
               label="Desde"
               type="date"

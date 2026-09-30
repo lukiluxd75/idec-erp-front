@@ -282,7 +282,7 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
                     elegidas={editando.plantas}
                     onToggle={(planta) => setEditando((e) => ({ ...e, plantas: toggle(e.plantas, planta) }))}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={guardarPlantas}>
                       Guardar
                     </Button>

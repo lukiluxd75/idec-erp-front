@@ -40,7 +40,10 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className={`animate-card-in w-full ${widthClass} rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl ${className}`}
+        // max-h + scroll propio: en una pantalla baja (un móvil apaisado, un
+        // portátil pequeño) un formulario largo dejaba sus botones fuera de la
+        // vista y el diálogo no se podía terminar de usar.
+        className={`animate-card-in max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain ${widthClass} rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xl sm:p-6 ${className}`}
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
