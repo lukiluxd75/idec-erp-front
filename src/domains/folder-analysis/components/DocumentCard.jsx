@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, FileSearch, Hash, Play, RotateCcw, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, FileSearch, Hash, Play, RotateCcw, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -73,7 +73,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
       )}
     >
       <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-4">
-        <ol className="flex min-w-0 flex-1 list-none gap-1.5 overflow-x-auto pb-0.5 lg:max-w-[55%]">
+        <ol className="flex max-h-[22rem] shrink-0 list-none flex-col items-start gap-2 overflow-y-auto pb-0.5 pr-0.5">
           {document.pages.map((page, index) => (
             <li key={page.capture_id} className="relative shrink-0">
               <button
@@ -85,10 +85,10 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
               >
                 <CaptureImage
                   captureId={page.capture_id}
-                  className="h-16 w-12 cursor-zoom-in rounded-md object-cover ring-1 ring-slate-200/90 transition hover:ring-2 hover:ring-accent-400"
+                  className="h-28 w-20 cursor-zoom-in rounded-md object-cover ring-1 ring-slate-200/90 transition hover:ring-2 hover:ring-accent-400"
                 />
               </button>
-              <span className="absolute bottom-1 left-1 rounded bg-slate-900/75 px-1 text-[9px] font-bold text-white">
+              <span className="absolute bottom-1 left-1 rounded bg-slate-900/75 px-1.5 text-[10px] font-bold text-white">
                 {index + 1}
               </span>
               {pagesEditable && (
@@ -97,21 +97,21 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                     {index > 0 && (
                       <button
                         type="button"
-                        title="Mover antes"
+                        title="Mover arriba"
                         onClick={() => move(index, -1)}
-                        className="rounded bg-white/95 p-px text-slate-600 ring-1 ring-slate-200/80"
+                        className="rounded bg-white/95 p-0.5 text-slate-600 ring-1 ring-slate-200/80"
                       >
-                        <ChevronLeft className="h-2.5 w-2.5" />
+                        <ChevronUp className="h-3 w-3" />
                       </button>
                     )}
                     {index < ids.length - 1 && (
                       <button
                         type="button"
-                        title="Mover después"
+                        title="Mover abajo"
                         onClick={() => move(index, 1)}
-                        className="rounded bg-white/95 p-px text-slate-600 ring-1 ring-slate-200/80"
+                        className="rounded bg-white/95 p-0.5 text-slate-600 ring-1 ring-slate-200/80"
                       >
-                        <ChevronRight className="h-2.5 w-2.5" />
+                        <ChevronDown className="h-3 w-3" />
                       </button>
                     )}
                   </div>
@@ -120,9 +120,9 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                       type="button"
                       title="Quitar página"
                       onClick={() => remove(index)}
-                      className="rounded bg-white/95 p-px text-slate-600 ring-1 ring-slate-200/80 hover:text-state-danger"
+                      className="rounded bg-white/95 p-0.5 text-slate-600 ring-1 ring-slate-200/80 hover:text-state-danger"
                     >
-                      <X className="h-2.5 w-2.5" />
+                      <X className="h-3 w-3" />
                     </button>
                   )}
                 </div>
@@ -130,7 +130,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
             </li>
           ))}
           {acceptsDrop && (
-            <li className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 text-[8px] font-bold uppercase leading-tight text-slate-400">
+            <li className="flex h-12 w-20 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 text-[10px] font-bold uppercase leading-tight text-slate-400">
               + pág.
             </li>
           )}
