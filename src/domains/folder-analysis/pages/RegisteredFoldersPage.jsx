@@ -2,6 +2,7 @@ import {
   ChevronRight,
   FileSearch,
   FileSpreadsheet,
+  FolderOpen,
   FolderPlus,
   FolderTree,
   Pencil,
@@ -17,7 +18,9 @@ import { toast } from 'react-toastify'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { ReadableValue } from '@/domains/folder-analysis/components/SavedDataFields'
 import { SavedDocumentPicker } from '@/domains/folder-analysis/components/SavedDocumentPicker'
+import { FolderSheet } from '@/domains/folder-analysis/components/FolderSheet'
 import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
+import { folderTypeOf, sheetForm, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import {
   normalizeSearch,
   savedData,
@@ -26,6 +29,7 @@ import {
 } from '@/domains/folder-analysis/utils/savedDocuments'
 import {
   Alert,
+  Badge,
   Button,
   Card,
   ConfirmDialog,
@@ -34,6 +38,7 @@ import {
   Input,
   Modal,
   SectionHeader,
+  Select,
   Spinner,
 } from '@/shared/ui'
 
@@ -60,6 +65,7 @@ function countsLabel(countsByType) {
  * selector muestra deshabilitados los que ya están en otra, nombrándola.
  */
 export default function RegisteredFoldersPage() {
+  const { catalog } = useCatalog()
   const [folders, setFolders] = useState([])
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -143,7 +149,7 @@ export default function RegisteredFoldersPage() {
         icon={FolderTree}
         eyebrow="Analizador y extractor de datos de carpetas"
         title="Carpetas registradas"
-        subtitle="Agrupa por proyecto los folios, impuestos y planos ya solucionados, con el nombre de carpeta que tú elijas."
+        subtitle="Cada carpeta es un trámite: su tipo decide qué documentos lleva y qué datos se le sacan. Ábrela para cargarle las fotos y trabajar sus documentos dentro."
         actions={<>
           <Link to="/folder-analysis/saved">
             <Button variant="ghost" size="sm" icon={FileSpreadsheet}>Datos guardados</Button>
@@ -185,7 +191,7 @@ export default function RegisteredFoldersPage() {
             subtitle={
               folders.length
                 ? 'Prueba con otro texto.'
-                : 'Crea una carpeta con el nombre del proyecto y archiva en ella sus folios, impuestos y planos.'
+                : 'Crea una carpeta, elige de qué trámite es y ábrela para cargarle sus fotos.'
             }
           >
             {folders.length === 0 && (
@@ -201,6 +207,7 @@ export default function RegisteredFoldersPage() {
             <FolderCard
               key={folder.id}
               folder={folder}
+              catalog={catalog}
               onEdit={() => setEditing({ folder })}
               onDelete={() => setPorEliminar({ folder })}
               onRemoveDocument={(document) => quitar(folder, document)}
@@ -212,6 +219,7 @@ export default function RegisteredFoldersPage() {
       {editing && (
         <FolderFormModal
           folder={editing.folder}
+          catalog={catalog}
           documents={documents}
           holderByDocument={holderByDocument}
           onClose={() => setEditing(null)}
@@ -241,10 +249,15 @@ export default function RegisteredFoldersPage() {
  * estante de carpetas y no como la lista de revisiones que ya es "Datos
  * guardados".
  */
-function FolderCard({ folder, onEdit, onDelete, onRemoveDocument }) {
+function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
   const [open, setOpen] = useState(false)
   const counts = countsLabel(folder.counts_by_type)
   const panelId = `folder-${folder.id}-documents`
+  const type = folderTypeOf(catalog, folder.folder_type)
+  // Lo cargado de su hoja, para verlo sin tener que abrir la carpeta.
+  const filled = (type?.field_groups || [])
+    .flatMap((group) => group.fields)
+    .filter((field) => field.source !== 'fixed' && folder.data?.[field.key])
 
   return (
     <Card className="overflow-hidden p-0">
@@ -265,6 +278,14 @@ function FolderCard({ folder, onEdit, onDelete, onRemoveDocument }) {
             <span className="mt-1 block text-xs text-slate-500">
               {folder.document_count === 0 ? 'Carpeta vacía' : counts} · Creada {formatDateTime(folder.created_at)}
             </span>
+            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <Badge variant="accent">{folder.folder_type_label}</Badge>
+              {type && (
+                <span className="text-[11px] text-slate-500">
+                  {filled.length} de {type.field_groups.flatMap((g) => g.fields).length} datos cargados
+                </span>
+              )}
+            </span>
           </span>
           <span className="flex shrink-0 items-center gap-1.5 pr-1 text-xs font-semibold text-accent-700">
             {open ? 'Ocultar' : folder.document_count === 0 ? 'Abrir' : `Ver ${folder.document_count}`}
@@ -272,6 +293,9 @@ function FolderCard({ folder, onEdit, onDelete, onRemoveDocument }) {
           </span>
         </button>
         <div className="ml-auto flex items-center gap-1.5">
+          <Link to={`/folder-analysis/folders/${folder.id}`}>
+            <Button size="sm" icon={FolderOpen}>Abrir</Button>
+          </Link>
           <Button size="sm" variant="secondary" icon={Pencil} onClick={onEdit}>Editar</Button>
           <IconButton
             icon={Trash2}
@@ -287,7 +311,8 @@ function FolderCard({ folder, onEdit, onDelete, onRemoveDocument }) {
         <div id={panelId}>
           {folder.document_count === 0 ? (
             <p className="px-4 py-4 text-sm text-slate-500 sm:px-5">
-              Todavía no archivaste documentos en esta carpeta. Usa <strong>Editar</strong> para elegirlos.
+              Todavía no hay documentos en esta carpeta. <strong>Ábrela</strong> para cargarle fotos, o
+              usa <strong>Editar</strong> para archivar en ella documentos ya revisados.
             </p>
           ) : (
             <div className="grid gap-2 p-4 sm:p-5">
@@ -354,19 +379,33 @@ function FolderDocumentRow({ document, onRemove }) {
 }
 
 /**
- * Crea o edita una carpeta: nombre, descripción y qué documentos guardados la
- * componen. Al editar, sus propios documentos se pueden desmarcar (sacarlos) sin
- * que cuenten como "ya archivados en otra carpeta".
+ * Crea o edita una carpeta: de qué trámite es, cómo se llama, su hoja de datos y
+ * qué documentos ya revisados se archivan en ella.
+ *
+ * El tipo se elige al crearla y después no se cambia: sus documentos ya se
+ * clasificaron con los carriles de ese tipo y su hoja se llenó con sus campos.
+ * Ni los campos ni los tipos están escritos acá -- llegan del catálogo.
  */
-function FolderFormModal({ folder, documents, holderByDocument, onClose, onSaved }) {
+function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose, onSaved }) {
   // Se monta solo mientras está abierto (ver arriba), así que los campos arrancan
   // de la carpeta que se está editando y no hace falta reiniciarlos.
   const [name, setName] = useState(folder?.name || '')
   const [notes, setNotes] = useState(folder?.notes || '')
+  const [typeKey, setTypeKey] = useState(
+    () => folder?.folder_type || catalog?.folder_types?.[0]?.key || ''
+  )
+  const [sheet, setSheet] = useState(() => folder?.data || {})
   const [selectedIds, setSelectedIds] = useState(
     () => folder?.documents.map((document) => document.id) || []
   )
   const [saving, setSaving] = useState(false)
+
+  const type = folderTypeOf(catalog, typeKey)
+  // Cambiar de tipo al crear rearma la hoja: los campos son otros.
+  const elegirTipo = (key) => {
+    setTypeKey(key)
+    setSheet((previous) => sheetForm(folderTypeOf(catalog, key), previous))
+  }
 
   const filedElsewhere = useMemo(() => {
     const own = new Set(folder?.documents.map((document) => document.id) || [])
@@ -379,7 +418,7 @@ function FolderFormModal({ folder, documents, holderByDocument, onClose, onSaved
     event.preventDefault()
     setSaving(true)
     try {
-      const payload = { name, notes, documentIds: selectedIds }
+      const payload = { name, notes, data: sheet, documentIds: selectedIds, folderType: typeKey }
       const result = folder
         ? await folderAnalysisApi.updateFolder(folder.id, payload)
         : await folderAnalysisApi.createFolder(payload)
@@ -411,6 +450,31 @@ function FolderFormModal({ folder, documents, holderByDocument, onClose, onSaved
             required
             autoFocus
           />
+          {folder ? (
+            <div className="flex flex-col justify-center">
+              <span className="mb-1.5 block text-sm font-medium text-slate-700">Tipo de carpeta</span>
+              <span className="flex items-center gap-2">
+                <Badge variant="accent">{folder.folder_type_label}</Badge>
+                <span className="text-xs text-slate-500">
+                  El tipo no se cambia: sus documentos ya se clasificaron con él.
+                </span>
+              </span>
+            </div>
+          ) : (
+            <Select
+              id="folder-type"
+              label="Tipo de carpeta"
+              value={typeKey}
+              onChange={(event) => elegirTipo(event.target.value)}
+              required
+            >
+              {(catalog?.folder_types || []).map((item) => (
+                <option key={item.key} value={item.key}>
+                  {item.label}
+                </option>
+              ))}
+            </Select>
+          )}
           <Input
             id="folder-notes"
             label="Descripción (opcional)"
@@ -418,14 +482,30 @@ function FolderFormModal({ folder, documents, holderByDocument, onClose, onSaved
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             maxLength={MAX_NOTES_LENGTH}
+            containerClassName="sm:col-span-2"
           />
         </div>
+
+        {type && <p className="-mt-1 text-xs text-slate-500">{type.description}</p>}
+
+        {type?.field_groups?.length > 0 && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+            <p className="mb-2.5 text-sm font-medium text-slate-700">Datos de la carpeta</p>
+            <FolderSheet
+              folderType={type}
+              value={sheet}
+              onChange={(key, value) => setSheet((previous) => ({ ...previous, [key]: value }))}
+            />
+          </div>
+        )}
 
         <div>
           <p className="mb-1.5 text-sm font-medium text-slate-700">Documentos de la carpeta</p>
           <p className="mb-2.5 text-xs text-slate-500">
-            Solo aparecen los documentos con la revisión ya guardada. Un documento se archiva en una
-            sola carpeta; si está en otra, aquí se indica cuál.
+            Solo aparecen los documentos con la revisión ya guardada, para archivar acá alguno que se
+            haya resuelto fuera de la carpeta. Los que se abran dentro de ella ya están adentro y no
+            salen de aquí. Un documento se archiva en una sola carpeta; si está en otra, aquí se
+            indica cuál.
           </p>
           <SavedDocumentPicker
             documents={documents}

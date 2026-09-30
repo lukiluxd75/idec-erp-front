@@ -239,6 +239,10 @@
   }
 }
 
+/* Los carriles son bandas horizontales, una debajo de otra y cada una a todo el
+   ancho. En columnas sólo entraban tres: con los cinco de una carpeta de
+   poseedores cada columna quedaba de 200px, con el botón de analizar cortado y
+   un scroll horizontal por carril. */
 .workbench-lanes {
   display: flex;
   flex: 1;
@@ -247,9 +251,8 @@
   border-top: 1px solid rgba(226, 232, 240, 0.95);
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .workbench-lanes {
-    flex-direction: row;
     border-top: none;
     border-left: 1px solid rgba(226, 232, 240, 0.95);
   }
@@ -337,24 +340,16 @@
 .workbench-lane {
   position: relative;
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
   min-width: 0;
-  min-height: 16rem;
   overflow: hidden;
   background: rgb(255 255 255);
   border-bottom: 1px solid rgba(226, 232, 240, 0.95);
 }
 
-@media (min-width: 768px) {
-  .workbench-lane {
-    border-bottom: none;
-    border-right: 1px solid rgba(226, 232, 240, 0.95);
-  }
-
-  .workbench-lane:last-child {
-    border-right: none;
-  }
+.workbench-lane:last-child {
+  border-bottom: none;
 }
 
 .workbench-lane::before {
@@ -379,26 +374,49 @@
   background: rgb(0 158 208);
 }
 
+.workbench-lane--appraisal::before {
+  background: rgb(217 119 6);
+}
+
+.workbench-lane--form::before {
+  background: rgb(79 70 229);
+}
+
+.workbench-lane--sworn::before {
+  background: rgb(225 29 72);
+}
+
+.workbench-lane--id::before {
+  background: rgb(13 148 136);
+}
+
 .workbench-lane--active {
   background: rgba(240, 249, 255, 0.65);
   box-shadow: inset 0 0 0 2px rgba(0, 158, 208, 0.25);
 }
 
+/* Toda la cabecera de la banda en una sola fila: nombre, contador, de qué es el
+   carril y dónde soltar la foto. Apilado, cinco carriles vacíos se comían la
+   pantalla antes de mostrar un solo documento. */
 .workbench-lane__head {
-  padding: 1rem 1rem 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.625rem 1rem;
   border-bottom: 1px solid rgba(226, 232, 240, 0.85);
 }
 
 .workbench-lane__drop {
-  margin: 0;
-  padding: 0.5rem 1rem;
-  border-radius: 0;
-  border: none;
-  border-bottom: 1px dashed rgba(148, 163, 184, 0.55);
+  margin-left: auto;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px dashed rgba(148, 163, 184, 0.55);
   background: rgba(248, 250, 252, 0.85);
   text-align: center;
   font-size: 0.6875rem;
   font-weight: 600;
+  white-space: nowrap;
   color: rgb(100 116 139);
   transition:
     background-color 0.15s ease,
@@ -415,6 +433,9 @@
 .workbench-lane__body {
   flex: 1;
   min-height: 0;
+  /* Una banda con muchos documentos hace su propio scroll en vez de empujar a
+     las de abajo fuera de la pantalla. */
+  max-height: 30rem;
   overflow-y: auto;
   padding: 0;
 }
@@ -425,15 +446,13 @@
   padding: 0;
 }
 
+/* El vacío de una banda es una línea, no una portada: con cinco carriles, cinco
+   ilustraciones centradas eran toda la pantalla sin un dato adentro. */
 .workbench-lane__empty {
-  flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 2rem 1rem;
-  text-align: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
   color: rgb(100 116 139);
 }
 
