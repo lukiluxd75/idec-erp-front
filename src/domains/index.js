@@ -14,6 +14,9 @@ import { appraisalReviewRoutes } from './appraisal-review/routes'
 import { templatesRoutes } from './templates/routes'
 import { digitizationRoutes } from './digitization/routes'
 import { folderAnalysisRoutes } from './folder-analysis/routes'
+
+import { folderAnalysisRoutes } from './folder-analysis/routes'
+import { alignmentRoutes } from './alignment/routes'
 import { procedureReportsRoutes } from './procedurereports/routes'
 
 export const DOMAIN_ROUTES = [
@@ -26,6 +29,7 @@ export const DOMAIN_ROUTES = [
   ...templatesRoutes,
   ...digitizationRoutes,
   ...folderAnalysisRoutes,
+  ...alignmentRoutes,
   ...procedureReportsRoutes,
 ]
 

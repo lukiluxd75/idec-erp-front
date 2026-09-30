@@ -122,4 +122,12 @@ export const API_ENDPOINTS = {
     INGESTS: '/api/chatbot/ingests',
     REINDEX_EMBEDDINGS: '/api/chatbot/embeddings/reindex',
   },
+  ALIGNMENT: {
+    WMS_LAYERS: '/api/alignment/wms/layers',
+    WMS_IMAGE: '/api/alignment/wms/image',
+    BLOCKS: '/api/alignment/blocks',
+    BLOCK: (id) => `/api/alignment/blocks/${id}`,
+    BLOCK_CONFIRM: (id) => `/api/alignment/blocks/${id}/confirm`,
+    COVERAGE: '/api/alignment/coverage',
+  },
 }
