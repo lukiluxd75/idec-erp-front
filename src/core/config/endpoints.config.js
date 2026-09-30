@@ -102,6 +102,12 @@ export const API_ENDPOINTS = {
     DOCUMENT_REVIEW: (id) => `/api/folder-analysis/documents/${id}/review`,
     DOCUMENT_EXPORT: (id) => `/api/folder-analysis/documents/${id}/export`,
   },
+  REPORTS: {
+    FILTERS: '/api/procedurereports/filters',
+    REPORT: '/api/procedurereports/reports',
+    EXPORT_EXCEL: '/api/procedurereports/reports/export/excel',
+    EXPORT_PDF: '/api/procedurereports/reports/export/pdf',
+  },
   CHATBOT: {
     CHAT: '/api/chatbot/chat',
     VISION: '/api/chatbot/vision',
