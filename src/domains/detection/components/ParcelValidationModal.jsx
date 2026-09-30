@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { toast } from 'react-toastify'
 import { CheckCircle2, XCircle } from 'lucide-react'
-import { Button, Modal, Select } from '@/shared/ui'
+import { Button, Input, Modal, Select } from '@/shared/ui'
 import { detectionApi } from '../api/detection.api'
 
 // Kept in sync with the backend's ALLOWED_CONSTRUCTION_TYPES (see
-// ReviewAffectedParcelUseCase).
+// ReviewAffectedParcelUseCase) -- "otro" is a UI-only trigger, never sent as
+// such: picking it reveals a short free-text title that gets sent (and
+// stored in affected_parcel.construction_type) instead of the literal word.
 const CONSTRUCTION_TYPES = [
   { value: 'nueva_construccion', label: 'Construcción nueva' },
   { value: 'ampliacion', label: 'Ampliación' },
@@ -14,6 +16,9 @@ const CONSTRUCTION_TYPES = [
   { value: 'demolicion', label: 'Demolición' },
   { value: 'otro', label: 'Otro' },
 ]
+
+// Matches affected_parcel.construction_type's VARCHAR(30) on the backend.
+const CONSTRUCTION_TYPE_MAX_LENGTH = 30
 
 /**
  * The architect's two validation actions on an affected_parcel (see
@@ -26,10 +31,14 @@ const CONSTRUCTION_TYPES = [
 export default function ParcelValidationModal({ row, mode, open, onClose, onReviewed }) {
   const [busy, setBusy] = useState(false)
   const [constructionType, setConstructionType] = useState(CONSTRUCTION_TYPES[0].value)
+  const [otherLabel, setOtherLabel] = useState('')
   const [comment, setComment] = useState('')
+
+  const isOther = constructionType === 'otro'
 
   function reset() {
     setConstructionType(CONSTRUCTION_TYPES[0].value)
+    setOtherLabel('')
     setComment('')
   }
 
@@ -40,11 +49,15 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
 
   async function handleSubmit() {
     if (!row?.affected_parcel_id) return
+    if (mode === 'confirm' && isOther && !otherLabel.trim()) {
+      toast.warn('Escriba el tipo de cambio observado.')
+      return
+    }
     setBusy(true)
     try {
       const payload =
         mode === 'confirm'
-          ? { action: 'confirm', construction_type: constructionType }
+          ? { action: 'confirm', construction_type: isOther ? otherLabel.trim() : constructionType }
           : { action: 'reject', comment: comment.trim() || undefined }
       await detectionApi.reviewAffectedParcel(row.affected_parcel_id, payload)
       onReviewed?.(row.affected_parcel_id, mode === 'confirm' ? 'confirmed' : 'rejected')
@@ -84,6 +97,15 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
                 </option>
               ))}
             </Select>
+            {isOther && (
+              <Input
+                label="¿Qué tipo de cambio es?"
+                value={otherLabel}
+                onChange={(e) => setOtherLabel(e.target.value)}
+                maxLength={CONSTRUCTION_TYPE_MAX_LENGTH}
+                placeholder="Ej: cambio de cerca"
+              />
+            )}
           </>
         ) : (
           <>

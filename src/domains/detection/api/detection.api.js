@@ -67,6 +67,12 @@ function getProcessedSectorDetail(sectorId) {
   return httpClient.get(API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId))
 }
 
+/** "Continuar validación": the sector's persisted result, shaped just like
+ * a live job's job_result -- feed it straight into the same Hallazgos table. */
+function resumeSectorValidation(sectorId) {
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId)}/resume-validation`)
+}
+
 /**
  * Engine image URLs already come rewritten as `/api/detection/engine/...`.
  * Attach the ERP base URL + bearer via fetch blob URL for <img> tags.
@@ -100,4 +106,5 @@ export const detectionApi = {
   reviewAffectedParcel,
   listProcessedSectors,
   getProcessedSectorDetail,
+  resumeSectorValidation,
 }

@@ -28,7 +28,7 @@ import CampaignPicker from '../components/CampaignPicker'
 import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
-import { polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
+import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
 
@@ -92,6 +92,20 @@ export default function DetectionPage() {
   const [gpu, setGpu] = useState(0)
   const [polygon, setPolygon] = useState(null)
   const [campaignId, setCampaignId] = useState(null)
+  // Fixed for the campaign's whole life (engineer's call) -- while set, Año
+  // A/Año B below are shown but locked to these values, not freely editable.
+  const [campaignYears, setCampaignYears] = useState(null)
+
+  function handleCampaignChange(id, campaign) {
+    setCampaignId(id)
+    if (campaign?.year_a != null && campaign?.year_b != null) {
+      setCampaignYears({ year_a: campaign.year_a, year_b: campaign.year_b })
+      setYearRef(String(campaign.year_a))
+      setYearMov(String(campaign.year_b))
+    } else {
+      setCampaignYears(null)
+    }
+  }
 
   const [jobId, setJobId] = useState(null)
   const [progress, setProgress] = useState(null)
@@ -432,8 +446,11 @@ export default function DetectionPage() {
   /** Reflects a review/feedback verdict locally (both raw arrays + the
    * selected row) without re-polling the job, matching by affected_parcel_id
    * (present on every row once the backend has persisted the result — see
-   * job_result's response enrichment). */
-  function handleParcelReviewed(affectedParcelId, validationStatus) {
+   * job_result's response enrichment). `sectorId` defaults to the live job's
+   * own sector, but ProcessedSectorDetailModal's "Continuar validación"
+   * (an older/different sector than whatever job is live here) passes its
+   * own sector id explicitly. */
+  function handleParcelReviewed(affectedParcelId, validationStatus, sectorId) {
     setResult((prev) => {
       if (!prev) return prev
       const patchArray = (arr) =>
@@ -463,6 +480,15 @@ export default function DetectionPage() {
         ? { ...prev, validation_status: validationStatus }
         : prev
     )
+
+    // Also patch processedSectors -- the map polygon's color is computed
+    // from n_confirmed/n_rejected/n_pending on THAT array (see
+    // processedSectorsLayer.js), not from `result` above, so without this
+    // the color only updated after a full page reload.
+    const targetSectorId = sectorId ?? result?.processed_sector_id
+    if (targetSectorId != null) {
+      setProcessedSectors((prev) => applyParcelReviewToSectors(prev, targetSectorId, validationStatus))
+    }
   }
 
   const viewGeom = result?.view_geometry || {}
@@ -603,7 +629,13 @@ export default function DetectionPage() {
 
           <div className="flex flex-wrap items-end gap-3 px-4 py-3">
             <div className="min-w-[140px] flex-1 basis-[140px] sm:max-w-[180px]">
-              <Select label="Año A · referencia" value={yearRef} onChange={(e) => setYearRef(e.target.value)}>
+              <Select
+                label="Año A · referencia"
+                value={yearRef}
+                onChange={(e) => setYearRef(e.target.value)}
+                disabled={!!campaignYears}
+                title={campaignYears ? 'Fijado por la campaña seleccionada' : undefined}
+              >
                 <option value="">Seleccione…</option>
                 {yearOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -617,6 +649,8 @@ export default function DetectionPage() {
                 label="Año B · comparación"
                 value={yearMov}
                 onChange={(e) => setYearMov(e.target.value)}
+                disabled={!!campaignYears}
+                title={campaignYears ? 'Fijado por la campaña seleccionada' : undefined}
               >
                 <option value="">Seleccione…</option>
                 {yearOptions.map((o) => (
@@ -641,7 +675,11 @@ export default function DetectionPage() {
               </Select>
             </div>
             <div className="min-w-[160px] flex-1 basis-[160px] sm:max-w-[220px]">
-              <CampaignPicker campaignId={campaignId} onChange={setCampaignId} />
+              <CampaignPicker
+                campaignId={campaignId}
+                onChange={handleCampaignChange}
+                yearOptions={yearOptions.map((o) => o.value)}
+              />
             </div>
 
             <button
@@ -787,6 +825,14 @@ export default function DetectionPage() {
           setHighlightParcelGeom(parcel.parcel_geom_geojson)
           requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' })
+          })
+        }}
+        onResumeValidation={(payload) => {
+          setResult(payload)
+          setSelectedRow(null)
+          toast.success('Retomando la validación de este sector.')
+          requestAnimationFrame(() => {
+            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
           })
         }}
       />

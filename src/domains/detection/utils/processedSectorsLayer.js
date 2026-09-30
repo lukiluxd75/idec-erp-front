@@ -128,3 +128,27 @@ export function polygonRingFromGeoJson(geomGeojson) {
   const ring = geomGeojson?.coordinates?.[0]
   return Array.isArray(ring) ? ring : null
 }
+
+/**
+ * Patches one sector's n_confirmed/n_rejected/n_pending (and status, once
+ * none are left pending) right after a parcel gets confirmed/rejected --
+ * shared by DetectionPage and HistorialPage so their map polygon recolors
+ * immediately instead of only after the next full reload (see
+ * ProcessedSectorDetailModal's "Continuar validación"). Pure, returns a new
+ * array; `sectors` entries that don't match `sectorId` pass through as-is.
+ */
+export function applyParcelReviewToSectors(sectors, sectorId, validationStatus) {
+  return (sectors || []).map((s) => {
+    if (s.id !== sectorId) return s
+    const isConfirmed = validationStatus === 'confirmed'
+    const nPending = Math.max(0, (s.n_pending_parcels || 0) - 1)
+    const completable = s.status === 'awaiting_validation' || s.status === 'awaiting_manual_alignment'
+    return {
+      ...s,
+      n_confirmed_parcels: (s.n_confirmed_parcels || 0) + (isConfirmed ? 1 : 0),
+      n_rejected_parcels: (s.n_rejected_parcels || 0) + (isConfirmed ? 0 : 1),
+      n_pending_parcels: nPending,
+      status: nPending === 0 && completable ? 'completed' : s.status,
+    }
+  })
+}
