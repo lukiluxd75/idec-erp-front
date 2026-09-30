@@ -162,7 +162,7 @@ export function TemplateFormModal({ open, onClose, templateId, onSaved }) {
             ) : (
               <span />
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" variant="secondary" onClick={onClose} disabled={submitting}>
                 Cancelar
               </Button>
