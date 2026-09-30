@@ -89,6 +89,7 @@ export const API_ENDPOINTS = {
     STOP_WORKER: '/api/digitization/workers/stop',
   },
   FOLDER_ANALYSIS: {
+    CATALOG: '/api/folder-analysis/catalog',
     CAPTURES: '/api/folder-analysis/captures',
     CAPTURE: (id) => `/api/folder-analysis/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,

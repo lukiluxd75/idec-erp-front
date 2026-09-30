@@ -16,17 +16,21 @@ export function FieldInput({ label, value, onChange, multiline = false, warn = f
 
   return (
     <label className={cn('flex flex-col gap-1', className)}>
-      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {label}
-        {warn && (
-          <span
-            title="La lectura no fue segura: compare con la foto."
-            className="rounded bg-state-amber/15 px-1 text-[9px] font-bold text-state-orange-deep"
-          >
-            revisar
-          </span>
-        )}
-      </span>
+      {/* Sin rótulo cuando quien lo usa ya lo puso encima (la hoja de una
+          carpeta dibuja su propio rótulo con la insignia de dónde sale). */}
+      {(label || warn) && (
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          {label}
+          {warn && (
+            <span
+              title="La lectura no fue segura: compare con la foto."
+              className="rounded bg-state-amber/15 px-1 text-[9px] font-bold text-state-orange-deep"
+            >
+              revisar
+            </span>
+          )}
+        </span>
+      )}
       {multiline ? (
         <textarea rows={2} value={value ?? ''} onChange={handle} className={cn(common, 'resize-y')} />
       ) : (

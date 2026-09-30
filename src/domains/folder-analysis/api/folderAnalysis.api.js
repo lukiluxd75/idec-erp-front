@@ -11,6 +11,13 @@ const E = API_ENDPOINTS.FOLDER_ANALYSIS
  * photo); a plan goes to the architects' PCs and takes minutes.
  */
 export const folderAnalysisApi = {
+  /**
+   * Which kinds of carpeta exist, which documents each one holds and which
+   * fields its own sheet asks for. The screen draws itself from this instead of
+   * knowing any carpeta by name -- see utils/catalog.js, which reads it once.
+   */
+  catalog: () => httpClient.get(E.CATALOG),
+
   inbox: () => httpClient.get(E.CAPTURES),
 
   /**
@@ -42,15 +49,39 @@ export const folderAnalysisApi = {
 
   deleteCapture: (id) => httpClient.delete(E.CAPTURE(id)),
 
-  documents: () => httpClient.get(E.DOCUMENTS),
+  /**
+   * Vacía la bandeja de una vez. Solo se van las fotos todavía sin clasificar;
+   * las que ya son página de un documento se quedan donde están. Responde
+   * cuántas se borraron.
+   */
+  clearInbox: () => httpClient.delete(E.CAPTURES),
 
-  reviewedDocuments: (docType) =>
-    httpClient.get(docType ? `${E.REVIEWED_DOCUMENTS}?doc_type=${encodeURIComponent(docType)}` : E.REVIEWED_DOCUMENTS),
+  /** All of the user's documents, or only the ones worked on inside a carpeta. */
+  documents: (folderId) =>
+    httpClient.get(folderId ? `${E.DOCUMENTS}?folder_id=${encodeURIComponent(folderId)}` : E.DOCUMENTS),
+
+  reviewedDocuments: (docType, folderId) => {
+    const query = new URLSearchParams()
+    if (docType) query.set('doc_type', docType)
+    if (folderId) query.set('folder_id', folderId)
+    const suffix = query.toString()
+    return httpClient.get(suffix ? `${E.REVIEWED_DOCUMENTS}?${suffix}` : E.REVIEWED_DOCUMENTS)
+  },
 
   document: (id) => httpClient.get(E.DOCUMENT(id)),
 
-  createDocument: (docType, captureIds) =>
-    httpClient.post(E.DOCUMENTS, { doc_type: docType, capture_ids: captureIds }),
+  /**
+   * `folderId` opens the document inside that carpeta, which is where it stays
+   * from then on. Without it, the document is classified on the loose board and
+   * belongs to no carpeta. The server refuses a type the carpeta does not hold.
+   */
+  createDocument: (docType, captureIds, folderId, folderType) =>
+    httpClient.post(E.DOCUMENTS, {
+      doc_type: docType,
+      capture_ids: captureIds,
+      ...(folderId ? { folder_id: folderId } : {}),
+      ...(folderType ? { folder_type: folderType } : {}),
+    }),
 
   setPages: (id, captureIds) => httpClient.put(E.DOCUMENT_PAGES(id), { capture_ids: captureIds }),
 
@@ -70,14 +101,33 @@ export const folderAnalysisApi = {
    */
   folders: () => httpClient.get(E.FOLDERS),
 
-  createFolder: ({ name, notes, documentIds }) =>
-    httpClient.post(E.FOLDERS, { name, notes: notes || null, document_ids: documentIds || [] }),
+  /** Una carpeta con su tipo, su hoja y los documentos que tiene dentro. */
+  folder: (id) => httpClient.get(E.FOLDER(id)),
 
-  /** `documentIds` omitted renames only; sent, it becomes the whole content. */
-  updateFolder: (id, { name, notes, documentIds }) =>
+  /**
+   * `folderType` is the kind of trámite, chosen when the carpeta is opened and
+   * fixed from then on: it is what says which lanes its board shows and which
+   * fields its sheet (`data`) asks for.
+   */
+  createFolder: ({ name, notes, folderType, data, documentIds }) =>
+    httpClient.post(E.FOLDERS, {
+      name,
+      notes: notes || null,
+      folder_type: folderType || null,
+      data: data || {},
+      document_ids: documentIds || [],
+    }),
+
+  /**
+   * Name, note and sheet. `documentIds` omitted leaves the contents alone; sent,
+   * it replaces the reviewed documents (the ones still being worked on inside
+   * the carpeta stay in it). The kind is not editable.
+   */
+  updateFolder: (id, { name, notes, data, documentIds }) =>
     httpClient.put(E.FOLDER(id), {
       name,
       notes: notes || null,
+      data: data || {},
       ...(documentIds === undefined ? {} : { document_ids: documentIds }),
     }),
 

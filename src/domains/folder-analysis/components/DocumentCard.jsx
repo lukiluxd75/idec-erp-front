@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, FileSearch, Hash, Play, RotateCcw, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileSearch, Hash, Play, RotateCcw, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -73,7 +73,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
       )}
     >
       <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:gap-4">
-        <ol className="flex max-h-[22rem] shrink-0 list-none flex-col items-start gap-2 overflow-y-auto pb-0.5 pr-0.5">
+        <ol className="flex max-h-[15.5rem] min-w-0 list-none flex-wrap content-start gap-2 overflow-y-auto pb-0.5 pr-0.5 lg:max-w-[58%]">
           {document.pages.map((page, index) => (
             <li key={page.capture_id} className="relative shrink-0">
               <button
@@ -97,21 +97,21 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                     {index > 0 && (
                       <button
                         type="button"
-                        title="Mover arriba"
+                        title="Mover antes"
                         onClick={() => move(index, -1)}
                         className="rounded bg-white/95 p-0.5 text-slate-600 ring-1 ring-slate-200/80"
                       >
-                        <ChevronUp className="h-3 w-3" />
+                        <ChevronLeft className="h-3 w-3" />
                       </button>
                     )}
                     {index < ids.length - 1 && (
                       <button
                         type="button"
-                        title="Mover abajo"
+                        title="Mover después"
                         onClick={() => move(index, 1)}
                         className="rounded bg-white/95 p-0.5 text-slate-600 ring-1 ring-slate-200/80"
                       >
-                        <ChevronDown className="h-3 w-3" />
+                        <ChevronRight className="h-3 w-3" />
                       </button>
                     )}
                   </div>
@@ -130,7 +130,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
             </li>
           ))}
           {acceptsDrop && (
-            <li className="flex h-12 w-20 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 text-[10px] font-bold uppercase leading-tight text-slate-400">
+            <li className="flex h-28 w-20 shrink-0 items-center justify-center rounded-md border border-dashed border-slate-300 text-[10px] font-bold uppercase leading-tight text-slate-400">
               + pág.
             </li>
           )}

@@ -11,7 +11,9 @@ import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingPro
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
 import { PlanPageInfo } from '@/domains/folder-analysis/components/forms/PlanPageInfo'
 import { TaxReceiptForm } from '@/domains/folder-analysis/components/forms/TaxReceiptForm'
+import { FieldInput } from '@/domains/folder-analysis/components/forms/FieldInput'
 import { withFolioDefaults, withTaxReceiptDefaults } from '@/domains/folder-analysis/utils/formDefaults'
+import { folderTypeOf, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import {
   DOC_TYPE_BY_ID,
   FALLBACK_ICON,
@@ -31,6 +33,7 @@ function initialForm(document) {
 
 export default function DocumentReviewPage() {
   const { id } = useParams()
+  const { catalog } = useCatalog()
   const [document, setDocument] = useState(null)
   const [form, setForm] = useState(null)
   const [planName, setPlanName] = useState('')
@@ -71,6 +74,16 @@ export default function DocumentReviewPage() {
   // While it is being analyzed the screen asks more often: the bar moves photo by
   // photo and a five second gap between answers is felt as a stall.
   usePollWhile(Boolean(document && IN_PROGRESS.has(document.status)), load, 3000)
+
+  // Los valores que la carpeta pide de este documento: los declara el catálogo
+  // para el par (tipo de carpeta, tipo de documento), y el análisis los dejó en
+  // `values`. Un documento de un par que no declara nada no muestra este bloque
+  // y se revisa con la vista de siempre.
+  const values =
+    folderTypeOf(catalog, document?.folder_type)?.document_values?.[document?.doc_type] || []
+
+  const setValue = (key, value) =>
+    setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), [key]: value } }))
 
   const save = async () => {
     setSaving(true)
@@ -213,6 +226,25 @@ export default function DocumentReviewPage() {
                 </Button>
               </div>
               <div key={formVersion} className="max-h-[70vh] overflow-y-auto pr-1">
+                {values.length > 0 && (
+                  <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
+                    <p className="text-sm font-bold text-slate-800">Datos para la carpeta</p>
+                    <p className="mb-3 text-xs text-slate-500">
+                      Lo que la lectura encontró en esta hoja. Lo que quedó vacío no estaba rotulado:
+                      escríbalo comparando con la foto.
+                    </p>
+                    <div className="grid gap-x-5 gap-y-3.5 sm:grid-cols-2">
+                      {values.map((field) => (
+                        <FieldInput
+                          key={field.key}
+                          label={field.label}
+                          value={form?.values?.[field.key] ?? null}
+                          onChange={(value) => setValue(field.key, value)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {document.doc_type === 'plan' && (
                   <label className="mb-4 flex flex-col gap-1.5 text-sm font-semibold text-slate-700">
                     Nombre del plano
