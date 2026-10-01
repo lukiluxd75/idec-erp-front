@@ -90,11 +90,17 @@ export const API_ENDPOINTS = {
   },
   FOLDER_ANALYSIS: {
     CATALOG: '/api/folder-analysis/catalog',
+    CADASTRAL_PARCEL: '/api/folder-analysis/cadastral/parcel',
+    CADASTRAL_CROQUIS: '/api/folder-analysis/cadastral/croquis',
     CAPTURES: '/api/folder-analysis/captures',
     CAPTURE: (id) => `/api/folder-analysis/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
     CAPTURE_PREVIEW: (id) => `/api/folder-analysis/captures/${id}/preview`,
     CAPTURE_THUMBNAIL: (id) => `/api/folder-analysis/captures/${id}/thumbnail`,
+    // Indicador "Celular conectado". Se consulta por REST (no hay websocket en
+    // este modulo) y el backend lo responde desde Postgres, asi que cualquiera
+    // de los 4 workers da la misma respuesta.
+    CAPTURES_PRESENCE: '/api/folder-analysis/captures/presence',
     DOCUMENTS: '/api/folder-analysis/documents',
     REVIEWED_DOCUMENTS: '/api/folder-analysis/documents/reviewed',
     DOCUMENT: (id) => `/api/folder-analysis/documents/${id}`,

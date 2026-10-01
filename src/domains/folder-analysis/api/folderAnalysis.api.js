@@ -18,7 +18,30 @@ export const folderAnalysisApi = {
    */
   catalog: () => httpClient.get(E.CATALOG),
 
+  /**
+   * Poseedores: the predio of a code catastral placed on the IDE (outline,
+   * neighbours by the eight points of the compass, streets, surface). With the
+   * plano's `documentId`, what the plano declares comes back next to what the
+   * GIS measures.
+   */
+  /** The croquis de ubicacion of a predio as a PNG (Blob): needs Bearer, so it is not an <img src>. */
+  cadastralCroquisBlob: (code) =>
+    httpClient.get(`${E.CADASTRAL_CROQUIS}?code=${encodeURIComponent(code)}`, { responseType: 'blob' }),
+
+  cadastralParcel: (code, documentId) => {
+    const query = new URLSearchParams({ code })
+    if (documentId) query.set('document_id', documentId)
+    return httpClient.get(`${E.CADASTRAL_PARCEL}?${query}`)
+  },
+
   inbox: () => httpClient.get(E.CAPTURES),
+
+  /**
+   * Snapshot de "hay un celular conectado" para PhoneConnectedBadge, consultado
+   * por usePhonePresence. Barato a proposito (una fila en Postgres), porque se
+   * llama cada pocos segundos mientras la pantalla esta abierta.
+   */
+  presence: () => httpClient.get(E.CAPTURES_PRESENCE),
 
   /**
    * Same entry point the mobile app uses, from the web: photos picked in the

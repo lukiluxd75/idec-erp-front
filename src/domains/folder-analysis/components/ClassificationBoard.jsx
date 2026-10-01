@@ -8,6 +8,7 @@ import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSe
 import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
 import { chunkForUpload, splitValidCaptures } from '@/domains/folder-analysis/utils/captureUpload'
 import { DOC_TYPE_BY_ID, IN_PROGRESS } from '@/domains/folder-analysis/utils/documentMeta'
+import { usePhonePresence } from '@/domains/folder-analysis/utils/usePhonePresence'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
 import { Alert, Button, ConfirmDialog, Spinner } from '@/shared/ui'
 
@@ -58,6 +59,12 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
   const [confirm, setConfirm] = useState(null)
   // Document being analyzed right now, followed in a dialog until it ends.
   const [watchedId, setWatchedId] = useState(null)
+
+  // "Celular conectado" para la cabecera de la bandeja. El hook vive aquí, que
+  // es el dueño del InboxPanel, y no en cada página: así el indicador sale
+  // igual en el tablero suelto y en el de una carpeta registrada, con una sola
+  // consulta en vuelo.
+  const { connected: phoneConnected } = usePhonePresence()
 
   // Moves being saved right now. A poll that started before one of them would
   // answer with a board from before the move and put the photo back in the
@@ -334,6 +341,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
             onDelete={deleteCapture}
             onClearAll={clearInbox}
             types={types}
+            phoneConnected={phoneConnected}
           />
           <div className="workbench-lanes">
             {types.map((type) => (

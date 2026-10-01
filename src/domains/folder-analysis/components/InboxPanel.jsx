@@ -7,7 +7,7 @@ import { CaptureUploader } from '@/domains/folder-analysis/components/CaptureUpl
 import { LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { setDraggedCapture } from '@/domains/folder-analysis/utils/dragData'
-import { EmptyState } from '@/shared/ui'
+import { EmptyState, PhoneConnectedBadge } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 
 /**
@@ -17,7 +17,17 @@ import { cn } from '@/shared/utils'
  * carpeta en la que se está trabajando. La bandeja en sí es siempre la misma --
  * las fotos llegan del celular sin saber a qué carpeta van.
  */
-export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, onDelete, onClearAll, types }) {
+export function InboxPanel({
+  captures,
+  disabled,
+  uploading,
+  onUpload,
+  onSend,
+  onDelete,
+  onClearAll,
+  types,
+  phoneConnected = false,
+}) {
   // The photo clicked in the queue, opened big: from a thumbnail this small the
   // architect cannot tell a folio from a comprobante before sorting it.
   const [opened, setOpened] = useState(null)
@@ -45,6 +55,13 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
               Vaciar
             </button>
           )}
+        </div>
+        {/* El indicador va aquí, en la cabecera de la bandeja, porque esta es
+            la pantalla donde aparecen las fotos del celular: si no llega
+            ninguna, lo primero que hay que poder descartar es que el celular no
+            esté conectado. Se muestra siempre, encendido o apagado. */}
+        <div className="mt-2">
+          <PhoneConnectedBadge connected={phoneConnected} />
         </div>
         <p className="mt-1 text-[11px] leading-snug text-slate-500">
           Celular o equipo · arrastre o asigne a un carril

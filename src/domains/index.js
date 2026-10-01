@@ -15,6 +15,7 @@ import { templatesRoutes } from './templates/routes'
 import { digitizationRoutes } from './digitization/routes'
 import { folderAnalysisRoutes } from './folder-analysis/routes'
 import { alignmentRoutes } from './alignment/routes'
+import { foliosRoutes } from './folios/routes'
 import { procedureReportsRoutes } from './procedurereports/routes'
 
 export const DOMAIN_ROUTES = [
@@ -28,6 +29,7 @@ export const DOMAIN_ROUTES = [
   ...digitizationRoutes,
   ...folderAnalysisRoutes,
   ...alignmentRoutes,
+  ...foliosRoutes,
   ...procedureReportsRoutes,
 ]
 
