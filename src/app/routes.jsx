@@ -5,6 +5,7 @@ import { ProtectedRoute, PublicRoute } from '@/auth/guards'
 import { useAuth } from '@/auth/hooks/useAuth'
 import { PLACEHOLDER_ROUTES, DOMAIN_SECTIONS, getCurrentDomain, canViewModule } from '@/shared/nav'
 import { DOMAIN_ROUTES } from '@/domains'
+import { Spinner } from '@/shared/ui/Spinner'
 import { AppShell } from './layout'
 import { DashboardPage, DomainHome, ModulePlaceholder } from './pages'
 
@@ -20,6 +21,14 @@ const cadastralViewerRoutes =
 console.log('[AppRoutes] cadastralViewerRoutes =', cadastralViewerRoutes)
 
 const IMPLEMENTED_PATHS = new Set(DOMAIN_ROUTES.map((route) => route.path))
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[60dvh] items-center justify-center">
+      <Spinner className="h-8 w-8 text-accent-400" />
+    </div>
+  )
+}
 
 function ModuleGuard({ section, children }) {
   const { user } = useAuth()
@@ -88,11 +97,20 @@ export function AppRoutes() {
             />
           ))}
 
+          {/* Suspense porque las paginas de cada dominio se cargan con React.lazy
+              (ver cualquier src/domains/<dominio>/routes.jsx): sin el, la primera
+              navegacion a un dominio reventaria al suspender. El fallback va dentro
+              del ModuleGuard para que un usuario sin permiso se redirija al
+              dashboard sin llegar a descargar el chunk. */}
           {DOMAIN_ROUTES.map((route) => (
             <Route
               key={route.path}
               path={route.path.slice(1)}
-              element={<ModuleGuard section={getCurrentDomain(route.path)}>{route.element}</ModuleGuard>}
+              element={
+                <ModuleGuard section={getCurrentDomain(route.path)}>
+                  <Suspense fallback={<RouteFallback />}>{route.element}</Suspense>
+                </ModuleGuard>
+              }
             />
           ))}
 
