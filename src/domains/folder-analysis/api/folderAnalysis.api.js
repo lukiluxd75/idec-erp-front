@@ -37,6 +37,13 @@ export const folderAnalysisApi = {
   inbox: () => httpClient.get(E.CAPTURES),
 
   /**
+   * Snapshot de "hay un celular conectado" para PhoneConnectedBadge, consultado
+   * por usePhonePresence. Barato a proposito (una fila en Postgres), porque se
+   * llama cada pocos segundos mientras la pantalla esta abierta.
+   */
+  presence: () => httpClient.get(E.CAPTURES_PRESENCE),
+
+  /**
    * Same entry point the mobile app uses, from the web: photos picked in the
    * computer's file explorer (or dropped on the inbox) land in the same inbox.
    * @param {File[]} files up to MAX_FILES_PER_UPLOAD images per call
