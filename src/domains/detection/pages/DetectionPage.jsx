@@ -29,6 +29,8 @@ import CampaignPicker from '../components/CampaignPicker'
 import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
+import ParcelExplorePopup from '../components/ParcelExplorePopup'
+import ExportPreviewModal from '../components/ExportPreviewModal'
 import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
@@ -100,6 +102,11 @@ export default function DetectionPage() {
   // A/Año B below are shown but locked to these values, not freely editable.
   const [campaignYears, setCampaignYears] = useState(null)
 
+  /** Everything on screen revolves around the campaign (engineer's rule): any
+   * campaign switch destroys -- not hides -- the module's whole visual/data
+   * context, so nothing "ghost" reappears if the architect comes back to the
+   * same campaign later. The sector's real validation state in the database
+   * is untouched; only this page's local UI state resets. */
   function handleCampaignChange(id, campaign) {
     setCampaignId(id)
     if (campaign?.year_a != null && campaign?.year_b != null) {
@@ -109,6 +116,13 @@ export default function DetectionPage() {
     } else {
       setCampaignYears(null)
     }
+    setDrawResetSignal((n) => n + 1)
+    setResult(null)
+    setSelectedRow(null)
+    setAssetUrls({})
+    setSelectedSectorId(null)
+    setExploring(null)
+    setHighlightParcelGeom(null)
   }
 
   const [jobId, setJobId] = useState(null)
@@ -117,7 +131,7 @@ export default function DetectionPage() {
   const [running, setRunning] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(false)
   const [metaError, setMetaError] = useState('')
-  const [exportingReport, setExportingReport] = useState(false)
+  const [exportPreviewOpen, setExportPreviewOpen] = useState(false)
   const [assetUrls, setAssetUrls] = useState({})
   const [selectedRow, setSelectedRow] = useState(null)
   const [alignOpen, setAlignOpen] = useState(false)
@@ -132,6 +146,11 @@ export default function DetectionPage() {
   const [presetPolygon, setPresetPolygon] = useState(null)
   const [validationTarget, setValidationTarget] = useState(null)
   const [highlightParcelGeom, setHighlightParcelGeom] = useState(null)
+  // "Explorar predio": browsing already-validated parcels of the sector
+  // currently open in ProcessedSectorDetailModal (see onExploreParcel below)
+  // -- { parcels, index } while active, null otherwise. Hides (not closes)
+  // the modal, see its `open` prop further down.
+  const [exploring, setExploring] = useState(null)
 
   const pollRef = useRef(null)
   const objectUrlsRef = useRef([])
@@ -232,21 +251,6 @@ export default function DetectionPage() {
   useEffect(() => {
     loadProcessedSectors()
   }, [loadProcessedSectors])
-
-  /** "Exportar": confirmed/rejected parcels of the campaign currently
-   * selected (or unassigned sectors when "Sin campaña") -- never a global,
-   * cross-campaign export (see the backend's own docstring for why). */
-  async function handleExportReport() {
-    setExportingReport(true)
-    try {
-      await detectionApi.exportCampaignReport(campaignId, { unassignedOnly: !campaignId })
-      toast.success('Reporte generado.')
-    } catch (err) {
-      toast.error(err.message || 'No se pudo generar el reporte.')
-    } finally {
-      setExportingReport(false)
-    }
-  }
 
   async function hydrateAssets(payload) {
     objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
@@ -608,8 +612,7 @@ export default function DetectionPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={handleExportReport}
-            loading={exportingReport}
+            onClick={() => setExportPreviewOpen(true)}
             icon={FileSpreadsheet}
           >
             Exportar
@@ -806,7 +809,7 @@ export default function DetectionPage() {
               {polygonReady ? 'Polígono definido' : 'Pulse el mapa para dibujar'}
             </Badge>
           </div>
-          <div className="p-3">
+          <div className="relative p-3">
             <Suspense
               fallback={
                 <div className="flex h-[560px] items-center justify-center rounded-xl bg-slate-50">
@@ -827,18 +830,46 @@ export default function DetectionPage() {
                 onBasemapYearChange={setBasemapYear}
                 height={620}
                 processedSectors={processedSectors}
-                onViewSectorDetail={setSelectedSectorId}
+                onViewSectorDetail={(id) => {
+                  setSelectedSectorId(id)
+                  setExploring(null)
+                  setHighlightParcelGeom(null)
+                }}
                 presetPolygon={presetPolygon}
                 highlightParcelGeom={highlightParcelGeom}
                 resetSignal={drawResetSignal}
+                onClearHighlight={() => {
+                  setHighlightParcelGeom(null)
+                  setExploring(null)
+                }}
               />
             </Suspense>
+
+            {exploring && (
+              <ParcelExplorePopup
+                parcels={exploring.parcels}
+                index={exploring.index}
+                onNavigate={(nextIndex) => {
+                  if (nextIndex < 0 || nextIndex >= exploring.parcels.length) return
+                  setExploring((prev) => ({ ...prev, index: nextIndex }))
+                  setHighlightParcelGeom(exploring.parcels[nextIndex].parcel_geom_geojson)
+                }}
+                onClose={() => {
+                  setExploring(null)
+                  setHighlightParcelGeom(null)
+                }}
+              />
+            )}
           </div>
         </Card>
       </section>
 
+      {/* `open` also checks !exploring: ParcelExplorePopup hides this modal
+          without closing it (same sectorId, so it just refetches once shown
+          again) -- closing the explore tool returns here exactly where the
+          architect left it, per the engineer's spec. */}
       <ProcessedSectorDetailModal
-        open={!!selectedSectorId}
+        open={!!selectedSectorId && !exploring}
         sectorId={selectedSectorId}
         onClose={() => setSelectedSectorId(null)}
         allowReprocess
@@ -854,8 +885,9 @@ export default function DetectionPage() {
             window.scrollTo({ top: 0, behavior: 'smooth' })
           })
         }}
-        onViewParcel={(parcel) => {
-          setHighlightParcelGeom(parcel.parcel_geom_geojson)
+        onExploreParcel={(parcels, startIndex) => {
+          setExploring({ parcels, index: startIndex })
+          setHighlightParcelGeom(parcels[startIndex]?.parcel_geom_geojson || null)
           requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' })
           })
@@ -880,6 +912,13 @@ export default function DetectionPage() {
         open={!!validationTarget}
         onClose={() => setValidationTarget(null)}
         onReviewed={handleParcelReviewed}
+      />
+
+      <ExportPreviewModal
+        open={exportPreviewOpen}
+        onClose={() => setExportPreviewOpen(false)}
+        campaignId={campaignId}
+        unassignedOnly={!campaignId}
       />
 
       {/* 3 · Resultados (solo tras detección) */}

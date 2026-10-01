@@ -73,15 +73,27 @@ function resumeSectorValidation(sectorId) {
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId)}/resume-validation`)
 }
 
-/** "Exportar" -- downloads the confirmed/rejected parcels of the given
- * campaign (or unassigned sectors when none) as an .xlsx. A binary file
- * response, so this bypasses httpClient (JSON-only) the same way
- * resolveAssetObjectUrl does, but triggers a save instead of an object URL. */
-async function exportCampaignReport(campaignId, { unassignedOnly = false } = {}) {
+function exportParams(campaignId, unassignedOnly) {
   const params = new URLSearchParams()
   if (campaignId) params.set('campaign_id', campaignId)
   else if (unassignedOnly) params.set('unassigned_only', 'true')
-  const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/excel?${params.toString()}`
+  return params.toString()
+}
+
+/** The "Exportar" preview modal's data source -- same confirmed/rejected
+ * rows the Excel/PDF exports use, already carrying their display labels. */
+function fetchCampaignReportData(campaignId, { unassignedOnly = false } = {}) {
+  const query = exportParams(campaignId, unassignedOnly)
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}/export/data?${query}`)
+}
+
+/** Downloads a file export (Excel/PDF) of the campaign's confirmed/rejected
+ * parcels. A binary file response, so this bypasses httpClient (JSON-only)
+ * the same way resolveAssetObjectUrl does, but triggers a save instead of an
+ * object URL. */
+async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = false } = {}) {
+  const query = exportParams(campaignId, unassignedOnly)
+  const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/${kind}?${query}`
   const token = storageService.getToken()
   const response = await fetch(`${ENV.API_BASE_URL}${path}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -90,7 +102,7 @@ async function exportCampaignReport(campaignId, { unassignedOnly = false } = {})
   const blob = await response.blob()
   const disposition = response.headers.get('Content-Disposition') || ''
   const match = disposition.match(/filename="?([^"]+)"?/)
-  const filename = match ? match[1] : 'reporte-predios.xlsx'
+  const filename = match ? match[1] : `reporte-predios.${kind === 'excel' ? 'xlsx' : 'pdf'}`
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -99,6 +111,14 @@ async function exportCampaignReport(campaignId, { unassignedOnly = false } = {})
   link.click()
   link.remove()
   URL.revokeObjectURL(url)
+}
+
+function exportCampaignReport(campaignId, opts) {
+  return downloadCampaignReportFile('excel', campaignId, opts)
+}
+
+function exportCampaignReportPdf(campaignId, opts) {
+  return downloadCampaignReportFile('pdf', campaignId, opts)
 }
 
 /**
@@ -135,5 +155,7 @@ export const detectionApi = {
   listProcessedSectors,
   getProcessedSectorDetail,
   resumeSectorValidation,
+  fetchCampaignReportData,
   exportCampaignReport,
+  exportCampaignReportPdf,
 }

@@ -55,6 +55,13 @@ function fmtDate(value) {
  * "Continuar validación" (also Mapa y detección only, see its own docstring
  * on that button below) -- Historial doesn't pass it either, so the button
  * never renders there.
+ *
+ * `onExploreParcel(explorableParcels, startIndex)` backs clicking an
+ * already-validated parcel: DetectionPage hides this modal (not closes --
+ * same sectorId, so it just refetches when shown again) and shows
+ * ParcelExplorePopup instead, which calls back into here on close. Pending
+ * parcels are never clickable -- only confirmed/rejected ones belong in the
+ * explore list (see explorableParcels below).
  */
 export default function ProcessedSectorDetailModal({
   open,
@@ -62,7 +69,7 @@ export default function ProcessedSectorDetailModal({
   onClose,
   allowReprocess = false,
   onReprocess,
-  onViewParcel,
+  onExploreParcel,
   onResumeValidation,
 }) {
   const [detail, setDetail] = useState(null)
@@ -96,6 +103,13 @@ export default function ProcessedSectorDetailModal({
 
   const statusBadge = detail ? STATUS_BADGE[detail.status] || { variant: 'neutral', label: detail.status } : null
   const hasPending = !!detail?.runs?.some((run) => run.parcels.some((p) => p.validation_status === 'pending'))
+
+  // Only already-validated parcels are explorable -- a pending finding
+  // hasn't been confirmed/rejected yet and shouldn't be inspectable as if it
+  // were. Flattened across every run, in the same order they're listed.
+  const explorableParcels = (detail?.runs || [])
+    .flatMap((run) => run.parcels)
+    .filter((p) => p.parcel_geom_geojson && p.validation_status !== 'pending')
 
   /** Closes this modal and hands the sector's persisted result (same shape
    * as a live job_result) up to DetectionPage, which loads it into the same
@@ -182,22 +196,25 @@ export default function ProcessedSectorDetailModal({
                           variant: 'neutral',
                           label: p.validation_status,
                         }
-                        const clickable = !!(p.parcel_geom_geojson && onViewParcel)
+                        // Pending findings aren't explorable -- only
+                        // confirmed/rejected ones (see explorableParcels).
+                        const clickable =
+                          !!(p.parcel_geom_geojson && onExploreParcel) && p.validation_status !== 'pending'
                         return (
                           <div
                             key={p.id}
                             onClick={
                               clickable
                                 ? () => {
-                                    onViewParcel(p)
-                                    onClose?.()
+                                    const startIndex = explorableParcels.findIndex((x) => x.id === p.id)
+                                    onExploreParcel(explorableParcels, startIndex < 0 ? 0 : startIndex)
                                   }
                                 : undefined
                             }
                             className={`rounded-lg border border-slate-200 bg-white px-2.5 py-2 ${
                               clickable ? 'cursor-pointer transition-colors hover:border-accent-400 hover:bg-accent-50/40' : ''
                             }`}
-                            title={clickable ? 'Ver este predio en el mapa' : undefined}
+                            title={clickable ? 'Explorar este predio en el mapa' : undefined}
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
