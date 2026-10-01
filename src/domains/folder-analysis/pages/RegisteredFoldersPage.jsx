@@ -1,5 +1,6 @@
 import {
   ChevronRight,
+  Download,
   FileSearch,
   FileSpreadsheet,
   FolderOpen,
@@ -21,6 +22,7 @@ import { SavedDocumentPicker } from '@/domains/folder-analysis/components/SavedD
 import { FolderSheet } from '@/domains/folder-analysis/components/FolderSheet'
 import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, sheetForm, useCatalog } from '@/domains/folder-analysis/utils/catalog'
+import { pendingFills, sheetSuggestions } from '@/domains/folder-analysis/utils/folderSheetFill'
 import {
   normalizeSearch,
   savedData,
@@ -175,7 +177,16 @@ export default function RegisteredFoldersPage() {
         </label>
         <p className="text-xs text-slate-500">
           {filteredFolders.length} {filteredFolders.length === 1 ? 'carpeta' : 'carpetas'} ·{' '}
-          {unfiledCount} {unfiledCount === 1 ? 'documento sin archivar' : 'documentos sin archivar'}
+          {unfiledCount === 0 ? (
+            'todo archivado'
+          ) : (
+            <Link
+              to="/folder-analysis/saved?carpeta=sin-archivar"
+              className="font-semibold text-accent-700 underline-offset-2 hover:underline"
+            >
+              {unfiledCount} {unfiledCount === 1 ? 'documento sin archivar' : 'documentos sin archivar'}
+            </Link>
+          )}
         </p>
       </Card>
 
@@ -407,6 +418,22 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
     setSheet((previous) => sheetForm(folderTypeOf(catalog, key), previous))
   }
 
+  const cambiarCampo = (key, value) => setSheet((previous) => ({ ...previous, [key]: value }))
+
+  // Lo que los documentos ya revisados de la carpeta traen para su hoja. Una
+  // carpeta nueva no tiene ninguno todavía, así que no ofrece nada.
+  const suggestions = useMemo(
+    () => sheetSuggestions(type, folder?.documents),
+    [type, folder]
+  )
+  const pendientes = pendingFills(sheet, suggestions)
+
+  const traerTodo = () =>
+    setSheet((previous) => ({
+      ...previous,
+      ...Object.fromEntries(pendientes.map(([key, suggestion]) => [key, suggestion.value])),
+    }))
+
   const filedElsewhere = useMemo(() => {
     const own = new Set(folder?.documents.map((document) => document.id) || [])
     return Object.fromEntries(
@@ -490,11 +517,20 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
 
         {type?.field_groups?.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
-            <p className="mb-2.5 text-sm font-medium text-slate-700">Datos de la carpeta</p>
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-slate-700">Datos de la carpeta</p>
+              {pendientes.length > 0 && (
+                <Button type="button" size="sm" variant="secondary" icon={Download} onClick={traerTodo}>
+                  Traer {pendientes.length} de los documentos
+                </Button>
+              )}
+            </div>
             <FolderSheet
               folderType={type}
               value={sheet}
-              onChange={(key, value) => setSheet((previous) => ({ ...previous, [key]: value }))}
+              onChange={cambiarCampo}
+              suggestions={suggestions}
+              onApply={cambiarCampo}
             />
           </div>
         )}
