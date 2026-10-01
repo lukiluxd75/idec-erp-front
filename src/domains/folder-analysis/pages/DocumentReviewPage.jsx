@@ -7,6 +7,7 @@ import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
 import { PlanColindancias } from '@/domains/folder-analysis/components/PlanColindancias'
+import { PossessorsPlanLookup } from '@/domains/folder-analysis/components/PossessorsPlanLookup'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
 import { PlanPageInfo } from '@/domains/folder-analysis/components/forms/PlanPageInfo'
@@ -84,6 +85,9 @@ export default function DocumentReviewPage() {
 
   const setValue = (key, value) =>
     setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), [key]: value } }))
+
+  const setValues = (patch) =>
+    setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), ...patch } }))
 
   const save = async () => {
     setSaving(true)
@@ -272,7 +276,20 @@ export default function DocumentReviewPage() {
         </div>
       </div>
 
-      {document.doc_type === 'plan' && document.pages.length > 0 && (
+      {/* El plano de poseedores no se lee por sus colindancias dibujadas: trae un
+          código catastral y de ahí se saca todo del IDE. El resto de planos
+          sigue con la detección sobre la foto. */}
+      {document.doc_type === 'plan' && document.folder_type === 'possessors' && hasData && (
+        <div className="mt-5">
+          <PossessorsPlanLookup
+            documentId={document.id}
+            code={form?.values?.cadastral_code || null}
+            onCodeChange={(code) => setValue('cadastral_code', code)}
+            onApply={setValues}
+          />
+        </div>
+      )}
+      {document.doc_type === 'plan' && document.folder_type !== 'possessors' && document.pages.length > 0 && (
         <div className="mt-5">
           <PlanColindancias documentId={document.id} pages={document.pages} />
         </div>

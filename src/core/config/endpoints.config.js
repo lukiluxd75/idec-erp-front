@@ -90,6 +90,8 @@ export const API_ENDPOINTS = {
   },
   FOLDER_ANALYSIS: {
     CATALOG: '/api/folder-analysis/catalog',
+    CADASTRAL_PARCEL: '/api/folder-analysis/cadastral/parcel',
+    CADASTRAL_CROQUIS: '/api/folder-analysis/cadastral/croquis',
     CAPTURES: '/api/folder-analysis/captures',
     CAPTURE: (id) => `/api/folder-analysis/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
