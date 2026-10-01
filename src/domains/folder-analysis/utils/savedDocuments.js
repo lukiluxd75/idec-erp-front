@@ -61,6 +61,30 @@ export function savedDocumentTitle(document) {
   return type?.label || document?.doc_type || 'Documento'
 }
 
+/**
+ * How long a saved review counts as "recién guardado". A day covers the whole
+ * shift: the engineer who scanned carpetas all morning still finds them apart
+ * from the pile in the afternoon.
+ */
+export const RECENT_SAVE_WINDOW_MS = 24 * 60 * 60 * 1000
+
+/** Milliseconds of `reviewed_at`, or 0 when it is missing or unreadable. */
+function savedAt(document) {
+  const parsed = Date.parse(document?.reviewed_at || '')
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+/** Saved within the last day — what the engineer just finished analyzing. */
+export function isRecentlySaved(document, now = Date.now()) {
+  const saved = savedAt(document)
+  return saved > 0 && now - saved <= RECENT_SAVE_WINDOW_MS
+}
+
+/** Newest saved first, the order every list of reviews uses. */
+export function bySavedAtDesc(a, b) {
+  return savedAt(b) - savedAt(a)
+}
+
 /** Everything a document can be found by: its name, its id and its saved data. */
 export function savedDocumentHaystack(document) {
   const data = savedData(document)

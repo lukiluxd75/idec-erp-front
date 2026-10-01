@@ -1,5 +1,5 @@
-import { ArrowLeft, FolderOpen, Save } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { ArrowLeft, Download, FolderOpen, Save } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
@@ -8,6 +8,11 @@ import { ClassificationBoard } from '@/domains/folder-analysis/components/Classi
 import { FolderSheet } from '@/domains/folder-analysis/components/FolderSheet'
 import { DOC_TYPES, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, sheetForm, useCatalog } from '@/domains/folder-analysis/utils/catalog'
+import {
+  conflictingFills,
+  pendingFills,
+  sheetSuggestions,
+} from '@/domains/folder-analysis/utils/folderSheetFill'
 import { Alert, Badge, Button, Card, SectionHeader, Spinner } from '@/shared/ui'
 
 /**
@@ -76,6 +81,26 @@ export default function FolderWorkbenchPage() {
     setSheet((previous) => ({ ...previous, [key]: value }))
   }
 
+  // Lo que los documentos ya revisados de la carpeta saben llenar de su hoja.
+  const suggestions = useMemo(
+    () => sheetSuggestions(type, folder?.documents),
+    [type, folder]
+  )
+  const pendientes = pendingFills(form, suggestions)
+  const distintos = conflictingFills(form, suggestions)
+
+  /** Llena de una vez lo que está vacío; lo escrito a mano no se toca. */
+  const traerTodo = () => {
+    setDirty(true)
+    setSheet((previous) => ({
+      ...previous,
+      ...Object.fromEntries(pendientes.map(([key, suggestion]) => [key, suggestion.value])),
+    }))
+    toast.success(
+      `Se llenaron ${pendientes.length} ${pendientes.length === 1 ? 'dato' : 'datos'} con los documentos de la carpeta. Revísalos y guarda.`
+    )
+  }
+
   if (error || catalogError) return <Alert type="error">{error || catalogError}</Alert>
   if (!folder || !catalog) {
     return (
@@ -114,11 +139,40 @@ export default function FolderWorkbenchPage() {
               <h2 className="text-sm font-bold text-slate-800">Datos de la carpeta</h2>
               <p className="text-xs text-slate-500">{type.description}</p>
             </div>
-            <Button size="sm" icon={Save} loading={saving} disabled={!dirty} onClick={guardar}>
-              {dirty ? 'Guardar datos' : 'Datos guardados'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {pendientes.length > 0 && (
+                <Button size="sm" variant="secondary" icon={Download} onClick={traerTodo}>
+                  Traer {pendientes.length} de los documentos
+                </Button>
+              )}
+              <Button size="sm" icon={Save} loading={saving} disabled={!dirty} onClick={guardar}>
+                {dirty ? 'Guardar datos' : 'Datos guardados'}
+              </Button>
+            </div>
           </div>
-          <FolderSheet folderType={type} value={form} onChange={cambiar} />
+
+          {folder.documents.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              Cuando revises y guardes un documento de esta carpeta, sus datos se podrán traer acá
+              sin volver a escribirlos.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-500">
+              {pendientes.length > 0
+                ? `Los documentos revisados de esta carpeta pueden llenar ${pendientes.length} ${pendientes.length === 1 ? 'campo vacío' : 'campos vacíos'}. Cada uno muestra de dónde sale antes de copiarlo.`
+                : 'Ya está traído todo lo que los documentos de esta carpeta pueden llenar.'}
+              {distintos.length > 0 &&
+                ` ${distintos.length} ${distintos.length === 1 ? 'campo dice' : 'campos dicen'} algo distinto a su documento: no se tocan solos, mira la nota debajo de cada uno.`}
+            </p>
+          )}
+
+          <FolderSheet
+            folderType={type}
+            value={form}
+            onChange={cambiar}
+            suggestions={suggestions}
+            onApply={cambiar}
+          />
         </Card>
       )}
 

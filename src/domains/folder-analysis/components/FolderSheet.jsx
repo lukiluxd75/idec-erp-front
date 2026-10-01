@@ -1,7 +1,8 @@
-import { FileText, Lock, MapPinned } from 'lucide-react'
+import { Check, Download, FileText, Lock, MapPinned } from 'lucide-react'
 
 import { FieldInput } from '@/domains/folder-analysis/components/forms/FieldInput'
 import { DOC_TYPE_BY_ID } from '@/domains/folder-analysis/utils/documentMeta'
+import { alreadyMatches } from '@/domains/folder-analysis/utils/folderSheetFill'
 import { cn } from '@/shared/utils'
 
 /**
@@ -31,7 +32,44 @@ function badgeOf(field) {
   return { ...badge, label: type ? `De ${type.noun}` : badge.label }
 }
 
-function SheetField({ field, value, onChange, readOnly }) {
+/**
+ * Lo que un documento revisado de la carpeta trae para este campo: se ofrece,
+ * no se aplica solo. Si la hoja ya dice lo mismo, lo dice y calla; si dice otra
+ * cosa, la muestra -- puede ser una corrección a mano que no hay que pisar.
+ */
+function DocumentValue({ suggestion, sheetValue, onApply }) {
+  // El catálogo nombra cada documento con su artículo ("el plano", "la
+  // declaración jurada"), que es lo que deja armar la frase sin casos raros.
+  const noun = DOC_TYPE_BY_ID[suggestion.document.doc_type]?.noun || 'el documento'
+  const de = noun.startsWith('el ') ? `del ${noun.slice(3)}` : `de ${noun}`
+  const subject = noun.charAt(0).toUpperCase() + noun.slice(1)
+
+  if (alreadyMatches(sheetValue, suggestion)) {
+    return (
+      <p className="flex items-center gap-1 text-[11px] text-slate-400">
+        <Check className="h-3 w-3 shrink-0" aria-hidden />
+        Coincide con lo leído {de}.
+      </p>
+    )
+  }
+
+  const empty = String(sheetValue ?? '').trim() === ''
+  return (
+    <button
+      type="button"
+      onClick={() => onApply(suggestion.value)}
+      title={`Copiar "${suggestion.value}" a este campo`}
+      className="flex items-start gap-1 rounded text-left text-[11px] font-semibold text-accent-700 underline-offset-2 hover:underline"
+    >
+      <Download className="mt-px h-3 w-3 shrink-0" aria-hidden />
+      <span>
+        {empty ? `Traer ${de}` : `${subject} dice`}: «{suggestion.value}»
+      </span>
+    </button>
+  )
+}
+
+function SheetField({ field, value, onChange, readOnly, suggestion, onApply }) {
   const badge = badgeOf(field)
   const fixed = field.source === 'fixed'
   const Icon = badge?.icon
@@ -71,12 +109,31 @@ function SheetField({ field, value, onChange, readOnly }) {
         />
       )}
 
+      {!fixed && suggestion && !readOnly && (
+        <DocumentValue
+          suggestion={suggestion}
+          sheetValue={value}
+          onApply={(next) => onApply(field.key, next)}
+        />
+      )}
+
       {field.hint && <p className="text-[11px] leading-snug text-slate-500">{field.hint}</p>}
     </div>
   )
 }
 
-export function FolderSheet({ folderType, value, onChange, readOnly = false }) {
+/**
+ * @param {Record<string, {value: string, document: object}>} suggestions lo que
+ *   los documentos revisados de la carpeta traen para cada campo (folderSheetFill)
+ */
+export function FolderSheet({
+  folderType,
+  value,
+  onChange,
+  readOnly = false,
+  suggestions = {},
+  onApply,
+}) {
   const groups = folderType?.field_groups || []
   if (groups.length === 0) return null
 
@@ -93,6 +150,8 @@ export function FolderSheet({ folderType, value, onChange, readOnly = false }) {
                 value={value?.[field.key]}
                 onChange={onChange}
                 readOnly={readOnly}
+                suggestion={onApply ? suggestions[field.key] : undefined}
+                onApply={onApply}
               />
             ))}
           </div>
