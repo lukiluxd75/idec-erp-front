@@ -116,6 +116,7 @@ function DetectionMapInner({
   presetPolygon = null,
   highlightParcelGeom = null,
   resetSignal = null,
+  onClearHighlight,
 }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
@@ -128,6 +129,7 @@ function DetectionMapInner({
   const onPolygonChangeRef = useRef(onPolygonChange)
   const redrawPolygonRef = useRef(() => {})
   const processedSectorsRef = useRef(processedSectors)
+  const onClearHighlightRef = useRef(onClearHighlight)
   const [ready, setReady] = useState(false)
   const [layersOn, setLayersOn] = useState(() =>
     Object.fromEntries(OVERLAY_DEFS.map((d) => [d.key, d.defaultOn]))
@@ -135,6 +137,7 @@ function DetectionMapInner({
   onPolygonChangeRef.current = onPolygonChange
   redrawPolygonRef.current = redrawPolygon
   processedSectorsRef.current = processedSectors
+  onClearHighlightRef.current = onClearHighlight
 
   const gisHost = (hosts && hosts[0]) || GIS_HOSTS[0]
 
@@ -174,6 +177,11 @@ function DetectionMapInner({
     }
 
     const onClick = (event) => {
+      // Drawing a new area means any prior "explorar predio" highlight no
+      // longer applies -- same rule for "clicks anywhere else on the map"
+      // (the other half lives in DetectionPage's onViewSectorDetail wrapper,
+      // for clicks on an existing processed-sector polygon instead).
+      onClearHighlightRef.current?.()
       const { lat, lng } = event.latlng
       const newPoint = [lng, lat]
       // Engineer's rule: a new area can never touch an already-processed
