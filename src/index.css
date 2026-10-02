@@ -508,3 +508,77 @@ body {
 .zoomable-crop .ReactCrop__child-wrapper {
   overflow: visible;
 }
+
+/* ── Menú lateral: abanico de las funciones de un módulo ─────────────────────
+   Se abre solo cuando el usuario pulsa la fila del módulo. Solo animan `opacity`
+   y `transform` en cada función, más el alto del contenedor (grid 0fr -> 1fr, el
+   único modo de animar "alto automático" sin medirlo con JS). Entrar es más lento
+   que salir: al abrir el usuario mira, al cerrar solo quiere que se aparte. */
+:root {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.nav-chevron {
+  transition: transform 200ms var(--ease-out-strong);
+}
+.nav-chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.nav-fan {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden; /* cerrado, sus enlaces no reciben foco con Tab */
+  transition:
+    grid-template-rows 140ms ease-out,
+    visibility 0s linear 140ms;
+}
+.nav-fan[data-open='true'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows 240ms var(--ease-out-strong),
+    visibility 0s;
+}
+.nav-fan-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nav-fan-item {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  transform-origin: top left;
+  transition:
+    opacity 100ms ease-out,
+    transform 140ms ease-out;
+}
+.nav-fan[data-open='true'] .nav-fan-item {
+  opacity: 1;
+  transform: none;
+  /* Cada función sale un instante después de la anterior: el abanico se despliega
+     de arriba abajo en vez de aparecer de golpe. 32 ms de escalón, no más: el menú
+     se usa todo el día y no debe hacer esperar. */
+  transition:
+    opacity 200ms var(--ease-out-strong) calc(var(--i, 0) * 32ms + 30ms),
+    transform 240ms var(--ease-out-strong) calc(var(--i, 0) * 32ms + 30ms);
+}
+
+/* Movimiento reducido: sin desplazamientos ni escalonado. Queda el cambio de
+   opacidad, que ayuda a entender qué apareció. Los selectores repiten los del
+   estado abierto a propósito: con menos especificidad no le ganarían. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-chevron {
+    transition-duration: 1ms;
+  }
+  .nav-fan,
+  .nav-fan[data-open='true'] {
+    transition-duration: 1ms, 0s;
+    transition-delay: 0s;
+  }
+  .nav-fan-item,
+  .nav-fan[data-open='true'] .nav-fan-item {
+    transform: none;
+    transition: opacity 150ms ease-out;
+  }
+}
