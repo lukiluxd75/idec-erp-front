@@ -6,6 +6,11 @@ import { DailyChart } from '../components/DailyChart'
 import { TypePieChart } from '../components/TypePieChart'
 import { TypeStaffMatrix } from '../components/TypeStaffMatrix'
 import { Collapse } from '../components/Collapse'
+import { ExecutivePanel } from '../components/ExecutivePanel'
+import { SlaPanel, SlaByTypeTable, SlaByStaffTable } from '../components/SlaPanel'
+import { BacklogAgingChart } from '../components/BacklogAgingChart'
+import { DistrictComparisonTable } from '../components/DistrictComparisonTable'
+import { ProcedureGroupStrip } from '../components/ProcedureGroupStrip'
 
 const DEFAULT_PROCEDURE_TYPES = [2009, 2010, 2012, 3002, 3003, 3004, 3005, 3006]
 
@@ -126,7 +131,7 @@ export default function ReportsPage() {
         <header className="brand">
           <div className="pill">Reporte gerencial</div>
           <h1>Dirección de Administración Geográfica y Catastro</h1>
-          <h2>Área Técnica Cartografía · salidas de bandeja y pendientes</h2>
+          <h2>Área Técnica Cartografía · productividad, SLA y backlog</h2>
           <div className="controls">
             <label className="field">
               <span>Desde</span>
@@ -215,26 +220,101 @@ export default function ReportsPage() {
 
           {data && (
             <>
-              <section className="kpis">
+              <ExecutivePanel analysis={data.analysis} />
+
+              <section className="kpis kpis-extended">
                 <div className="kpi">
                   <b>{fmt(data.kpis.dispatches)}</b>
                   <span>Salidas de bandeja</span>
                 </div>
                 <div className="kpi">
-                  <b>{fmt(data.kpis.avgTeamPerDay, 1)}</b>
-                  <span>Estimado equipo / día hábil</span>
+                  <b>{fmt(data.kpis.procedures)}</b>
+                  <span>Trámites distintos</span>
                 </div>
                 <div className="kpi">
+                  <b>{fmt(data.kpis.avgTeamPerDay, 1)}</b>
+                  <span>Equipo / día hábil</span>
+                </div>
+                <div className="kpi">
+                  <b>
+                    {data.sla?.summary?.avgDays != null ? fmt(data.sla.summary.avgDays, 1) : '—'}
+                  </b>
+                  <span>SLA prom. (días)</span>
+                </div>
+                <div className="kpi warn">
                   <b>{fmt(data.kpis.pendingCount)}</b>
                   <span>Pendientes actuales</span>
                 </div>
-                <div className="kpi warn">
+                <div className="kpi">
                   <b>{fmt(data.kpis.staffCount)}</b>
-                  <span>Funcionarios en {data.meta.district}</span>
+                  <span>Funcionarios · {data.meta.district}</span>
                 </div>
               </section>
 
+              <SlaPanel sla={data.sla} periodComparison={data.periodComparison} kpis={data.kpis} />
+
+              <ProcedureGroupStrip groups={data.procedureGroups} totalDispatches={data.kpis.dispatches} />
+
               {data.analysis?.backlog && <div className="banner">{data.analysis.backlog}</div>}
+
+              <section className="grid-2">
+                <div className="panel">
+                  <h2>Antigüedad del backlog</h2>
+                  <p className="caption">Pendientes por días desde el ingreso a bandeja (hoy).</p>
+                  <BacklogAgingChart backlogAging={data.backlogAging} />
+                </div>
+                <div className="panel">
+                  <h2>Comparativa por comuna</h2>
+                  <p className="caption">Visible al filtrar todas las comunas o varias áreas.</p>
+                  <DistrictComparisonTable
+                    rows={data.districtComparison}
+                    show={districtId === '0' || (data.districtComparison?.length ?? 0) > 1}
+                  />
+                  {districtId !== '0' && (data.districtComparison?.length ?? 0) <= 1 && (
+                    <p className="caption">Seleccione «Todas las comunas» para ver el cuadro comparativo.</p>
+                  )}
+                </div>
+              </section>
+
+              <Collapse title="SLA por tipo de trámite" caption="Promedio de días ingreso → salida en el período">
+                <SlaByTypeTable rows={data.sla?.byType} />
+              </Collapse>
+
+              <Collapse title="SLA por funcionario" caption="Mínimo 3 salidas en el período">
+                <SlaByStaffTable rows={data.sla?.byStaff} />
+              </Collapse>
+
+              <Collapse
+                title="Pendientes críticos (más antiguos)"
+                caption={`${fmt(data.criticalPending?.length ?? 0)} trámites`}
+              >
+                <div className="table-wrap tall">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Trámite</th>
+                        <th>Tipo</th>
+                        <th>Funcionario</th>
+                        <th className="num">Días</th>
+                        <th>Ingreso</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(data.criticalPending || []).map((p) => (
+                        <tr key={p.procedureId} className={p.ageDays >= 60 ? 'warn' : ''}>
+                          <td>
+                            {p.procedureNumber != null ? `${p.procedureNumber}/${p.year ?? ''}` : p.procedureId}
+                          </td>
+                          <td>{p.type}</td>
+                          <td>{p.name}</td>
+                          <td className="num">{fmt(p.ageDays)}</td>
+                          <td>{p.receivedAt || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Collapse>
 
               <section className="block">
                 <h2>Colores por funcionario</h2>

@@ -393,6 +393,146 @@
   margin: 22px 0 8px;
 }
 
+.procedure-reports .kpis.kpis-extended {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.procedure-reports .executive-panel {
+  margin: 8px 0 4px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f4f0fb 0%, #e6f7fc 100%);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.procedure-reports .executive-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.procedure-reports .executive-panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--purple);
+}
+
+.procedure-reports .executive-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--purple);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.procedure-reports .executive-lead {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.procedure-reports .executive-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.procedure-reports .sla-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 8px;
+}
+
+.procedure-reports .sla-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fafbff;
+}
+
+.procedure-reports .sla-card .sla-label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.procedure-reports .sla-card b {
+  font-size: 20px;
+  color: var(--purple);
+}
+
+.procedure-reports .sla-card small {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.procedure-reports .delta.up {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.procedure-reports .delta.down {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.procedure-reports .group-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 18px 0 4px;
+}
+
+.procedure-reports .group-card {
+  border: 2px solid;
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.procedure-reports .group-card .group-name {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.procedure-reports .group-card b {
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.procedure-reports .group-card small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.procedure-reports tr.warn td:first-child {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+
 .procedure-reports .kpi {
   background: #fff;
   border: 1px solid var(--line);
@@ -525,7 +665,10 @@
 }
 
 @media (max-width: 960px) {
-  .procedure-reports .grid-2, .procedure-reports .kpis { grid-template-columns: 1fr; }
+  .procedure-reports .grid-2,
+  .procedure-reports .kpis,
+  .procedure-reports .kpis.kpis-extended,
+  .procedure-reports .sla-strip { grid-template-columns: 1fr; }
   .procedure-reports .brand h1 { font-size: 16px; }
   .procedure-reports .sheet { padding: 18px 14px 28px; }
 }
