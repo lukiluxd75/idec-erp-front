@@ -26,6 +26,9 @@ import {
   FileOutput,
   MonitorCog,
   BarChart3,
+  Gauge,
+  GitBranch,
+  Route,
 } from 'lucide-react'
 
 /**
@@ -131,6 +134,38 @@ export const NAV_SECTIONS = [
     label: 'Reportes',
     icon: BarChart3,
     path: '/procedurereports',
+    permissionModule: 'procedurereports',
+    description: 'Indicadores de trámites en bandeja del Área Técnica Cartografía (SLA y productividad).',
+    children: [
+      {
+        label: 'Panel de indicadores',
+        path: '/procedurereports/panel',
+        icon: Gauge,
+        navOrder: 1,
+        blurb: 'Resumen del módulo y accesos rápidos',
+      },
+      {
+        label: 'Reporte gerencial',
+        path: '/procedurereports/gerencial',
+        icon: BarChart3,
+        navOrder: 2,
+        blurb: 'Salidas de bandeja, SLA y pendientes',
+      },
+      {
+        label: 'Derivación masiva',
+        path: '/procedurereports/derivacion-masiva',
+        icon: GitBranch,
+        navOrder: 3,
+        blurb: 'Recepción/despacho rápido y posibles adelantos',
+      },
+      {
+        label: 'Traza del trámite',
+        path: '/procedurereports/traza-tramite',
+        icon: Route,
+        navOrder: 4,
+        blurb: 'Recorrido completo con tiempos por etapa',
+      },
+    ],
   },
   {
     label: 'Revisión Avalúos',
@@ -172,6 +207,16 @@ export function compareNavLabels(a, b) {
   return (a?.label || '').localeCompare(b?.label || '', 'es', { sensitivity: 'base' })
 }
 
+/** Respeta `navOrder` cuando está definido; si no, orden alfabético en español. */
+export function compareNavItems(a, b) {
+  const ao = a?.navOrder
+  const bo = b?.navOrder
+  if (ao != null && bo != null) return ao - bo
+  if (ao != null) return -1
+  if (bo != null) return 1
+  return compareNavLabels(a, b)
+}
+
 /**
  * Visible sidebar / domain children, A→Z at each nesting level (Spanish locale).
  */
@@ -182,7 +227,7 @@ export function getVisibleNavChildren(permissions, nodes) {
       ...child,
       children: child.children?.length ? getVisibleNavChildren(permissions, child.children) : child.children,
     }))
-    .sort(compareNavLabels)
+    .sort(compareNavItems)
 }
 
 /**

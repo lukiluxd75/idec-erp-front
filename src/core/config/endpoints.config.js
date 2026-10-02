@@ -115,6 +115,9 @@ export const API_ENDPOINTS = {
   },
   REPORTS: {
     FILTERS: '/api/procedurereports/filters',
+    PANEL: '/api/procedurereports/panel',
+    MASS_FORWARDING: '/api/procedurereports/mass-forwarding',
+    TRACE: '/api/procedurereports/trace',
     REPORT: '/api/procedurereports/reports',
     EXPORT_EXCEL: '/api/procedurereports/reports/export/excel',
     EXPORT_PDF: '/api/procedurereports/reports/export/pdf',
