@@ -122,6 +122,15 @@ export const NAV_SECTIONS = [
       { label: 'Áreas', path: '/security/areas', icon: Building2, blurb: 'Unidades organizacionales' },
     ],
   },
+  {
+    label: 'Visor Catastral',
+    icon: Map,
+    path: '/cadastralviewer',
+    catalogGroup: true,
+    children: [
+      { label: 'Gestión del visor', path: '/cadastralviewer/admin', icon: Layers },
+    ],
+  },
 ]
 
 /** Domains with their own subsystems — each has an entry redirect (DomainHome). */
