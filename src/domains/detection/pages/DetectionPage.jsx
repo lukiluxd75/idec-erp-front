@@ -918,7 +918,6 @@ export default function DetectionPage() {
         open={exportPreviewOpen}
         onClose={() => setExportPreviewOpen(false)}
         campaignId={campaignId}
-        unassignedOnly={!campaignId}
       />
 
       {/* 3 · Resultados (solo tras detección) */}

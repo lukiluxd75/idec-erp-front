@@ -73,17 +73,21 @@ function resumeSectorValidation(sectorId) {
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId)}/resume-validation`)
 }
 
-function exportParams(campaignId, unassignedOnly) {
+function exportParams(campaignId, unassignedOnly, allCampaigns) {
   const params = new URLSearchParams()
-  if (campaignId) params.set('campaign_id', campaignId)
+  if (allCampaigns) params.set('all_campaigns', 'true')
+  else if (campaignId) params.set('campaign_id', campaignId)
   else if (unassignedOnly) params.set('unassigned_only', 'true')
   return params.toString()
 }
 
 /** The "Exportar" preview modal's data source -- same confirmed/rejected
- * rows the Excel/PDF exports use, already carrying their display labels. */
-function fetchCampaignReportData(campaignId, { unassignedOnly = false } = {}) {
-  const query = exportParams(campaignId, unassignedOnly)
+ * rows the Excel/PDF exports use, already carrying their display labels.
+ * `allCampaigns` backs the modal's own "Todas las campañas" option -- every
+ * confirmed/rejected parcel regardless of campaign, overriding campaignId/
+ * unassignedOnly, so the report shows which campaign each sector belongs to. */
+function fetchCampaignReportData(campaignId, { unassignedOnly = false, allCampaigns = false } = {}) {
+  const query = exportParams(campaignId, unassignedOnly, allCampaigns)
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}/export/data?${query}`)
 }
 
@@ -91,8 +95,8 @@ function fetchCampaignReportData(campaignId, { unassignedOnly = false } = {}) {
  * parcels. A binary file response, so this bypasses httpClient (JSON-only)
  * the same way resolveAssetObjectUrl does, but triggers a save instead of an
  * object URL. */
-async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = false } = {}) {
-  const query = exportParams(campaignId, unassignedOnly)
+async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = false, allCampaigns = false } = {}) {
+  const query = exportParams(campaignId, unassignedOnly, allCampaigns)
   const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/${kind}?${query}`
   const token = storageService.getToken()
   const response = await fetch(`${ENV.API_BASE_URL}${path}`, {

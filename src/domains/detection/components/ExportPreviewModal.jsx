@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { FileDown, FileJson, FileSpreadsheet, FileText, Printer } from 'lucide-react'
-import { Badge, Button, EmptyState, Modal, Spinner } from '@/shared/ui'
+import { Badge, Button, EmptyState, Modal, Select, Spinner } from '@/shared/ui'
 import { detectionApi } from '../api/detection.api'
 import './ExportPreviewModal.css'
 
@@ -10,7 +10,9 @@ const STATUS_STYLE = {
   rejected: { border: 'border-l-rose-400', badge: 'danger' },
 }
 
-function ParcelCard({ row }) {
+const ALL_CAMPAIGNS_VALUE = '__all__'
+
+function ParcelCard({ row, showCampaign }) {
   const style = STATUS_STYLE[row.validation_status] || { border: 'border-l-slate-300', badge: 'neutral' }
   return (
     <div
@@ -25,6 +27,7 @@ function ParcelCard({ row }) {
             <p className="text-sm font-bold text-slate-900">{row.cadastral_code || 'Sin código catastral'}</p>
             <p className="text-[11px] text-slate-500">
               {row.sector_name} · {row.years}
+              {showCampaign && ` · ${row.campaign_code || 'Sin campaña'}`}
             </p>
           </div>
         </div>
@@ -84,30 +87,57 @@ function ParcelCard({ row }) {
  * authorities actually see) before picking a format. XML/XLSM were
  * considered and dropped: no system consumes them yet, and we don't ship
  * exports nobody uses.
+ *
+ * The modal has its own campaign selector -- defaults to whatever campaign
+ * is active on the map (`campaignId`/`unassignedOnly`, same as before), but
+ * the architect can switch it to a different campaign, or to "Todas las
+ * campañas" to list every confirmed/rejected parcel at once and see which
+ * campaign each sector/detection belongs to (each row keeps its own
+ * campaign_code). The map's own selection is never touched by this.
  */
-export default function ExportPreviewModal({ open, onClose, campaignId, unassignedOnly }) {
+export default function ExportPreviewModal({ open, onClose, campaignId }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [busyFormat, setBusyFormat] = useState('')
+  const [campaigns, setCampaigns] = useState([])
+  const [selection, setSelection] = useState(campaignId ? String(campaignId) : '')
+
+  // Every time the modal opens, start from whatever campaign is active on
+  // the map -- reopening never resumes a stale selection from last time.
+  useEffect(() => {
+    if (open) setSelection(campaignId ? String(campaignId) : '')
+  }, [open, campaignId])
+
+  useEffect(() => {
+    if (!open) return
+    detectionApi
+      .listCampaigns()
+      .then((list) => setCampaigns(Array.isArray(list) ? list : []))
+      .catch(() => setCampaigns([]))
+  }, [open])
+
+  const allCampaigns = selection === ALL_CAMPAIGNS_VALUE
+  const selectedCampaignId = !allCampaigns && selection ? Number(selection) : null
+  const selectedUnassignedOnly = !allCampaigns && !selection
 
   useEffect(() => {
     if (!open) return
     setLoading(true)
     setError('')
     detectionApi
-      .fetchCampaignReportData(campaignId, { unassignedOnly })
+      .fetchCampaignReportData(selectedCampaignId, { unassignedOnly: selectedUnassignedOnly, allCampaigns })
       .then(setData)
       .catch((err) => setError(err.message || 'No se pudo cargar la vista previa.'))
       .finally(() => setLoading(false))
-  }, [open, campaignId, unassignedOnly])
+  }, [open, selectedCampaignId, selectedUnassignedOnly, allCampaigns])
 
   function downloadJson() {
     const blob = new Blob([JSON.stringify(data.rows, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `reporte-predios-${campaignId || 'sin-campania'}.json`
+    link.download = `reporte-predios-${allCampaigns ? 'todas-las-campanas' : selectedCampaignId || 'sin-campania'}.json`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -116,9 +146,10 @@ export default function ExportPreviewModal({ open, onClose, campaignId, unassign
 
   async function handleFormat(kind) {
     setBusyFormat(kind)
+    const opts = { unassignedOnly: selectedUnassignedOnly, allCampaigns }
     try {
-      if (kind === 'excel') await detectionApi.exportCampaignReport(campaignId, { unassignedOnly })
-      else if (kind === 'pdf') await detectionApi.exportCampaignReportPdf(campaignId, { unassignedOnly })
+      if (kind === 'excel') await detectionApi.exportCampaignReport(selectedCampaignId, opts)
+      else if (kind === 'pdf') await detectionApi.exportCampaignReportPdf(selectedCampaignId, opts)
       else if (kind === 'json') downloadJson()
       else if (kind === 'print') window.print()
       if (kind !== 'print') toast.success('Reporte generado.')
@@ -132,6 +163,24 @@ export default function ExportPreviewModal({ open, onClose, campaignId, unassign
   return (
     <Modal open={open} onClose={onClose} title="Exportar reporte de predios" icon={FileDown} size="xl">
       <div className="space-y-4">
+        <div className="export-print-hide flex flex-wrap items-end gap-3">
+          <div className="min-w-[14rem] flex-1">
+            <Select
+              label="Campaña a exportar"
+              value={selection}
+              onChange={(e) => setSelection(e.target.value)}
+            >
+              <option value="">Sin campaña</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.code} · {c.name}
+                </option>
+              ))}
+              <option value={ALL_CAMPAIGNS_VALUE}>Todas las campañas</option>
+            </Select>
+          </div>
+        </div>
+
         <div className="export-print-hide flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
           <p className="text-xs text-slate-500">
             {data ? `${data.campaign_label} · ${data.rows.length} predios` : 'Cargando…'}
@@ -203,7 +252,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, unassign
             ) : (
               <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 print:max-h-none print:overflow-visible">
                 {data.rows.map((row) => (
-                  <ParcelCard key={`${row.number}-${row.cadastral_code}`} row={row} />
+                  <ParcelCard key={`${row.number}-${row.cadastral_code}`} row={row} showCampaign={allCampaigns} />
                 ))}
               </div>
             )}
