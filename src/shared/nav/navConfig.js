@@ -131,6 +131,16 @@ export const NAV_SECTIONS = [
     label: 'Reportes',
     icon: BarChart3,
     path: '/procedurereports',
+    permissionModule: 'procedurereports',
+    description: 'Indicadores gerenciales del Área Técnica Cartografía (SLA, backlog y productividad).',
+    children: [
+      {
+        label: 'Reporte gerencial',
+        path: '/procedurereports/gerencial',
+        icon: BarChart3,
+        blurb: 'Salidas de bandeja, SLA y pendientes',
+      },
+    ],
   },
   {
     label: 'Revisión Avalúos',

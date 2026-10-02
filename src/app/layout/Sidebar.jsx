@@ -203,6 +203,12 @@ export function Sidebar({ open = true, onClose }) {
 
   const DomainIcon = currentDomain.icon
   const visibleChildren = getVisibleNavChildren(user?.permisos, currentDomain.children)
+  const moduleNavItems =
+    visibleChildren.length > 0
+      ? visibleChildren
+      : currentDomain.path && currentDomain.path !== '/dashboard'
+        ? [{ label: currentDomain.label, path: currentDomain.path, icon: currentDomain.icon }]
+        : []
 
   return (
     <>
@@ -265,7 +271,7 @@ export function Sidebar({ open = true, onClose }) {
               <span>Volver a Inicio</span>
             </NavLink>
 
-            {visibleChildren.length > 0 && (
+            {moduleNavItems.length > 0 && (
               <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
                 Navegación del módulo
               </p>
@@ -273,7 +279,7 @@ export function Sidebar({ open = true, onClose }) {
 
             <div className="space-y-1">
               <FunctionLinks
-                items={visibleChildren}
+                items={moduleNavItems}
                 permissions={user?.permisos}
                 collapsed={collapsed}
                 onToggle={toggleGroup}

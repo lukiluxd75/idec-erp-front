@@ -11,4 +11,6 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage'))
  * trámites -- see backend/app/domains/procedurereports). Registered in
  * `src/domains/index.js`, the single place that knows every domain.
  */
-export const procedureReportsRoutes = [{ path: '/procedurereports', element: <ReportsPage /> }]
+export const procedureReportsRoutes = [
+  { path: '/procedurereports/gerencial', element: <ReportsPage />, wide: true },
+]

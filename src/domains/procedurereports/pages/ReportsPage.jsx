@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { BarChart3, FileDown, FileSpreadsheet } from 'lucide-react'
+import { Alert, Button, Card, SectionHeader, Spinner } from '@/shared/ui'
 import './ReportsPage.css'
 import { reportsApi, fmt, avg } from '../api/reports.api'
 import { RankingChart } from '../components/RankingChart'
@@ -22,14 +24,7 @@ function rowClass(r, threshold) {
   return ''
 }
 
-/**
- * Reporte gerencial de trámites -- exact interface port of the standalone
- * "reporte-gerencial" project (see doc's Reportes folder): same layout, same
- * CSS (ReportsPage.css), same charts/tables. Only the plumbing was adapted
- * to run inside the ERP -- httpClient (auth), and the backend's English
- * field names (meta/kpis/ranking/teamDaily/... -- see generate_report.py)
- * instead of the standalone frontend's Spanish ones, which no longer apply.
- */
+/** Reporte gerencial de trámites (cartografía). Vive dentro del AppShell del ERP. */
 export default function ReportsPage() {
   const [startDate, setStartDate] = useState('2026-08-01')
   const [endDate, setEndDate] = useState('2026-08-31')
@@ -126,93 +121,104 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="procedure-reports app">
-      <div className={`sheet ${loading ? 'is-loading' : ''}`}>
-        <header className="brand">
-          <div className="pill">Reporte gerencial</div>
-          <h1>Dirección de Administración Geográfica y Catastro</h1>
-          <h2>Área Técnica Cartografía · productividad, SLA y backlog</h2>
-          <div className="controls">
-            <label className="field">
-              <span>Desde</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Hasta</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Comuna</span>
-              <select value={districtId} onChange={(e) => setDistrictId(e.target.value)}>
-                <option value="0">Todas las comunas</option>
-                {districts.length === 0 && <option value="7">CATASTRO CENTRAL</option>}
-                {districts.map((d) => (
-                  <option key={d.districtId} value={String(d.districtId)}>
-                    {d.description} ({d.count})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="btn cyan"
-              type="button"
-              disabled={!!exporting || !data || loading}
-              onClick={() => onExport('excel')}
-            >
-              {exporting === 'excel' ? 'Excel…' : 'Excel'}
-            </button>
-            <button
-              className="btn ghost"
-              type="button"
-              disabled={!!exporting || !data || loading}
-              onClick={() => onExport('pdf')}
-            >
-              {exporting === 'pdf' ? 'PDF…' : 'PDF'}
-            </button>
-          </div>
-          <div className="tipos">
-            <span>Tipos de trámite · {districtLabel}</span>
-            <label className={allTypes ? 'chip on' : 'chip'}>
-              <input
-                type="checkbox"
-                checked={allTypes}
-                onChange={(e) => setProcedureTypeIds(e.target.checked ? [] : DEFAULT_PROCEDURE_TYPES)}
-              />
-              Todos los tipos
-            </label>
-            {groups.map(([group, items]) => (
-              <div key={group} className="tipo-grupo">
-                <b>{group}</b>
-                <div className="tipo-grupo-chips">
-                  {items.map((t) => {
-                    const on = procedureTypeIds.includes(t.procedureTypeId)
-                    return (
-                      <label key={t.procedureTypeId} className={on && !allTypes ? 'chip on' : 'chip'}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() => {
-                            if (allTypes) setProcedureTypeIds([t.procedureTypeId])
-                            else toggleType(t.procedureTypeId)
-                          }}
-                        />
-                        <i className="swatch" style={{ background: t.color }} />
-                        {t.label}
-                      </label>
-                    )
-                  })}
-                </div>
+    <div className="procedure-reports animate-card-in space-y-6">
+      <Card className={`report-shell ${loading ? 'is-loading' : ''}`}>
+        <SectionHeader
+          icon={BarChart3}
+          eyebrow="Reportes"
+          title="Reporte gerencial · Cartografía"
+          subtitle="Dirección de Administración Geográfica y Catastro · productividad, SLA y backlog."
+          actions={
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FileSpreadsheet}
+                disabled={!!exporting || !data || loading}
+                loading={exporting === 'excel'}
+                onClick={() => onExport('excel')}
+              >
+                Excel
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FileDown}
+                disabled={!!exporting || !data || loading}
+                loading={exporting === 'pdf'}
+                onClick={() => onExport('pdf')}
+              >
+                PDF
+              </Button>
+            </>
+          }
+        />
+
+        <div className="filters-bar">
+          <label className="field">
+            <span>Desde</span>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+          <label className="field">
+            <span>Hasta</span>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+          <label className="field field-grow">
+            <span>Comuna</span>
+            <select value={districtId} onChange={(e) => setDistrictId(e.target.value)}>
+              <option value="0">Todas las comunas</option>
+              {districts.length === 0 && <option value="7">CATASTRO CENTRAL</option>}
+              {districts.map((d) => (
+                <option key={d.districtId} value={String(d.districtId)}>
+                  {d.description} ({d.count})
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="tipos">
+          <span>Tipos de trámite · {districtLabel}</span>
+          <label className={allTypes ? 'chip on' : 'chip'}>
+            <input
+              type="checkbox"
+              checked={allTypes}
+              onChange={(e) => setProcedureTypeIds(e.target.checked ? [] : DEFAULT_PROCEDURE_TYPES)}
+            />
+            Todos los tipos
+          </label>
+          {groups.map(([group, items]) => (
+            <div key={group} className="tipo-grupo">
+              <b>{group}</b>
+              <div className="tipo-grupo-chips">
+                {items.map((t) => {
+                  const on = procedureTypeIds.includes(t.procedureTypeId)
+                  return (
+                    <label key={t.procedureTypeId} className={on && !allTypes ? 'chip on' : 'chip'}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => {
+                          if (allTypes) setProcedureTypeIds([t.procedureTypeId])
+                          else toggleType(t.procedureTypeId)
+                        }}
+                      />
+                      <i className="swatch" style={{ background: t.color }} />
+                      {t.label}
+                    </label>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        </header>
+            </div>
+          ))}
+        </div>
 
-        {error && <div className="error">{error}</div>}
+        {error && <Alert type="error" className="mt-4" message={error} />}
 
-        <div className="sheet-body">
+        <div className="report-body">
           {loading && (
             <div className="loader-overlay" role="status" aria-live="polite">
-              <div className="spinner" />
+              <Spinner className="h-10 w-10 text-brand-800" />
               <strong>Cargando {districtLabel}</strong>
               <span>Actualizando tablas y gráficos…</span>
             </div>
@@ -492,7 +498,7 @@ export default function ReportsPage() {
             </>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
