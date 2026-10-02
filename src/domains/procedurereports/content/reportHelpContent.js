@@ -5,6 +5,12 @@
 
 export const REPORT_GUIDE_SECTIONS = [
   {
+    id: 'scope',
+    title: 'Alcance del reporte',
+    summary:
+      'Datos de la unidad organizacional cartografía en SISCAT (certificaciones y registros catastrales en bandeja). No reúne trámites de otras áreas del catastro ni de toda la institución.',
+  },
+  {
     id: 'filters',
     title: 'Filtros',
     summary:
@@ -14,7 +20,7 @@ export const REPORT_GUIDE_SECTIONS = [
     id: 'executive',
     title: 'Cuadro ejecutivo',
     summary:
-      'Síntesis automática del período: volumen, variación respecto al mes anterior equivalente, SLA promedio y alertas de backlog envejecido.',
+      'Síntesis automática del período: volumen, variación respecto al mes anterior equivalente, SLA promedio y alertas de pendientes envejecidos en bandeja.',
   },
   {
     id: 'kpis',
@@ -38,9 +44,9 @@ export const REPORT_GUIDE_SECTIONS = [
   },
   {
     id: 'backlogAging',
-    title: 'Antigüedad del backlog',
+    title: 'Antigüedad de pendientes',
     summary:
-      'Pendientes de hoy clasificados por días desde el ingreso. Barras altas en tramos largos indican riesgo de demora.',
+      'Trámites sin salida hoy, clasificados por días desde el ingreso a bandeja. Barras altas en tramos largos indican riesgo de demora.',
   },
   {
     id: 'districts',
@@ -65,9 +71,18 @@ export const REPORT_GUIDE_SECTIONS = [
 ]
 
 export const REPORT_HELP = {
+  scope: {
+    title: '¿Es solo «cartografía»?',
+    body: 'El módulo Reportes del ERP muestra indicadores gerenciales de trámites en bandeja de una unidad concreta del catastro (por configuración: Área Técnica Cartografía).',
+    bullets: [
+      'Incluye certificaciones técnicas y registros catastrales que pasan por la bandeja de esa unidad y sus comunas.',
+      'No sustituye reportes de otras direcciones ni de trámites que no ingresan a esta bandeja.',
+      'El nombre de la unidad aparece en el pie del reporte (campo meta.unit) y en los exportables PDF/Excel.',
+    ],
+  },
   filters: {
     title: 'Cómo usar los filtros',
-    body: 'El reporte lee la base catastral de cartografía. Cada cambio de filtro vuelve a calcular todo el tablero.',
+    body: 'El reporte consulta la base catastral (SISCAT) para la unidad cartografía. Cada cambio de filtro vuelve a calcular todo el tablero.',
     bullets: [
       'Desde / Hasta: solo cuentan salidas de bandeja con fecha de salida dentro del rango (días hábiles y fines de semana incluidos si hubo actividad).',
       'Comuna: limita a funcionarios activos de esa comuna. «Todas las comunas» habilita la comparativa territorial.',
@@ -79,7 +94,7 @@ export const REPORT_HELP = {
     body: 'Resume en lenguaje gerencial lo más relevante del período filtrado.',
     bullets: [
       'La primera línea destaca volumen o variación frente al período anterior (misma cantidad de días).',
-      'Las viñetas siguientes mencionan SLA promedio, backlog envejecido (>30 días) y mix Certificaciones / RC cuando aplica.',
+      'Las viñetas siguientes mencionan SLA promedio, pendientes con más de 30 días en bandeja y mix Certificaciones / RC cuando aplica.',
       'El banner amarillo debajo detalla quién concentra los pendientes si hay outliers en bandeja.',
     ],
   },
@@ -92,7 +107,7 @@ export const REPORT_HELP = {
       'Equipo / día hábil: total de salidas en días laborables (lun–vie) ÷ cantidad de esos días con datos en el calendario del equipo.',
       'SLA prom. (días): promedio de días entre ingreso y salida de las salidas del período (requiere fecha de ingreso).',
       'Pendientes actuales: trámites sin fecha de salida hoy, del filtro de comuna/tipo (no dependen del rango de fechas).',
-      'Funcionarios: personas activas en cartografía que entraron en el filtro de comuna.',
+      'Funcionarios: personas activas de la unidad cartografía que entraron en el filtro de comuna.',
     ],
   },
   slaStrip: {
@@ -113,15 +128,15 @@ export const REPORT_HELP = {
     ],
   },
   backlog: {
-    title: 'Mensaje de backlog',
-    body: 'Describe la bandeja pendiente al momento de generar el reporte.',
+    title: 'Situación de pendientes en bandeja',
+    body: 'Describe cuántos trámites siguen sin salida al momento de generar el reporte.',
     bullets: [
-      'Outliers: funcionarios con pendientes muy altos respecto al resto (regla automática del sistema).',
-      'No sustituye la antigüedad del backlog: un pendiente reciente y uno viejo cuentan igual aquí; use el gráfico de antigüedad para priorizar.',
+      'Concentración: funcionarios con pendientes muy altos respecto al resto (regla automática del sistema).',
+      'No distingue antigüedad: un pendiente reciente y uno viejo cuentan igual aquí; use el gráfico de antigüedad para priorizar.',
     ],
   },
   backlogAging: {
-    title: 'Antigüedad del backlog',
+    title: 'Antigüedad de pendientes en bandeja',
     body: 'Solo trámites pendientes hoy, medidos desde su fecha de ingreso a bandeja.',
     bullets: [
       '0–7 días: ingresos recientes; 8–15 y 16–30: seguimiento normal; 31–60 y más de 60: priorizar revisión gerencial.',
@@ -205,7 +220,7 @@ export const REPORT_HELP = {
     title: 'Tabla de pendientes',
     body: 'Instantánea de bandeja al generar el reporte (no filtrada por fechas del período).',
     bullets: [
-      'Ordene mentalmente por pendientes altos para alinear con el mensaje de backlog.',
+      'Ordene mentalmente por pendientes altos para alinear con el mensaje de situación de bandeja.',
       'Resaltado ámbar: funcionario con pendientes elevados según reglas del reporte.',
     ],
   },

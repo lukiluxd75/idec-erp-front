@@ -25,13 +25,14 @@ function rowClass(r, threshold) {
   return ''
 }
 
-/** Reporte gerencial de trámites (cartografía). Vive dentro del AppShell del ERP. */
+/** Reporte gerencial de trámites en bandeja (unidad cartografía en SISCAT). */
 export default function ReportsPage() {
   const [startDate, setStartDate] = useState('2026-08-01')
   const [endDate, setEndDate] = useState('2026-08-31')
   const [districtId, setDistrictId] = useState('7')
   const [procedureTypeIds, setProcedureTypeIds] = useState(DEFAULT_PROCEDURE_TYPES)
   const [districts, setDistricts] = useState([])
+  const [unitLabel, setUnitLabel] = useState('')
   const [procedureTypesCatalog, setProcedureTypesCatalog] = useState([])
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -45,6 +46,7 @@ export default function ReportsPage() {
       .fetchFilters()
       .then((f) => {
         setDistricts(f.districts || [])
+        setUnitLabel(f.unit || '')
         setProcedureTypesCatalog(f.procedureTypes || [])
       })
       .catch(() => undefined)
@@ -127,8 +129,12 @@ export default function ReportsPage() {
         <SectionHeader
           icon={BarChart3}
           eyebrow="Reportes"
-          title="Reporte gerencial · Cartografía"
-          subtitle="Dirección de Administración Geográfica y Catastro · productividad, SLA y backlog."
+          title="Reporte gerencial de trámites"
+          subtitle={
+            data?.meta?.unit || unitLabel
+              ? `${data?.meta?.unit || unitLabel} · salidas de bandeja, tiempos de atención y pendientes (certificaciones y registros catastrales).`
+              : 'Salidas de bandeja, tiempos de atención y pendientes de la unidad cartografía.'
+          }
           actions={
             <>
               <Button
@@ -274,7 +280,7 @@ export default function ReportsPage() {
               {data.analysis?.backlog && (
                 <>
                   <div className="section-help-row">
-                    <ReportHelpHint helpId="backlog" label="¿Qué dice el mensaje de backlog?" />
+                    <ReportHelpHint helpId="backlog" label="¿Qué dice el mensaje de pendientes?" />
                   </div>
                   <div className="banner">{data.analysis.backlog}</div>
                 </>
@@ -283,8 +289,8 @@ export default function ReportsPage() {
               <section className="grid-2">
                 <div className="panel">
                   <ReportPanelHeading
-                    title="Antigüedad del backlog"
-                    caption="Pendientes por días desde el ingreso a bandeja (hoy)."
+                    title="Antigüedad de pendientes en bandeja"
+                    caption="Trámites sin salida, por días desde el ingreso (al día de hoy)."
                     helpId="backlogAging"
                   />
                   <BacklogAgingChart backlogAging={data.backlogAging} />

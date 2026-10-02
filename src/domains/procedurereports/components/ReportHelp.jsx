@@ -73,8 +73,11 @@ export function ReportsGuidePanel() {
       <div className="guide-panel-body">
         <p className="guide-intro">
           Este tablero combina <strong>producción del período</strong> (salidas con fecha de salida en el rango) y{' '}
-          <strong>bandeja actual</strong> (pendientes sin salida). Use los filtros arriba antes de sacar conclusiones.
+          <strong>bandeja actual</strong> (pendientes sin salida) de la <strong>unidad cartografía</strong> configurada
+          en el sistema — certificaciones y registros catastrales, no todos los trámites del catastro. Use los filtros
+          arriba antes de sacar conclusiones.
         </p>
+        <ReportHelpBlock helpId="scope" className="guide-foot" />
         <div className="guide-grid">
           {REPORT_GUIDE_SECTIONS.map((section) => {
             const helpKey = section.helpId || section.id
@@ -87,7 +90,7 @@ export function ReportsGuidePanel() {
             )
           })}
         </div>
-        <ReportHelpBlock helpId="filters" className="guide-foot" />
+        <ReportHelpBlock helpId="filters" />
       </div>
     </details>
   )
