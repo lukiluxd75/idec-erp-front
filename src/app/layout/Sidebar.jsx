@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { NavLink, useLocation, useMatch } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, X } from 'lucide-react'
+import { NavLink, useLocation } from 'react-router-dom'
+import { ArrowLeft, ChevronRight, LayoutGrid, X } from 'lucide-react'
 import { useAuth } from '@/auth/hooks/useAuth'
 import {
   NAV_SECTIONS,
@@ -12,161 +12,160 @@ import {
 
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
-/**
- * Qué grupos dejó contraídos el usuario, por `path` del módulo padre. Se guarda
- * porque contraer sirve para ganar espacio: si se reabriera en cada navegación
- * habría que volver a cerrarlo a cada rato.
- */
-const COLLAPSED_STORAGE_KEY = 'idec-erp.sidebar.collapsed'
-
-function readCollapsed() {
-  try {
-    const stored = JSON.parse(window.localStorage.getItem(COLLAPSED_STORAGE_KEY))
-    return new Set(Array.isArray(stored) ? stored : [])
-  } catch {
-    return new Set()
-  }
+/** Funciones visibles de un nodo, en orden alfabético. Vacío si es una hoja. */
+function nestedOf(node, permissions) {
+  return (node.children || []).filter((item) => canViewChild(permissions, item)).sort(compareNavLabels)
 }
 
-function writeCollapsed(paths) {
-  try {
-    window.localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify([...paths]))
-  } catch {
-    /* ignore private-mode storage errors */
-  }
+function pathMatches(pathname, path) {
+  return pathname === path || pathname.startsWith(`${path}/`)
 }
 
-const linkBase =
-  'group flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150'
+/** Si la pantalla abierta es el propio nodo o cualquiera de sus descendientes. */
+function containsPath(node, pathname, permissions) {
+  if (node.path && pathMatches(pathname, node.path)) return true
+  return nestedOf(node, permissions).some((child) => containsPath(child, pathname, permissions))
+}
+
+/** Rutas de los grupos que esconden la pantalla abierta: esos nacen abiertos. */
+function groupsHiding(nodes, pathname, permissions) {
+  return nodes.flatMap((node) => {
+    const nested = nestedOf(node, permissions)
+    if (nested.length === 0 || !containsPath(node, pathname, permissions)) return []
+    return [node.path, ...groupsHiding(nested, pathname, permissions)]
+  })
+}
+
+const rowBase =
+  'flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-xl text-left transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.985] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/50'
+
+function rowTone(isActive, { group = false } = {}) {
+  if (isActive) {
+    return group
+      ? 'bg-brand-800/[0.08] font-semibold text-brand-900'
+      : 'bg-brand-800 font-semibold text-white shadow-sm shadow-brand-900/20'
+  }
+  return 'font-medium text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-950'
+}
 
 /**
- * Una fila del menú del módulo. El fondo (hover y activo) vive en el contenedor y
- * no en el enlace, para que la fila se pinte entera — flecha incluida — y se lea
- * como una sola pieza en lugar de un enlace con un botón pegado al lado.
- *
- * Dentro de la fila hay dos objetivos distintos: el nombre navega a la pantalla y
- * la flecha contrae el grupo. Una línea vertical fina aparece entre ambos al pasar
- * el mouse, que es lo que avisa de que la flecha se pulsa por separado.
+ * Una función del menú: un enlace. `depth` > 0 es lo que sale al abrir un grupo,
+ * un poco más compacto para que se lea como contenido del grupo y no como otro
+ * módulo.
  */
-function NavRow({ node, permissions, collapsed, onToggle, depth }) {
+function NavLeaf({ node, depth, end = true }) {
   const NodeIcon = node.icon
-  const nested = (node.children || [])
-    .filter((item) => canViewChild(permissions, item))
-    .sort(compareNavLabels)
-  const isGroup = nested.length > 0
-  const isOpen = isGroup && !collapsed.has(node.path)
-  // Un grupo sigue marcándose como activo cuando la pantalla abierta es una de
-  // las que esconde, así que contraer nunca deja al usuario sin saber dónde está.
-  const isActive = Boolean(useMatch({ path: node.path, end: !isGroup }))
+  const nested = depth > 0
+  return (
+    <NavLink
+      to={node.path}
+      end={end}
+      className={({ isActive }) =>
+        `${rowBase} ${nested ? 'px-2.5 py-2 text-[13px]' : 'px-3 py-2.5 text-sm'} ${rowTone(isActive)}`
+      }
+    >
+      {NodeIcon && <NodeIcon className={`shrink-0 ${nested ? 'h-4 w-4' : 'h-[18px] w-[18px]'}`} aria-hidden />}
+      <span className="min-w-0 flex-1 leading-snug">{node.label}</span>
+    </NavLink>
+  )
+}
+
+/**
+ * Un módulo con funciones dentro. La fila entera es el botón: se abre solo cuando
+ * el usuario la pulsa, y sus funciones salen en abanico justo debajo (ver
+ * `.nav-fan` en index.css). Pulsarla de nuevo la cierra.
+ *
+ * La fila no navega: si el módulo tiene pantalla propia (p. ej. el panel general
+ * de una herramienta) aparece como la primera función del abanico, "Vista general".
+ * Así abrir un grupo no te saca de donde estás, y en móvil, donde cambiar de
+ * pantalla cierra el cajón, el abanico no se cierra solo antes de poder usarlo.
+ */
+function NavGroup({ node, nested, expanded, onToggle, pathname, permissions, depth }) {
+  const NodeIcon = node.icon
+  const isOpen = expanded.has(node.path)
+  const isActive = containsPath(node, pathname, permissions)
   const panelId = `sidebar-group-${node.path.replace(/\W+/g, '-')}`
 
-  const rowTone = isActive
-    ? isGroup
-      ? 'bg-brand-800/10 text-brand-900'
-      : 'bg-brand-800 text-white shadow-sm shadow-brand-900/15'
-    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+  // Un grupo con pantalla propia que ningún hijo repite la ofrece como primera entrada.
+  const ownScreen = nested.some((child) => child.path === node.path)
+    ? []
+    : [{ label: 'Vista general', path: node.path, icon: LayoutGrid, own: true }]
+  const entries = [...ownScreen, ...nested]
 
   return (
-    <div className="space-y-1">
-      <div className={`group/row flex items-center rounded-xl transition-colors duration-150 ${rowTone}`}>
-        <NavLink
-          to={node.path}
-          end={!isGroup}
-          // Flechas ← → sobre el nombre: contraer y expandir sin apuntar a la
-          // flecha, como en cualquier árbol.
-          onKeyDown={(event) => {
-            if (!isGroup) return
-            if (event.key === 'ArrowRight' && !isOpen) onToggle(node.path)
-            else if (event.key === 'ArrowLeft' && isOpen) onToggle(node.path)
-            else return
-            event.preventDefault()
-          }}
-          className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm ${
-            isActive ? 'font-semibold' : 'font-medium'
-          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/50`}
+    <div>
+      <button
+        type="button"
+        onClick={() => onToggle(node.path)}
+        // ← y → abren y cierran el grupo sin apuntar con el mouse.
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowRight' && !isOpen) onToggle(node.path)
+          else if (event.key === 'ArrowLeft' && isOpen) onToggle(node.path)
+          else return
+          event.preventDefault()
+        }}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        className={`${rowBase} px-3 py-2.5 text-sm ${rowTone(isActive, { group: true })}`}
+      >
+        <NodeIcon
+          className={`h-[18px] w-[18px] shrink-0 transition-colors duration-150 ${isActive ? 'text-brand-800' : ''}`}
+          aria-hidden
+        />
+        <span className="min-w-0 flex-1 leading-snug">{node.label}</span>
+        {/* Cuántas funciones esconde: solo mientras está cerrado, para que quien
+            busca algo sepa si vale la pena abrirlo. */}
+        <span
+          aria-hidden
+          className={`shrink-0 rounded-full px-1.5 text-[11px] font-bold tabular-nums transition-opacity duration-150 ${
+            isOpen ? 'opacity-0' : 'opacity-100'
+          } ${isActive ? 'bg-brand-800/10 text-brand-800' : 'bg-slate-900/[0.06] text-slate-500'}`}
         >
-          <span
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-              isActive
-                ? isGroup
-                  ? 'bg-white text-brand-800'
-                  : 'bg-white/15 text-white'
-                : 'bg-slate-100 text-slate-500 group-hover/row:bg-white group-hover/row:text-brand-800'
-            }`}
-          >
-            <NodeIcon className="h-[17px] w-[17px]" />
-          </span>
-          <span className="min-w-0 flex-1 leading-snug">{node.label}</span>
-        </NavLink>
+          {entries.length}
+        </span>
+        <ChevronRight
+          className={`nav-chevron h-4 w-4 shrink-0 ${isActive ? 'text-brand-800' : 'text-slate-400'}`}
+          data-open={isOpen}
+          aria-hidden
+        />
+      </button>
 
-        {isGroup && (
-          <>
-            {/* Contraído: cuántas funciones quedan escondidas ahí dentro. Sigue
-                ocupando su sitio al expandirse, para que la fila no salte. */}
-            <span
-              aria-hidden
-              className={`shrink-0 text-[11px] font-bold tabular-nums transition-opacity duration-150 ${
-                isOpen ? 'opacity-0' : isActive ? 'text-brand-800' : 'text-slate-400'
-              }`}
-            >
-              {nested.length}
-            </span>
-            <span
-              aria-hidden
-              className={`mx-1.5 h-5 w-px shrink-0 transition-colors duration-150 ${
-                isActive ? 'bg-brand-800/20' : 'bg-slate-300/0 group-hover/row:bg-slate-300/80'
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => onToggle(node.path)}
-              aria-expanded={isOpen}
-              aria-controls={isOpen ? panelId : undefined}
-              title={isOpen ? `Contraer ${node.label}` : `Expandir ${node.label}`}
-              aria-label={`${isOpen ? 'Contraer' : 'Expandir'} ${node.label} (${nested.length} ${
-                nested.length === 1 ? 'función' : 'funciones'
-              })`}
-              className={`mr-1.5 flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-all duration-150 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/50 ${
-                isActive
-                  ? 'text-brand-800 hover:bg-white hover:text-brand-900'
-                  : 'text-slate-400 hover:bg-white hover:text-brand-800 hover:shadow-xs'
-              }`}
-            >
-              <ChevronDown
-                className={`h-4 w-4 transition-transform duration-200 ease-out ${isOpen ? '' : '-rotate-90'}`}
-                aria-hidden
-              />
-            </button>
-          </>
-        )}
-      </div>
-
-      {isOpen ? (
-        <div id={panelId} className="animate-slide-down ml-[1.35rem] border-l border-slate-200 py-1 pl-3">
-          <FunctionLinks
-            items={nested}
-            permissions={permissions}
-            collapsed={collapsed}
-            onToggle={onToggle}
-            depth={depth + 1}
-          />
+      <div id={panelId} className="nav-fan" data-open={isOpen}>
+        <div className="nav-fan-inner">
+          <ul className="ml-[1.4rem] space-y-0.5 border-l border-slate-200 py-1 pl-2.5">
+            {entries.map((entry, index) => (
+              <li key={entry.path} className="nav-fan-item" style={{ '--i': index }}>
+                <NavNode
+                  node={entry}
+                  expanded={expanded}
+                  onToggle={onToggle}
+                  pathname={pathname}
+                  permissions={permissions}
+                  depth={depth + 1}
+                />
+              </li>
+            ))}
+          </ul>
         </div>
-      ) : null}
+      </div>
     </div>
   )
 }
 
-function FunctionLinks({ items, permissions, collapsed, onToggle, depth = 0 }) {
-  return items.map((child) => (
-    <NavRow
-      key={child.path}
-      node={child}
-      permissions={permissions}
-      collapsed={collapsed}
+function NavNode({ node, expanded, onToggle, pathname, permissions, depth }) {
+  const nested = nestedOf(node, permissions)
+  if (nested.length === 0) return <NavLeaf node={node} depth={depth} end={!node.children?.length} />
+  return (
+    <NavGroup
+      node={node}
+      nested={nested}
+      expanded={expanded}
       onToggle={onToggle}
+      pathname={pathname}
+      permissions={permissions}
       depth={depth}
     />
-  ))
+  )
 }
 
 /**
@@ -174,9 +173,9 @@ function FunctionLinks({ items, permissions, collapsed, onToggle, depth = 0 }) {
  * pero con opacidad alta a propósito — es navegación densa de lectura constante, necesita
  * más contraste que una tarjeta de contenido.
  *
- * Los módulos con submódulos se contraen con la flecha de su derecha (o con ← y →
- * desde el teclado), para ahorrar espacio cuando el dominio tiene muchas funciones
- * anidadas.
+ * Los módulos con funciones dentro nacen cerrados y se abren en abanico solo cuando se
+ * pulsa su fila; el que esconde la pantalla abierta nace abierto, para no perder de vista
+ * dónde estás. No se recuerda lo abierto entre visitas: cerrado es el estado de descanso.
  *
  * Dos comportamientos según el ancho, porque 16rem de menú no caben al lado del
  * contenido en un teléfono:
@@ -187,28 +186,40 @@ function FunctionLinks({ items, permissions, collapsed, onToggle, depth = 0 }) {
 export function Sidebar({ open = true, onClose }) {
   const { pathname } = useLocation()
   const { user } = useAuth()
-  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const permissions = user?.permisos
   const currentDomain = getCurrentDomain(pathname)
 
+  const visibleChildren = currentDomain ? getVisibleNavChildren(permissions, currentDomain.children) : []
+  const moduleNavItems =
+    visibleChildren.length > 0
+      ? visibleChildren
+      : currentDomain?.path && currentDomain.path !== '/dashboard'
+        ? [{ label: currentDomain.label, path: currentDomain.path, icon: currentDomain.icon }]
+        : []
+
+  const [expanded, setExpanded] = useState(() => new Set(groupsHiding(moduleNavItems, pathname, permissions)))
+
+  // Al llegar a una pantalla escondida en un grupo cerrado (un enlace de otra parte,
+  // el botón Atrás), ese grupo se abre. Los que el usuario abrió no se tocan.
+  // Ajuste de estado durante el render, como en AppShell.
+  const [syncedPath, setSyncedPath] = useState(pathname)
+  if (pathname !== syncedPath) {
+    setSyncedPath(pathname)
+    const missing = groupsHiding(moduleNavItems, pathname, permissions).filter((path) => !expanded.has(path))
+    if (missing.length > 0) setExpanded(new Set([...expanded, ...missing]))
+  }
+
   const toggleGroup = (path) =>
-    setCollapsed((previous) => {
+    setExpanded((previous) => {
       const next = new Set(previous)
       if (next.has(path)) next.delete(path)
       else next.add(path)
-      writeCollapsed(next)
       return next
     })
 
   if (!currentDomain) return null
 
   const DomainIcon = currentDomain.icon
-  const visibleChildren = getVisibleNavChildren(user?.permisos, currentDomain.children)
-  const moduleNavItems =
-    visibleChildren.length > 0
-      ? visibleChildren
-      : currentDomain.path && currentDomain.path !== '/dashboard'
-        ? [{ label: currentDomain.label, path: currentDomain.path, icon: currentDomain.icon }]
-        : []
 
   return (
     <>
@@ -235,18 +246,12 @@ export function Sidebar({ open = true, onClose }) {
             open ? 'opacity-100 delay-100' : 'opacity-0'
           }`}
         >
-          <div className="flex items-start justify-between gap-2 border-b border-slate-200/80 px-4 py-5">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Estás en</p>
-              <div className="mt-2.5 flex items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-800 to-brand-600 text-white shadow-sm shadow-brand-900/20">
-                  <DomainIcon className="h-[18px] w-[18px]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-bold leading-snug text-slate-900">{currentDomain.label}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-slate-500">Módulo actual</p>
-                </div>
-              </div>
+          <div className="flex items-center justify-between gap-2 border-b border-slate-200/80 px-4 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-800 to-brand-600 text-white shadow-sm shadow-brand-900/25">
+                <DomainIcon className="h-[18px] w-[18px]" aria-hidden />
+              </span>
+              <p className="line-clamp-2 text-[13px] font-bold leading-snug text-slate-900">{currentDomain.label}</p>
             </div>
             {/* En móvil el cajón tapa el contenido, así que necesita su propia
                 salida además del fondo oscuro. */}
@@ -260,31 +265,29 @@ export function Sidebar({ open = true, onClose }) {
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <nav aria-label={`Menú de ${currentDomain.label}`} className="flex-1 overflow-y-auto px-3 py-3">
             <NavLink
               to={INICIO.path}
-              className={`${linkBase} mb-4 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-950`}
+              className={`${rowBase} mb-3 px-3 py-2 text-[13px] font-medium text-slate-500 hover:bg-slate-900/[0.05] hover:text-slate-900`}
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
-                <ArrowLeft className="h-4 w-4" />
-              </span>
+              <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
               <span>Volver a Inicio</span>
             </NavLink>
 
-            {moduleNavItems.length > 0 && (
-              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                Navegación del módulo
-              </p>
-            )}
-
-            <div className="space-y-1">
-              <FunctionLinks
-                items={moduleNavItems}
-                permissions={user?.permisos}
-                collapsed={collapsed}
-                onToggle={toggleGroup}
-              />
-            </div>
+            <ul className="space-y-1">
+              {moduleNavItems.map((item) => (
+                <li key={item.path}>
+                  <NavNode
+                    node={item}
+                    expanded={expanded}
+                    onToggle={toggleGroup}
+                    pathname={pathname}
+                    permissions={permissions}
+                    depth={0}
+                  />
+                </li>
+              ))}
+            </ul>
           </nav>
         </aside>
       </div>
