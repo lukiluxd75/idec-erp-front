@@ -47,15 +47,18 @@ function PlanoUnidad({ url, etiqueta, angleDeg, ancho, alto, foco }) {
  */
 export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, imagenUrl, angleDeg, ancho, alto, foco }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
       <p className="mb-3 truncate text-sm font-semibold text-slate-700" title={ambiente}>
         {ambiente}
       </p>
       <div
-        className="grid items-center justify-items-stretch gap-2"
+        className="grid items-center justify-center justify-items-stretch gap-2"
         style={{
           gridTemplateAreas: '". norte ." "oeste imagen este" ". sud ."',
-          gridTemplateColumns: '8rem 10rem 8rem',
+          // Tope de 8/10/8rem pero con minmax(0, ..): si la tarjeta es mas angosta
+          // (las tarjetas miden minimo 26rem y con el padding y los huecos el
+          // contenido pedia 29rem) las columnas se achican en vez de salirse del marco.
+          gridTemplateColumns: 'minmax(0, 8rem) minmax(0, 10rem) minmax(0, 8rem)',
           gridTemplateRows: 'auto 10rem auto',
         }}
       >
