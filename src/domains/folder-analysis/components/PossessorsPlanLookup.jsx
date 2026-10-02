@@ -386,7 +386,7 @@ export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }
     <Card className="animate-card-in">
       <SectionHeader
         icon={MapPinned}
-        eyebrow="Poseedores"
+        eyebrow="Registro catastral de poseedores"
         title="Plano en el IDE"
         subtitle="Se busca el predio por su código catastral y se sacan del mapa las colindancias, las calles y la superficie."
       />

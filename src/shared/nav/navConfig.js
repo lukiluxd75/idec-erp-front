@@ -84,14 +84,13 @@ export const NAV_SECTIONS = [
         children: [
           { label: 'Carpetas registradas', path: '/folder-analysis/folders', icon: FolderTree },
           { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
+          {
+            label: 'Detección de Folios',
+            path: '/folios',
+            icon: ScanText,
+            accessPrefix: 'folios',
+          },
         ],
-      },
-      {
-        label: 'Detección de Folios',
-        path: '/folios',
-        icon: ScanText,
-        permissionModule: 'folios',
-        accessPrefix: 'folios',
       },
       {
         label: 'Geo-Extract',
