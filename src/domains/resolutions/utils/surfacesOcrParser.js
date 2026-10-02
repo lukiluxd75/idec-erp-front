@@ -498,7 +498,17 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     if (vals.length >= 2 && nums / vals.length >= 0.5) numericCols.push(i)
   }
 
-  if (detectados < 3 && numericCols.length >= 3) {
+  // Tambien se usa cuando la deteccion por texto es incoherente aunque haya
+  // encontrado 3 o mas: un mismo rol repetido (el "LIBRE" de superficie comun
+  // tomado por privada) o una tabla de 7+ columnas numericas con menos de 5
+  // roles de superficie. En las tablas de GAMC la primera pagina suele traer el
+  // encabezado partido en varias bandas y los sub-encabezados "Construida" /
+  // "Libre" de la segunda mitad se atribuyen al grupo equivocado.
+  const rolesDeSuperficie = columnRoles.filter((r) => SURFACE.has(r))
+  const hayRolRepetido = new Set(rolesDeSuperficie).size < rolesDeSuperficie.length
+  const deteccionIncoherente = hayRolRepetido || (numericCols.length >= 7 && detectados < 5)
+
+  if ((detectados < 3 || deteccionIncoherente) && numericCols.length >= 3) {
     const O = 'omitir'
     const [PC, PL, ID, CC, CL] = [
       'sup_privada_construida',

@@ -278,7 +278,10 @@ export default function ResolutionPage() {
     }
     setGenerating(true)
     try {
-      const buf = await fetch(TEMPLATE_URL).then((r) => {
+      // `no-cache`: revalidar siempre. La plantilla cambia de contenido con el mismo
+      // nombre y el navegador, sin esto, reutiliza la copia vieja varios dias (IIS
+      // solo manda Last-Modified) y los Excel salen con la plantilla anterior.
+      const buf = await fetch(TEMPLATE_URL, { cache: 'no-cache' }).then((r) => {
         if (!r.ok) throw new Error('No se encontró la plantilla (public/plantilla-ph.xlsm).')
         return r.arrayBuffer()
       })
