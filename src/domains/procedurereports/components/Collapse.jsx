@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { ReportHelpBlock } from './ReportHelp'
 
-/** Exact port of the standalone project's Collapse component -- native
- * <details>, same markup/classes (see ../pages/ReportsPage.css). */
-export function Collapse({ title, caption, defaultOpen = false, children }) {
+/** Sección colapsable con ayuda opcional al expandir. */
+export function Collapse({ title, caption, helpId, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <details className="collapse" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
@@ -11,7 +11,12 @@ export function Collapse({ title, caption, defaultOpen = false, children }) {
         {caption ? <small>{caption}</small> : null}
         <em>{open ? 'Ocultar' : 'Ver tabla'}</em>
       </summary>
-      {open ? <div className="collapse-body">{children}</div> : null}
+      {open ? (
+        <div className="collapse-body">
+          {helpId ? <ReportHelpBlock helpId={helpId} className="help-in-collapse" /> : null}
+          {children}
+        </div>
+      ) : null}
     </details>
   )
 }

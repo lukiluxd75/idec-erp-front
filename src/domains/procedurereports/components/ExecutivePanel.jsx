@@ -1,3 +1,5 @@
+import { ReportHelpHint } from './ReportHelp'
+
 /** Resumen ejecutivo gerencial (headline + viñetas del backend). */
 export function ExecutivePanel({ analysis }) {
   if (!analysis?.executiveHeadline && !(analysis?.executiveBullets || []).length) return null
@@ -6,6 +8,7 @@ export function ExecutivePanel({ analysis }) {
       <div className="executive-panel-head">
         <span className="executive-tag">Cuadro ejecutivo</span>
         <h2>Indicadores clave del período</h2>
+        <ReportHelpHint helpId="executive" label="¿Cómo leerlo?" />
       </div>
       {analysis.executiveHeadline && <p className="executive-lead">{analysis.executiveHeadline}</p>}
       {(analysis.executiveBullets || []).length > 1 && (

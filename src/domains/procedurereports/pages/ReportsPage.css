@@ -362,9 +362,191 @@
 .procedure-reports .executive-panel-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.procedure-reports .executive-panel-head .help-hint {
+  margin-left: auto;
+}
+
+.procedure-reports .section-help-row {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 4px;
+}
+
+.procedure-reports .panel-head-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  justify-content: space-between;
+}
+
+.procedure-reports .panel-head-row h2 {
+  margin: 0;
+}
+
+.procedure-reports .panel-head {
+  margin-bottom: 8px;
+}
+
+.procedure-reports .help-hint {
+  position: relative;
+}
+
+.procedure-reports .help-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.procedure-reports .help-trigger:hover {
+  background: #f4f0fb;
+  border-color: var(--purple-2);
+}
+
+.procedure-reports .help-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--cyan);
+}
+
+.procedure-reports .help-popover {
+  margin-top: 8px;
+  max-width: 640px;
+}
+
+.procedure-reports .help-block {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--cyan);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.procedure-reports .help-block.help-in-collapse {
+  margin-bottom: 12px;
+}
+
+.procedure-reports .help-block-title {
+  margin: 0 0 6px;
+  font-weight: 800;
+  color: var(--purple);
+  font-size: 13px;
+}
+
+.procedure-reports .help-block-body {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.procedure-reports .help-block-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink);
+}
+
+.procedure-reports .help-block-list li {
+  margin-bottom: 4px;
+}
+
+.procedure-reports .guide-panel {
+  margin: 16px 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbff;
+  overflow: hidden;
+}
+
+.procedure-reports .guide-panel summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  font-weight: 700;
+  color: var(--purple);
+}
+
+.procedure-reports .guide-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.procedure-reports .guide-panel summary small {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.procedure-reports .guide-panel summary em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--cyan);
+}
+
+.procedure-reports .guide-panel-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.procedure-reports .guide-intro {
+  margin: 12px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.procedure-reports .guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.procedure-reports .guide-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.procedure-reports .guide-card h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--purple);
+}
+
+.procedure-reports .guide-card p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.procedure-reports .guide-foot {
+  margin-top: 4px;
+}
+
+.procedure-reports .sla-strip-wrap {
+  margin-top: 8px;
 }
 
 .procedure-reports .executive-panel-head h2 {

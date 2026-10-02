@@ -1,4 +1,5 @@
 import { fmt } from '../api/reports.api'
+import { ReportHelpHint } from './ReportHelp'
 
 function DeltaBadge({ delta, pct }) {
   if (delta == null) return null
@@ -19,7 +20,11 @@ export function SlaPanel({ sla, periodComparison, kpis }) {
   const hasSla = summary?.avgDays != null
   const pc = periodComparison
   return (
-    <section className="sla-strip">
+    <div className="sla-strip-wrap">
+      <div className="section-help-row">
+        <ReportHelpHint helpId="slaStrip" label="¿Qué es el SLA y la variación?" />
+      </div>
+      <section className="sla-strip">
       <div className="sla-card">
         <span className="sla-label">SLA promedio (ingreso → salida)</span>
         <b>{hasSla ? `${fmt(summary.avgDays, 1)} d` : '—'}</b>
@@ -50,6 +55,7 @@ export function SlaPanel({ sla, periodComparison, kpis }) {
         )}
       </div>
     </section>
+    </div>
   )
 }
 

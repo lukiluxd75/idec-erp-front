@@ -13,6 +13,7 @@ import { SlaPanel, SlaByTypeTable, SlaByStaffTable } from '../components/SlaPane
 import { BacklogAgingChart } from '../components/BacklogAgingChart'
 import { DistrictComparisonTable } from '../components/DistrictComparisonTable'
 import { ProcedureGroupStrip } from '../components/ProcedureGroupStrip'
+import { ReportHelpHint, ReportPanelHeading, ReportsGuidePanel } from '../components/ReportHelp'
 
 const DEFAULT_PROCEDURE_TYPES = [2009, 2010, 2012, 3002, 3003, 3004, 3005, 3006]
 
@@ -175,6 +176,7 @@ export default function ReportsPage() {
               ))}
             </select>
           </label>
+          <ReportHelpHint helpId="filters" label="Ayuda de filtros" />
         </div>
 
         <div className="tipos">
@@ -213,6 +215,8 @@ export default function ReportsPage() {
           ))}
         </div>
 
+        <ReportsGuidePanel />
+
         {error && <Alert type="error" className="mt-4" message={error} />}
 
         <div className="report-body">
@@ -228,6 +232,9 @@ export default function ReportsPage() {
             <>
               <ExecutivePanel analysis={data.analysis} />
 
+              <div className="section-help-row">
+                <ReportHelpHint helpId="kpis" label="¿Qué miden estos indicadores?" />
+              </div>
               <section className="kpis kpis-extended">
                 <div className="kpi">
                   <b>{fmt(data.kpis.dispatches)}</b>
@@ -259,19 +266,35 @@ export default function ReportsPage() {
 
               <SlaPanel sla={data.sla} periodComparison={data.periodComparison} kpis={data.kpis} />
 
+              <div className="section-help-row">
+                <ReportHelpHint helpId="procedureGroups" label="¿Cómo leer el mix de trámites?" />
+              </div>
               <ProcedureGroupStrip groups={data.procedureGroups} totalDispatches={data.kpis.dispatches} />
 
-              {data.analysis?.backlog && <div className="banner">{data.analysis.backlog}</div>}
+              {data.analysis?.backlog && (
+                <>
+                  <div className="section-help-row">
+                    <ReportHelpHint helpId="backlog" label="¿Qué dice el mensaje de backlog?" />
+                  </div>
+                  <div className="banner">{data.analysis.backlog}</div>
+                </>
+              )}
 
               <section className="grid-2">
                 <div className="panel">
-                  <h2>Antigüedad del backlog</h2>
-                  <p className="caption">Pendientes por días desde el ingreso a bandeja (hoy).</p>
+                  <ReportPanelHeading
+                    title="Antigüedad del backlog"
+                    caption="Pendientes por días desde el ingreso a bandeja (hoy)."
+                    helpId="backlogAging"
+                  />
                   <BacklogAgingChart backlogAging={data.backlogAging} />
                 </div>
                 <div className="panel">
-                  <h2>Comparativa por comuna</h2>
-                  <p className="caption">Visible al filtrar todas las comunas o varias áreas.</p>
+                  <ReportPanelHeading
+                    title="Comparativa por comuna"
+                    caption="Visible al filtrar todas las comunas o varias áreas."
+                    helpId="districtComparison"
+                  />
                   <DistrictComparisonTable
                     rows={data.districtComparison}
                     show={districtId === '0' || (data.districtComparison?.length ?? 0) > 1}
@@ -282,17 +305,22 @@ export default function ReportsPage() {
                 </div>
               </section>
 
-              <Collapse title="SLA por tipo de trámite" caption="Promedio de días ingreso → salida en el período">
+              <Collapse
+                title="SLA por tipo de trámite"
+                caption="Promedio de días ingreso → salida en el período"
+                helpId="slaByType"
+              >
                 <SlaByTypeTable rows={data.sla?.byType} />
               </Collapse>
 
-              <Collapse title="SLA por funcionario" caption="Mínimo 3 salidas en el período">
+              <Collapse title="SLA por funcionario" caption="Mínimo 3 salidas en el período" helpId="slaByStaff">
                 <SlaByStaffTable rows={data.sla?.byStaff} />
               </Collapse>
 
               <Collapse
                 title="Pendientes críticos (más antiguos)"
                 caption={`${fmt(data.criticalPending?.length ?? 0)} trámites`}
+                helpId="criticalPending"
               >
                 <div className="table-wrap tall">
                   <table>
@@ -323,8 +351,11 @@ export default function ReportsPage() {
               </Collapse>
 
               <section className="block">
-                <h2>Colores por funcionario</h2>
-                <p className="caption">Misma paleta en ranking, ritmo diario y torta por tipo.</p>
+                <ReportPanelHeading
+                  title="Colores por funcionario"
+                  caption="Misma paleta en ranking, ritmo diario y torta por tipo."
+                  helpId="colorsLegend"
+                />
                 <div className="color-legend">
                   {data.ranking.map((r) => (
                     <div key={r.name} className="legend-item">
@@ -337,17 +368,19 @@ export default function ReportsPage() {
 
               <section className="grid-2">
                 <div className="panel">
-                  <h2>Ranking de despachos</h2>
-                  <p className="caption">
-                    {data.meta.startDate} a {data.meta.endDate} · {data.meta.district}
-                  </p>
+                  <ReportPanelHeading
+                    title="Ranking de despachos"
+                    caption={`${data.meta.startDate} a ${data.meta.endDate} · ${data.meta.district}`}
+                    helpId="ranking"
+                  />
                   <RankingChart ranking={data.ranking} />
                 </div>
                 <div className="panel">
-                  <h2>Ritmo del equipo por día</h2>
-                  <p className="caption">
-                    Cada color es un funcionario. Línea = promedio hábil ({fmt(data.kpis.avgTeamPerDay, 1)})
-                  </p>
+                  <ReportPanelHeading
+                    title="Ritmo del equipo por día"
+                    caption={`Cada color es un funcionario. Línea = promedio hábil (${fmt(data.kpis.avgTeamPerDay, 1)})`}
+                    helpId="dailyChart"
+                  />
                   <DailyChart
                     days={data.teamDaily}
                     ranking={data.ranking}
@@ -359,8 +392,11 @@ export default function ReportsPage() {
 
               <section className="block">
                 <div className="panel pie-panel">
-                  <h2>Trámites por tipo</h2>
-                  <p className="caption">El tamaño es la cantidad de salidas del período.</p>
+                  <ReportPanelHeading
+                    title="Trámites por tipo"
+                    caption="El tamaño es la cantidad de salidas del período."
+                    helpId="byType"
+                  />
                   <div className="pie-layout">
                     <TypePieChart byType={data.byType} />
                     <ul className="pie-list">
@@ -379,11 +415,16 @@ export default function ReportsPage() {
               <Collapse
                 title="Despachos por tipo y funcionario"
                 caption={`${fmt(data.typeStaffMatrix.rows.length)} funcionarios`}
+                helpId="typeStaffMatrix"
               >
                 <TypeStaffMatrix matrix={data.typeStaffMatrix} />
               </Collapse>
 
-              <Collapse title="Estimado por persona" caption="Ritmo real sobre los días con salida">
+              <Collapse
+                title="Estimado por persona"
+                caption="Ritmo real sobre los días con salida"
+                helpId="estimateByPerson"
+              >
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -412,7 +453,11 @@ export default function ReportsPage() {
                 </div>
               </Collapse>
 
-              <Collapse title="Tabla de pendientes" caption="Bandeja al momento de generar el reporte">
+              <Collapse
+                title="Tabla de pendientes"
+                caption="Bandeja al momento de generar el reporte"
+                helpId="pendingTable"
+              >
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -433,7 +478,7 @@ export default function ReportsPage() {
                 </div>
               </Collapse>
 
-              <Collapse title="Detalle día por persona · primera quincena">
+              <Collapse title="Detalle día por persona · primera quincena" helpId="dailyDetail">
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -462,7 +507,7 @@ export default function ReportsPage() {
                 </div>
               </Collapse>
 
-              <Collapse title="Detalle día por persona · segunda quincena">
+              <Collapse title="Detalle día por persona · segunda quincena" helpId="dailyDetail">
                 <div className="table-wrap">
                   <table>
                     <thead>
