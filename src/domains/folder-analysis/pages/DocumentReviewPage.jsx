@@ -80,8 +80,11 @@ export default function DocumentReviewPage() {
   // para el par (tipo de carpeta, tipo de documento), y el análisis los dejó en
   // `values`. Un documento de un par que no declara nada no muestra este bloque
   // y se revisa con la vista de siempre.
-  const values =
+  // Los `hidden` (dirección y colindancias del plano) se llenan desde el IDE y no se
+  // piden acá, pero siguen en `values` para que la hoja de la carpeta los traiga.
+  const values = (
     folderTypeOf(catalog, document?.folder_type)?.document_values?.[document?.doc_type] || []
+  ).filter((field) => !field.hidden)
 
   const setValue = (key, value) =>
     setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), [key]: value } }))

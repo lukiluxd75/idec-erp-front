@@ -293,6 +293,18 @@ function Comparison({ result }) {
           El código impreso en el plano ({plan.printed_code}) no es el que se buscó.
         </Alert>
       )}
+      {plan.measures?.note && (
+        <Alert type="warning" className="mt-3">
+          {plan.measures.note}
+        </Alert>
+      )}
+      {plan.measures?.values?.frontage && (
+        <p className="mt-3 text-xs text-slate-500">
+          Frente {plan.measures.values.frontage}, contra frente {plan.measures.values.rear_frontage}, fondo{' '}
+          {plan.measures.values.depth} y fondo 2 {plan.measures.values.depth_2}, calculados con las
+          coordenadas del plano. Se pasan a la hoja con "Usar en la hoja".
+        </p>
+      )}
       {survey && (
         <div className="mt-3 grid gap-x-6 gap-y-1 text-xs text-slate-600 sm:grid-cols-2">
           <p className="col-span-full font-semibold uppercase tracking-wide text-slate-500">
@@ -359,11 +371,13 @@ export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }
   }, [code])
 
   const apply = () => {
+    // El número de predio no se pasa: arriba va el que dice el plano y la tabla de
+    // abajo lo compara con el IDE. Frente y fondos solo si se pudieron calcular.
     onApply({
       cadastral_code: result.printed_code,
       street: result.street_text || null,
       boundaries: result.boundaries || null,
-      property_number: result.property_number || null,
+      ...(result.plan?.measures?.values || {}),
     })
     toast.success('Datos del IDE pasados al documento. Guarde la revisión para conservarlos.')
   }
