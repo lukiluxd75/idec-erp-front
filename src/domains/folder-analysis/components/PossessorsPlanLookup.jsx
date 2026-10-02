@@ -267,7 +267,12 @@ function Comparison({ result }) {
   const survey = plan.survey
   const rows = [
     ['Superficie según el GIS', formatM2(result.area_m2)],
-    ['Superficie según el plano (por sus coordenadas)', formatM2(survey?.area_m2)],
+    [
+      survey?.area_net_m2 != null
+        ? 'Superficie según el plano (por sus coordenadas, sin las esquinas redondeadas)'
+        : 'Superficie según el plano (por sus coordenadas)',
+      formatM2(survey?.area_net_m2 ?? survey?.area_m2),
+    ],
     ['Superficie que el plano declara', formatM2(plan.declared_area_m2)],
   ]
   const difference = plan.area_difference_m2
@@ -288,7 +293,8 @@ function Comparison({ result }) {
           compruebe que el código corresponde a este lote.
         </Alert>
       )}
-      {plan.printed_code && plan.printed_code.replace(/\D/g, '').slice(2) !== result.code && (
+      {/* La manzana puede llevar letra ("B37"), así que se comparan letras y dígitos. */}
+      {plan.printed_code && plan.printed_code.replace(/[^0-9A-Z]/gi, '').toUpperCase().slice(2) !== result.code && (
         <Alert type="warning" className="mt-3">
           El código impreso en el plano ({plan.printed_code}) no es el que se buscó.
         </Alert>
