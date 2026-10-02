@@ -239,4 +239,49 @@ export const REPORT_HELP = {
       'Facilita seguir a la misma persona entre gráficos sin releer nombres.',
     ],
   },
+  panel: {
+    title: 'Panel de indicadores',
+    body: 'Vista resumida del módulo: combina producción del período seleccionado con la bandeja actual de cartografía.',
+    bullets: [
+      'Los KPI se recalculan al cambiar fechas o comuna; los pendientes no dependen del rango de fechas.',
+      'El gráfico de antigüedad solo incluye trámites sin salida hoy.',
+      'Desde aquí puede saltar al reporte gerencial, derivación masiva o traza de un trámite concreto.',
+    ],
+  },
+  massForwarding: {
+    title: 'Derivación masiva y posibles adelantos',
+    body: 'Analiza la unidad de recepción y despacho de trámites: detecta funcionarios con muchas salidas en muy pocos minutos.',
+    bullets: [
+      '«Rápidos»: despachos cuya permanencia en bandeja fue menor o igual al umbral de minutos (por defecto 3).',
+      'Un alto porcentaje de rápidos no prueba falta; sirve para priorizar revisión y cruzar con la traza del trámite.',
+      'Filtre por nombre completo del funcionario (como aparece en SISCAT) para ver solo sus casos.',
+      'Las filas resaltadas en el ranking tienen 70 % o más de despachos rápidos en el período.',
+    ],
+  },
+  procedureTrace: {
+    title: 'Traza del trámite',
+    body: 'Muestra el recorrido del trámite por unidades, con tiempos de espera entre etapas y tiempo de atención en cada bandeja.',
+    bullets: [
+      'Busque solo con el número de trámite que ve el ciudadano o en el expediente (no se usa la clave interna del sistema).',
+      'Espera previa: tiempo entre la salida de la etapa anterior y el ingreso a la unidad actual.',
+      'Tiempo en unidad: entre ingreso y salida; si sigue abierto, muestra días en curso.',
+      'Filas resaltadas: superan el umbral de días configurado en espera o en atención (posible trancamiento).',
+    ],
+  },
+}
+
+/** Guías compactas por pantalla del módulo Reportes (panel, derivación, traza). */
+export const MODULE_REPORT_GUIDES = {
+  panel: {
+    summary: 'Resumen gerencial rápido de cartografía antes de abrir reportes detallados.',
+    helpIds: ['panel', 'backlogAging', 'criticalPending'],
+  },
+  massForwarding: {
+    summary: 'Auditoría operativa en recepción/despacho; combine ranking y casos puntuales.',
+    helpIds: ['massForwarding'],
+  },
+  procedureTrace: {
+    summary: 'Diagnóstico de demoras trámite por trámite.',
+    helpIds: ['procedureTrace'],
+  },
 }

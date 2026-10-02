@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { CircleHelp } from 'lucide-react'
-import { REPORT_GUIDE_SECTIONS, REPORT_HELP } from '../content/reportHelpContent'
+import { MODULE_REPORT_GUIDES, REPORT_GUIDE_SECTIONS, REPORT_HELP } from '../content/reportHelpContent'
 
 export function ReportHelpBlock({ helpId, className = '' }) {
   const content = REPORT_HELP[helpId]
@@ -58,6 +58,26 @@ export function ReportPanelHeading({ title, caption, helpId }) {
       </div>
       {caption ? <p className="caption">{caption}</p> : null}
     </div>
+  )
+}
+
+/** Guía desplegable para panel, derivación masiva o traza. */
+export function ReportModuleGuide({ moduleKey }) {
+  const guide = MODULE_REPORT_GUIDES[moduleKey]
+  if (!guide) return null
+  return (
+    <details className="guide-panel">
+      <summary>
+        <span>Guía de este reporte</span>
+        <small>{guide.summary}</small>
+        <em>Abrir guía</em>
+      </summary>
+      <div className="guide-panel-body">
+        {(guide.helpIds || []).map((helpId) => (
+          <ReportHelpBlock key={helpId} helpId={helpId} className="guide-foot" />
+        ))}
+      </div>
+    </details>
   )
 }
 
