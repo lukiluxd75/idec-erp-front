@@ -198,6 +198,12 @@ export default function DocumentReviewPage() {
           {document.status === 'draft' && (
             <Alert type="info">Este documento todavía no fue analizado. Vuelva a la bandeja y presione Analizar.</Alert>
           )}
+          {document.status === 'filed' && (
+            <Alert type="info">
+              Este documento se guarda con la carpeta y no se lee: acompaña al trámite, no tiene datos
+              que extraer. Sus fotos están arriba.
+            </Alert>
+          )}
 
           {hasData && reading?.observations?.length > 0 && (
             <Alert type="warning" title="Qué revisar de esta lectura">
