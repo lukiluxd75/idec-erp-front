@@ -2,7 +2,7 @@ import {
   Calculator,
   ClipboardList,
   FileSpreadsheet,
-  IdCard,
+  Paperclip,
   Map as MapIcon,
   Receipt,
   ScrollText,
@@ -68,13 +68,23 @@ export const DOC_TYPES = [
   },
   {
     id: 'id_card',
-    label: 'Carnets',
-    noun: 'el carnet',
-    icon: IdCard,
-    hint: 'Carnets de identidad. Un documento por persona, anverso y reverso.',
+    label: 'Otros documentos',
+    noun: 'el documento',
+    icon: Paperclip,
+    hint: 'Respaldos que acompañan a la carpeta: carnets y cualquier otra hoja. Se guardan con sus fotos, no se leen.',
     multiPage: true,
   },
 ]
+
+/**
+ * Lo que la carpeta guarda sin leer: respaldos que la acompañan y no tienen
+ * datos que sacarles. Se archivan al soltarlos y nunca pasan por el OCR ni por
+ * la pantalla de revisión, así que su carril no ofrece "Analizar".
+ *
+ * Espejo de DocumentType.NOT_READ del back, que es quien manda: la web no puede
+ * mandar a analizar lo que el back archiva.
+ */
+export const NOT_READ = new Set(['id_card'])
 
 /**
  * Every lane is read on the server with the GAMC PaddleOCR service and OpenCV
@@ -82,7 +92,9 @@ export const DOC_TYPES = [
  * architects' PCs any more: the plano used to be read there by the vision model
  * and took minutes per hoja.
  */
-export const SERVER_READ = new Set(DOC_TYPES.map((type) => type.id))
+export const SERVER_READ = new Set(
+  DOC_TYPES.map((type) => type.id).filter((id) => !NOT_READ.has(id))
+)
 
 export const DOC_TYPE_BY_ID = Object.fromEntries(DOC_TYPES.map((t) => [t.id, t]))
 
@@ -159,6 +171,8 @@ export const STATUS_META = {
   extracted: { label: 'Por revisar', variant: 'warning' },
   failed: { label: 'Falló', variant: 'danger' },
   reviewed: { label: 'Revisado', variant: 'success' },
+  // El carril que no se lee: guardado y terminado, sin nada que revisar.
+  filed: { label: 'Guardado', variant: 'success' },
 }
 
 export const IN_PROGRESS = new Set(['queued', 'processing'])

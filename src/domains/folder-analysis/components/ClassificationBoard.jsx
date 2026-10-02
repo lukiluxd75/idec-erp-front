@@ -213,6 +213,14 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
       )
       return removed ? done.then(refresh) : done
     },
+    // Todo lo del carril que no se lee en un solo documento: sus tarjetas y lo
+    // que siga en la bandeja. Cuáles son las decide el servidor, no esta
+    // pantalla, así que no se le manda ninguna lista de fotos.
+    onConsolidate: (docType) =>
+      run(
+        () => folderAnalysisApi.consolidate(docType, folderId, folderType),
+        'Quedó todo en un solo documento.'
+      ),
     onAnalyze: (document) => {
       // Every lane is followed in the dialog: it is the only place that says
       // whether the document is still waiting its turn or already being read, and
@@ -350,6 +358,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
                 type={type}
                 documents={activeDocuments.filter((d) => d.doc_type === type.id)}
                 busy={busy}
+                loose={captures.length}
                 {...handlers}
               />
             ))}

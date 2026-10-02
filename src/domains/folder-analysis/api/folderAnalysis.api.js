@@ -108,6 +108,19 @@ export const folderAnalysisApi = {
 
   setPages: (id, captureIds) => httpClient.put(E.DOCUMENT_PAGES(id), { capture_ids: captureIds }),
 
+  /**
+   * Deja en un solo documento el carril que la carpeta guarda sin leer: sus
+   * tarjetas y lo que siga en la bandeja. No se mandan las fotos: cuáles son lo
+   * sabe el servidor, que es lo que evita dejar fuera lo que llegó del celular
+   * mientras la pantalla miraba.
+   */
+  consolidate: (docType, folderId, folderType) =>
+    httpClient.post(E.CONSOLIDATE_DOCUMENTS, {
+      doc_type: docType,
+      ...(folderId ? { folder_id: folderId } : {}),
+      ...(folderType ? { folder_type: folderType } : {}),
+    }),
+
   deleteDocument: (id) => httpClient.delete(E.DOCUMENT(id)),
 
   analyze: (id, force = false) => httpClient.post(E.DOCUMENT_ANALYZE(id), { force }),

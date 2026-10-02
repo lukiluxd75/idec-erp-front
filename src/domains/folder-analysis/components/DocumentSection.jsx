@@ -1,8 +1,8 @@
-import { ArrowDownToLine, Layers } from 'lucide-react'
+import { ArrowDownToLine, Layers, Combine } from 'lucide-react'
 import { useState } from 'react'
 
 import { DocumentCard } from '@/domains/folder-analysis/components/DocumentCard'
-import { LANE_THEME } from '@/domains/folder-analysis/utils/documentMeta'
+import { LANE_THEME, NOT_READ } from '@/domains/folder-analysis/utils/documentMeta'
 import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/utils/dragData'
 import { cn } from '@/shared/utils'
 
@@ -11,10 +11,17 @@ import { cn } from '@/shared/utils'
  * fila (nombre, cuántos documentos tiene, de qué es y dónde soltar la foto) y
  * debajo sus documentos. Qué carriles hay lo decide el tipo de carpeta.
  */
-export function DocumentSection({ type, documents, busy, onCreate, ...cardHandlers }) {
+export function DocumentSection({ type, documents, busy, loose = 0, onCreate, onConsolidate, ...cardHandlers }) {
   const [dragOver, setDragOver] = useState(false)
   const Icon = type.icon
   const theme = LANE_THEME[type.id] || LANE_THEME.folio
+  // El carril que no se lee junta todo en un documento: lo que el poseedor trae
+  // de respaldo es un legajo, no un trámite por foto. Se cuentan las fotos, que
+  // es lo que va a terminar dentro; hace falta más de un origen para que juntar
+  // signifique algo (dos tarjetas, o una tarjeta y algo en la bandeja).
+  const gathers = documents.reduce((n, d) => n + (d.pages?.length || 0), 0) + loose
+  const sources = documents.length + (loose > 0 ? 1 : 0)
+  const canGather = NOT_READ.has(type.id) && onConsolidate && !busy && sources > 1
 
   return (
     <section
@@ -46,6 +53,17 @@ export function DocumentSection({ type, documents, busy, onCreate, ...cardHandle
         <p className="hidden min-w-0 flex-1 truncate text-[11px] leading-snug text-slate-500 md:block">
           {type.hint}
         </p>
+        {canGather && (
+          <button
+            type="button"
+            onClick={() => onConsolidate(type.id)}
+            title={`Deja en un solo documento las ${gathers} fotos de este carril y de la bandeja`}
+            className={cn('workbench-assign-btn shrink-0', theme?.assignBtn)}
+          >
+            <Combine className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">Juntar todo en uno ({gathers})</span>
+          </button>
+        )}
         <div className={cn('workbench-lane__drop', dragOver && 'flex items-center gap-1.5')}>
           <ArrowDownToLine className={cn('inline h-3.5 w-3.5 shrink-0', !dragOver && 'hidden')} aria-hidden />
           {dragOver ? 'Suelte para crear un documento' : 'Arrastre una foto aquí'}

@@ -103,6 +103,7 @@ export const API_ENDPOINTS = {
     CAPTURES_PRESENCE: '/api/folder-analysis/captures/presence',
     DOCUMENTS: '/api/folder-analysis/documents',
     REVIEWED_DOCUMENTS: '/api/folder-analysis/documents/reviewed',
+    CONSOLIDATE_DOCUMENTS: '/api/folder-analysis/documents/consolidate',
     DOCUMENT: (id) => `/api/folder-analysis/documents/${id}`,
     DOCUMENT_PAGES: (id) => `/api/folder-analysis/documents/${id}/pages`,
     DOCUMENT_ANALYZE: (id) => `/api/folder-analysis/documents/${id}/analyze`,
