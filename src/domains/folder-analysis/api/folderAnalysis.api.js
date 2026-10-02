@@ -137,6 +137,18 @@ export const folderAnalysisApi = {
    */
   folders: () => httpClient.get(E.FOLDERS),
 
+  /**
+   * "Guardar en carpeta": what was scanned on the loose board goes into a new
+   * carpeta named after the physical folder's number, in whatever state each
+   * document is.
+   */
+  saveBoardToFolder: ({ folderNumber, folderType, documentIds }) =>
+    httpClient.post(E.FOLDERS_FROM_BOARD, {
+      folder_number: folderNumber,
+      folder_type: folderType || null,
+      document_ids: documentIds,
+    }),
+
   /** Una carpeta con su tipo, su hoja y los documentos que tiene dentro. */
   folder: (id) => httpClient.get(E.FOLDER(id)),
 

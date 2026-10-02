@@ -174,7 +174,8 @@ export default function DocumentReviewPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <DocumentStatusBadge status={document.status} />
-            <Link to="/folder-analysis">
+            {/* Back to where the document lives: its carpeta, or the loose board. */}
+            <Link to={document.folder_id ? `/folder-analysis/folders/${document.folder_id}` : '/folder-analysis'}>
               <Button size="sm" variant="secondary" icon={ArrowLeft}>Volver</Button>
             </Link>
           </div>

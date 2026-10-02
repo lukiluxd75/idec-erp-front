@@ -13,7 +13,6 @@ import {
   MessageCircle,
   ClipboardList,
   ScanLine,
-  ScanText,
   ThumbsUp,
   ClipboardCheck,
   Sparkles,
@@ -82,14 +81,10 @@ export const NAV_SECTIONS = [
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
         children: [
+          // "Datos guardados" (/folder-analysis/saved) and "Detección de Folios" (/folios)
+          // are hidden from the menu because they are no longer used. Their routes and
+          // domain code are kept; re-add the entries here to bring them back.
           { label: 'Carpetas registradas', path: '/folder-analysis/folders', icon: FolderTree },
-          { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
-          {
-            label: 'Detección de Folios',
-            path: '/folios',
-            icon: ScanText,
-            accessPrefix: 'folios',
-          },
         ],
       },
       {
