@@ -28,10 +28,11 @@ function remembered() {
  * y sus documentos los da el catálogo del back (domain/folder_types.py), así que
  * un tipo nuevo aparece acá solo.
  *
- * Lo que se clasifica acá no queda dentro de ninguna carpeta: es el tablero
- * suelto, para el documento que se resuelve por su cuenta. El trabajo por
- * trámite -- con la hoja de datos de la carpeta, su dirección, sus colindancias,
- * su notario -- va en Carpetas registradas.
+ * Acá se escanea una carpeta física completa: lo que se clasifica y lee queda a
+ * un costado, en el tablero, hasta que "Guardar en carpeta" lo pasa a una
+ * carpeta registrada cuyo nombre es el número de la física. La hoja de datos de
+ * la carpeta (dirección, colindancias, notario) se completa después, en
+ * Carpetas registradas.
  */
 export default function FolderAnalysisPage() {
   const { catalog, error, loading } = useCatalog()
@@ -62,8 +63,8 @@ export default function FolderAnalysisPage() {
         title="Analizador y extractor de datos de carpetas"
         subtitle={
           current
-            ? `Tablero de clasificación: bandeja a la izquierda y los carriles de una carpeta de ${current.label.toLowerCase()}.`
-            : 'Tablero de clasificación: bandeja a la izquierda y los carriles del tipo de carpeta elegido.'
+            ? `Escanee una carpeta física completa de ${current.label.toLowerCase()}: bandeja a la izquierda y sus carriles a la derecha.`
+            : 'Escanee una carpeta física completa: bandeja a la izquierda y los carriles del tipo de carpeta elegido.'
         }
         actions={
           <Link to="/folder-analysis/folders">
@@ -103,13 +104,14 @@ export default function FolderAnalysisPage() {
                 {lanes.map((lane) => lane.label).join(' · ')}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                {current?.description} Para cargar además los datos propios de la carpeta (dirección,
-                colindancias, notario), ábrela en <strong>Carpetas registradas</strong>.
+                {current?.description} Cuando termine de escanear, pulse <strong>Guardar en carpeta</strong>{' '}
+                y escriba el número de la carpeta física: quedará en <strong>Carpetas registradas</strong>{' '}
+                con ese número como nombre.
               </p>
             </div>
           </div>
 
-          <ClassificationBoard types={lanes} folderType={current?.key} />
+          <ClassificationBoard types={lanes} folderType={current?.key} folderTypeLabel={current?.label} />
         </div>
       )}
     </Card>

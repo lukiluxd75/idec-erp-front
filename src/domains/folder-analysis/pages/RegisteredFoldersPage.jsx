@@ -2,7 +2,6 @@ import {
   ChevronRight,
   Download,
   FileSearch,
-  FileSpreadsheet,
   FolderOpen,
   FolderPlus,
   FolderTree,
@@ -58,10 +57,9 @@ function countsLabel(countsByType) {
 }
 
 /**
- * "Carpetas registradas" — submódulo de "Datos guardados". El usuario le pone
- * nombre a cada proyecto y archiva en él los documentos ya solucionados (folios,
- * impuestos y planos), de modo que las revisiones dejen de ser una lista plana y
- * queden agrupadas por carpeta.
+ * "Carpetas registradas": cada carpeta física escaneada en la Vista general y
+ * guardada con "Guardar en carpeta", con su número como nombre. Acá se completa
+ * su hoja de datos y se abre para seguir trabajando sus documentos.
  *
  * Un documento se archiva en una sola carpeta (el backend lo impone), así que el
  * selector muestra deshabilitados los que ya están en otra, nombrándola.
@@ -76,6 +74,8 @@ export default function RegisteredFoldersPage() {
   // null = cerrado; { folder: null } = carpeta nueva; { folder } = editando esa.
   const [editing, setEditing] = useState(null)
   const [porEliminar, setPorEliminar] = useState(null)
+  // { folder, document } cuyo borrado se está confirmando (la X de una fila).
+  const [porQuitar, setPorQuitar] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -130,7 +130,7 @@ export default function RegisteredFoldersPage() {
     try {
       await folderAnalysisApi.deleteFolder(folder.id)
       setFolders((prev) => prev.filter((current) => current.id !== folder.id))
-      toast.success(`Carpeta "${folder.name}" eliminada. Sus documentos siguen en Datos guardados.`)
+      toast.success(`Carpeta "${folder.name}" eliminada junto con sus documentos.`)
     } catch (e) {
       toast.error(e.message)
     }
@@ -139,7 +139,7 @@ export default function RegisteredFoldersPage() {
   const quitar = async (folder, document) => {
     try {
       replaceFolder(await folderAnalysisApi.removeFolderDocument(folder.id, document.id))
-      toast.success(`${savedDocumentTitle(document)} salió de "${folder.name}".`)
+      toast.success(`${savedDocumentTitle(document)} se eliminó de "${folder.name}" junto con sus fotos.`)
     } catch (e) {
       toast.error(e.message)
     }
@@ -151,11 +151,8 @@ export default function RegisteredFoldersPage() {
         icon={FolderTree}
         eyebrow="Analizador y extractor de datos de carpetas"
         title="Carpetas registradas"
-        subtitle="Cada carpeta es un trámite: su tipo decide qué documentos lleva y qué datos se le sacan. Ábrela para cargarle las fotos y trabajar sus documentos dentro."
+        subtitle="Cada carpeta física escaneada en la Vista general se guarda aquí con su número como nombre. Ábrala para completar sus datos y seguir trabajando sus documentos."
         actions={<>
-          <Link to="/folder-analysis/saved">
-            <Button variant="ghost" size="sm" icon={FileSpreadsheet}>Datos guardados</Button>
-          </Link>
           <Button variant="secondary" size="sm" icon={RefreshCw} onClick={load}>Actualizar</Button>
           <Button size="sm" icon={FolderPlus} onClick={() => setEditing({ folder: null })}>Nueva carpeta</Button>
         </>}
@@ -171,7 +168,7 @@ export default function RegisteredFoldersPage() {
             id="folders-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por carpeta, matrícula o datos…"
+            placeholder="Buscar por número de carpeta, matrícula o datos…"
             className="min-w-0 flex-1 py-2.5 text-sm outline-none"
           />
         </label>
@@ -180,12 +177,7 @@ export default function RegisteredFoldersPage() {
           {unfiledCount === 0 ? (
             'todo archivado'
           ) : (
-            <Link
-              to="/folder-analysis/saved?carpeta=sin-archivar"
-              className="font-semibold text-accent-700 underline-offset-2 hover:underline"
-            >
-              {unfiledCount} {unfiledCount === 1 ? 'documento sin archivar' : 'documentos sin archivar'}
-            </Link>
+            `${unfiledCount} ${unfiledCount === 1 ? 'documento sin archivar' : 'documentos sin archivar'}`
           )}
         </p>
       </Card>
@@ -201,8 +193,8 @@ export default function RegisteredFoldersPage() {
             title={folders.length ? 'Ninguna carpeta coincide' : 'Todavía no hay carpetas registradas'}
             subtitle={
               folders.length
-                ? 'Prueba con otro texto.'
-                : 'Crea una carpeta, elige de qué trámite es y ábrela para cargarle sus fotos.'
+                ? 'Pruebe con otro texto.'
+                : 'Escanee una carpeta física en la Vista general y pulse "Guardar en carpeta" para registrarla con su número.'
             }
           >
             {folders.length === 0 && (
@@ -221,7 +213,7 @@ export default function RegisteredFoldersPage() {
               catalog={catalog}
               onEdit={() => setEditing({ folder })}
               onDelete={() => setPorEliminar({ folder })}
-              onRemoveDocument={(document) => quitar(folder, document)}
+              onRemoveDocument={(document) => setPorQuitar({ folder, document })}
             />
           ))}
         </div>
@@ -245,10 +237,23 @@ export default function RegisteredFoldersPage() {
         title="Eliminar carpeta"
         message={
           porEliminar
-            ? `Se eliminará la carpeta "${porEliminar.folder.name}". Los ${porEliminar.folder.document_count} documento(s) que contiene no se borran: vuelven a quedar sin archivar en "Datos guardados".`
+            ? `Se eliminará la carpeta "${porEliminar.folder.name}" junto con sus ${porEliminar.folder.document_count} documento(s) y las fotos escaneadas. Esta acción no se puede deshacer.`
             : ''
         }
         confirmLabel="Eliminar carpeta"
+      />
+
+      <ConfirmDialog
+        open={Boolean(porQuitar)}
+        onClose={() => setPorQuitar(null)}
+        onConfirm={() => quitar(porQuitar.folder, porQuitar.document)}
+        title="Eliminar documento"
+        message={
+          porQuitar
+            ? `Se eliminará ${savedDocumentTitle(porQuitar.document)} de la carpeta "${porQuitar.folder.name}" junto con sus fotos escaneadas. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar documento"
       />
     </div>
   )
@@ -322,8 +327,8 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
         <div id={panelId}>
           {folder.document_count === 0 ? (
             <p className="px-4 py-4 text-sm text-slate-500 sm:px-5">
-              Todavía no hay documentos en esta carpeta. <strong>Ábrela</strong> para cargarle fotos, o
-              usa <strong>Editar</strong> para archivar en ella documentos ya revisados.
+              Todavía no hay documentos en esta carpeta. <strong>Ábrala</strong> para cargarle fotos, o
+              use <strong>Editar</strong> para archivar en ella documentos ya revisados.
             </p>
           ) : (
             <div className="grid gap-2 p-4 sm:p-5">
@@ -370,8 +375,9 @@ function FolderDocumentRow({ document, onRemove }) {
           </Link>
           <IconButton
             icon={X}
-            title="Quitar de la carpeta"
-            aria-label={`Quitar ${savedDocumentTitle(document)} de la carpeta`}
+            tone="danger"
+            title="Eliminar de la carpeta"
+            aria-label={`Eliminar ${savedDocumentTitle(document)} de la carpeta`}
             onClick={onRemove}
           />
         </div>
@@ -469,8 +475,8 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             id="folder-name"
-            label="Nombre de la carpeta"
-            placeholder="Ej.: Av. Ballivián 220 — ampliación"
+            label="Número de carpeta"
+            placeholder="Ej.: 1520"
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={MAX_NAME_LENGTH}

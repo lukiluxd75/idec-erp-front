@@ -110,6 +110,7 @@ export const API_ENDPOINTS = {
     DOCUMENT_REVIEW: (id) => `/api/folder-analysis/documents/${id}/review`,
     DOCUMENT_EXPORT: (id) => `/api/folder-analysis/documents/${id}/export`,
     FOLDERS: '/api/folder-analysis/folders',
+    FOLDERS_FROM_BOARD: '/api/folder-analysis/folders/from-board',
     FOLDER: (id) => `/api/folder-analysis/folders/${id}`,
     FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
     FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,

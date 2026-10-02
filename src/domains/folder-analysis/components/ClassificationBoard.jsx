@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { FolderInput, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
@@ -6,6 +6,7 @@ import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.
 import { AnalyzingDialog } from '@/domains/folder-analysis/components/AnalyzingDialog'
 import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSection'
 import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
+import { SaveToFolderModal } from '@/domains/folder-analysis/components/SaveToFolderModal'
 import { chunkForUpload, splitValidCaptures } from '@/domains/folder-analysis/utils/captureUpload'
 import { DOC_TYPE_BY_ID, IN_PROGRESS } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePhonePresence } from '@/domains/folder-analysis/utils/usePhonePresence'
@@ -48,8 +49,13 @@ function withPages(document, ids) {
  *
  * `folderType` viaja con cada documento que se abre: es lo que le dice al
  * servidor qué datos sacarle al analizarlo. Dentro de una carpeta manda la suya.
+ *
+ * En el tablero suelto se escanea una carpeta física completa: lo clasificado
+ * queda a un costado hasta que "Guardar en carpeta" lo pasa entero a una
+ * carpeta registrada nueva, con el número de la física como nombre.
+ * `folderTypeLabel` es solo para decir en ese diálogo de qué tipo será.
  */
-export function ClassificationBoard({ types, folderId = null, folderType = null, onDocumentsChange }) {
+export function ClassificationBoard({ types, folderId = null, folderType = null, folderTypeLabel = null, onDocumentsChange }) {
   const [captures, setCaptures] = useState([])
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +63,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [savingToFolder, setSavingToFolder] = useState(false)
   // Document being analyzed right now, followed in a dialog until it ends.
   const [watchedId, setWatchedId] = useState(null)
 
@@ -241,9 +248,10 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
 
   // Read from the polled list, so the dialog follows the document as it advances.
   const watched = watchedId ? documents.find((d) => d.id === watchedId) : null
-  // Confirmed reviews belong in "Datos guardados"; keep them in the API state
-  // for polling/actions, but remove them from the active workbench lanes.
-  const activeDocuments = documents.filter((document) => document.status !== 'reviewed')
+  // Todo lo de la carpeta se ve en sus carriles, revisado o no. En el tablero
+  // suelto solo cuenta lo que todavía no está en ninguna -- lo ya guardado es de
+  // su carpeta, no de este tablero.
+  const activeDocuments = folderId ? documents : documents.filter((document) => !document.folder_id)
   // Documentos que no entran en ningún carril de los que se están mostrando:
   // quedaron clasificados con los de otro tipo de carpeta. No se perdieron, pero
   // desde acá no se ven, así que la pantalla lo dice en vez de tragárselo.
@@ -254,6 +262,18 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
   // Lo que se está viendo: los documentos de estos carriles. Es lo que se
   // descarta cuando se pide empezar de nuevo.
   const onBoard = activeDocuments.filter((document) => !outsideLanes.includes(document))
+  // Lo que "Guardar en carpeta" se lleva: todo lo del tablero que ya tiene id
+  // del servidor (una tarjeta recién soltada todavía no lo tiene).
+  const toSave = onBoard.filter((document) => !document.pending)
+  // Lo que "Descartar todo" borra: lo revisado es trabajo terminado y no se toca.
+  const discardable = onBoard.filter((document) => document.status !== 'reviewed')
+
+  const savedToFolder = (folder) => {
+    setSavingToFolder(false)
+    toast.success(`Carpeta "${folder.name}" guardada en Carpetas registradas con ${folder.document_count} documento(s).`)
+    refresh()
+    onDocumentsChange?.()
+  }
 
   /**
    * Dejar el tablero limpio para empezar con otro juego de fotos: se eliminan los
@@ -261,23 +281,23 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
    *
    * Primero los documentos y después la bandeja, porque borrar un documento
    * devuelve sus fotos a "Fotos recibidas": al revés quedarían ahí las que se
-   * querían tirar. Los documentos con la revisión ya guardada no se tocan --
-   * esos son trabajo terminado y viven en "Datos guardados".
+   * querían tirar. Los documentos con la revisión ya guardada no se tocan:
+   * son trabajo terminado.
    */
   const discardAll = () =>
     setConfirm({
       title: '¿Descartar todo?',
       message:
-        `Se eliminan definitivamente ${onBoard.length} documento(s) del tablero con sus fotos` +
+        `Se eliminan definitivamente ${discardable.length} documento(s) del tablero con sus fotos` +
         (captures.length ? ` y las ${captures.length} foto(s) de la bandeja` : '') +
-        '. Los documentos con la revisión ya guardada no se tocan: siguen en "Datos guardados".' +
+        '. Los documentos con la revisión ya guardada no se tocan.' +
         (outsideLanes.length
           ? ' Los de carriles de otro tipo de carpeta tampoco.'
           : ''),
       onConfirm: () =>
         run(async () => {
           let removed = 0
-          for (const document of onBoard) {
+          for (const document of discardable) {
             await folderAnalysisApi.deleteDocument(document.id)
             removed += 1
           }
@@ -331,11 +351,24 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
           {captures.length} {captures.length === 1 ? 'foto en la bandeja' : 'fotos en la bandeja'} ·{' '}
           {onBoard.length} {onBoard.length === 1 ? 'documento en el tablero' : 'documentos en el tablero'}
         </p>
-        {(captures.length > 0 || onBoard.length > 0) && (
-          <Button size="sm" variant="ghost" icon={Trash2} disabled={busy} onClick={discardAll}>
-            Descartar todo
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {(captures.length > 0 || discardable.length > 0) && (
+            <Button size="sm" variant="ghost" icon={Trash2} disabled={busy} onClick={discardAll}>
+              Descartar todo
+            </Button>
+          )}
+          {!folderId && (
+            <Button
+              size="sm"
+              icon={FolderInput}
+              disabled={busy || toSave.length === 0}
+              title={toSave.length === 0 ? 'Clasifique primero las fotos en los carriles.' : undefined}
+              onClick={() => setSavingToFolder(true)}
+            >
+              Guardar en carpeta
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="workbench-shell">
@@ -367,6 +400,17 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
       </div>
 
       <AnalyzingDialog document={watched} onClose={() => setWatchedId(null)} />
+
+      {savingToFolder && (
+        <SaveToFolderModal
+          documents={toSave}
+          folderType={folderType}
+          folderTypeLabel={folderTypeLabel}
+          looseCaptures={captures.length}
+          onClose={() => setSavingToFolder(false)}
+          onSaved={savedToFolder}
+        />
+      )}
 
       <ConfirmDialog
         open={Boolean(confirm)}
