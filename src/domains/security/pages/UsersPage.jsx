@@ -193,7 +193,7 @@ export default function UsersPage() {
             type="button"
             onClick={handleReload}
             disabled={reloading}
-            title="Vuelve a pedir la lista de usuarios al backend"
+            title="Solicitar nuevamente la lista de usuarios al servidor"
             className="mt-1 flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${reloading ? 'animate-spin' : ''}`} />

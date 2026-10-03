@@ -24,7 +24,7 @@ export default function KioskPage() {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('video/') && !/\.(mp4|webm|mov|m4v|ogg)$/i.test(file.name)) {
-      setUploadError('Selecciona un archivo de video válido.');
+      setUploadError('Seleccione un archivo de video válido.');
       event.target.value = '';
       return;
     }
@@ -64,7 +64,7 @@ export default function KioskPage() {
               <VideoAd source={adMedia?.source} title={adMedia?.file.name} />
               <HowToUse />
               <div className="vc-tap-hint">
-                Toca cualquier parte para abrir el mapa
+                Toque cualquier parte para abrir el mapa
                 <small>Datos catastrales de Cochabamba</small>
               </div>
               <div className="vc-foot">Visor Catastral · Gobierno Autónomo Municipal de Cochabamba</div>

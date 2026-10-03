@@ -34,13 +34,24 @@ export function ReadableValue({ value, depth = 0 }) {
     return <div className="mt-2 grid gap-2">{value.map((item, index) => (
       <details key={index} open={depth === 0} className="rounded-lg border border-slate-200 bg-white">
         <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-slate-700">{item?.entry_number ? `Asiento ${item.entry_number}` : `Registro ${index + 1}`}</summary>
-        <div className="grid gap-x-5 gap-y-3 border-t border-slate-100 p-3 sm:grid-cols-2"><ReadableValue value={item} depth={depth + 1} /></div>
+        <div className="border-t border-slate-100 p-3"><ReadableValue value={item} depth={depth + 1} /></div>
       </details>
     ))}</div>
   }
   const entries = Object.entries(value)
   if (!entries.length) return <span className="text-slate-400">Sin datos</span>
-  return <div className="contents">{entries.map(([key, child]) => <Field key={key} label={labelFor(key)} value={child} depth={depth + 1} />)}</div>
+  const fields = entries.map(([key, child]) => (
+    <Field key={key} label={labelFor(key)} value={child} depth={depth + 1} />
+  ))
+  // Arriba del todo, el <dl> lo pone quien llama (ver el comentario de la
+  // función) y esto solo se encadena a su grilla. Más adentro, en cambio, esto
+  // vive dentro del <dd> de su campo, y ahí un <dt>/<dd> suelto no es HTML
+  // válido: cada nivel abre su propia lista.
+  return depth === 0 ? (
+    <div className="contents">{fields}</div>
+  ) : (
+    <dl className="grid gap-x-5 gap-y-3 sm:grid-cols-2">{fields}</dl>
+  )
 }
 
 function Field({ label, value, depth }) {

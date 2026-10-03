@@ -5,6 +5,7 @@ import {
   FolderOpen,
   FolderPlus,
   FolderTree,
+  Images,
   Pencil,
   RefreshCw,
   Search,
@@ -15,10 +16,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
+import { useAuth } from '@/auth/hooks'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { ReadableValue } from '@/domains/folder-analysis/components/SavedDataFields'
 import { SavedDocumentPicker } from '@/domains/folder-analysis/components/SavedDocumentPicker'
 import { FolderSheet } from '@/domains/folder-analysis/components/FolderSheet'
+import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
 import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, sheetForm, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import { pendingFills, sheetSuggestions } from '@/domains/folder-analysis/utils/folderSheetFill'
@@ -46,6 +49,12 @@ import {
 const MAX_NAME_LENGTH = 120
 const MAX_NOTES_LENGTH = 500
 
+// Lo mínimo que hay que escribir para que se busque entre las carpetas de otros
+// usuarios, y lo que se espera a que deje de escribir. Es el mismo mínimo que
+// exige el back; acá además evita una consulta por tecla.
+const MIN_SEARCH_LENGTH = 2
+const SEARCH_DEBOUNCE_MS = 350
+
 /** "2 folios · 1 impuesto", skipping the types the carpeta does not hold. */
 function countsLabel(countsByType) {
   return DOC_TYPES.filter((type) => countsByType?.[type.id])
@@ -57,16 +66,31 @@ function countsLabel(countsByType) {
 }
 
 /**
- * "Carpetas registradas": cada carpeta física escaneada en la Vista general y
+ * "Carpetas registradas": cada carpeta física escaneada en el Extractor de datos y
  * guardada con "Guardar en carpeta", con su número como nombre. Acá se completa
  * su hoja de datos y se abre para seguir trabajando sus documentos.
  *
  * Un documento se archiva en una sola carpeta (el backend lo impone), así que el
  * selector muestra deshabilitados los que ya están en otra, nombrándola.
+ *
+ * La lista es siempre la del usuario. Quien administra el módulo
+ * ("folder-analysis.admin") ve además, al buscar, las carpetas de otros usuarios
+ * que coinciden por nombre: una carpeta física la escanea quien la tiene en la
+ * mano, y sin esto nadie más podía volver a encontrarla. Aparecen aparte, de
+ * solo lectura y diciendo de quién son -- escribir en una carpeta ajena lo
+ * sigue impidiendo el backend.
  */
 export default function RegisteredFoldersPage() {
   const { catalog } = useCatalog()
+  const { user } = useAuth()
+  const puedeBuscarAjenas = (user?.permisos || []).includes('folder-analysis.admin')
   const [folders, setFolders] = useState([])
+  // Carpetas de otros usuarios que coinciden con la búsqueda. Viven aparte de
+  // `folders` a propósito: no son de este usuario y no se editan ni se borran.
+  // Se guarda junto al término con el que se pidieron: comparar ese término con
+  // lo que hay escrito es lo que dice, sin más estado, si lo que está en
+  // pantalla corresponde a la búsqueda actual o es la respuesta anterior.
+  const [ajenas, setAjenas] = useState({ term: '', folders: [], error: null })
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -90,6 +114,45 @@ export default function RegisteredFoldersPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const term = query.trim()
+  // Mientras no haya nada escrito no se busca nada afuera: una carpeta ajena
+  // solo aparece cuando se la busca por su nombre, nunca en la lista.
+  const buscaAjenas = puedeBuscarAjenas && term.length >= MIN_SEARCH_LENGTH
+  const respondida = buscaAjenas && ajenas.term === term
+  const ajenasEncontradas = respondida ? ajenas.folders : []
+  const errorAjenas = respondida ? ajenas.error : null
+  const buscandoAjenas = buscaAjenas && !respondida
+
+  /**
+   * Las carpetas de otros usuarios que coinciden con lo escrito, para quien
+   * administra el módulo. Se piden al backend: la lista nunca las trajo, así que
+   * no hay nada que filtrar acá.
+   *
+   * `vigente` descarta la respuesta de una búsqueda que quedó vieja mientras el
+   * usuario seguía escribiendo y que puede llegar después que la nueva.
+   */
+  useEffect(() => {
+    if (!buscaAjenas) return undefined
+    let vigente = true
+    const timer = setTimeout(() => {
+      folderAnalysisApi
+        .searchFolders(term)
+        .then((found) => {
+          if (vigente) {
+            setAjenas({ term, folders: found.filter((folder) => !folder.mine), error: null })
+          }
+        })
+        // La lista propia tiene que seguir funcionando aunque esto falle, pero el
+        // error se dice: callarlo deja "no coincide ninguna" como respuesta a un
+        // permiso que falta o a un servidor caído, que es lo contrario de ayudar.
+        .catch((e) => { if (vigente) setAjenas({ term, folders: [], error: e.message }) })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => {
+      vigente = false
+      clearTimeout(timer)
+    }
+  }, [term, buscaAjenas])
 
   /** Documento archivado -> nombre de la carpeta que lo tiene. */
   const holderByDocument = useMemo(() => {
@@ -151,7 +214,7 @@ export default function RegisteredFoldersPage() {
         icon={FolderTree}
         eyebrow="Analizador y extractor de datos de carpetas"
         title="Carpetas registradas"
-        subtitle="Cada carpeta física escaneada en la Vista general se guarda aquí con su número como nombre. Ábrala para completar sus datos y seguir trabajando sus documentos."
+        subtitle="Cada carpeta física escaneada en el Extractor de datos se guarda aquí con su número como nombre. Ábrala para completar sus datos y seguir trabajando sus documentos."
         actions={<>
           <Button variant="secondary" size="sm" icon={RefreshCw} onClick={load}>Actualizar</Button>
           <Button size="sm" icon={FolderPlus} onClick={() => setEditing({ folder: null })}>Nueva carpeta</Button>
@@ -168,7 +231,11 @@ export default function RegisteredFoldersPage() {
             id="folders-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por número de carpeta, matrícula o datos…"
+            placeholder={
+              puedeBuscarAjenas
+                ? 'Buscar por número de carpeta, matrícula o datos. Por número busca también en las de otros usuarios…'
+                : 'Buscar por número de carpeta, matrícula o datos…'
+            }
             className="min-w-0 flex-1 py-2.5 text-sm outline-none"
           />
         </label>
@@ -194,7 +261,7 @@ export default function RegisteredFoldersPage() {
             subtitle={
               folders.length
                 ? 'Pruebe con otro texto.'
-                : 'Escanee una carpeta física en la Vista general y pulse "Guardar en carpeta" para registrarla con su número.'
+                : 'Escanee una carpeta física en el Extractor de datos y pulse "Guardar en carpeta" para registrarla con su número.'
             }
           >
             {folders.length === 0 && (
@@ -217,6 +284,33 @@ export default function RegisteredFoldersPage() {
             />
           ))}
         </div>
+      )}
+
+      {buscaAjenas && (
+        <Card className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-bold text-slate-800">Carpetas de otros usuarios</p>
+            <p className="text-xs text-slate-500">
+              Coinciden por nombre de carpeta con lo que está buscando. Son de solo lectura: para
+              modificarlas, pídaselo a quien las registró.
+            </p>
+          </div>
+          {buscandoAjenas ? (
+            <div className="flex justify-center py-6"><Spinner className="h-5 w-5" /></div>
+          ) : errorAjenas ? (
+            <Alert type="error">No se pudo buscar en las carpetas de otros usuarios: {errorAjenas}</Alert>
+          ) : ajenasEncontradas.length === 0 ? (
+            <p className="py-2 text-sm text-slate-500">
+              Ninguna carpeta de otro usuario coincide con ese nombre.
+            </p>
+          ) : (
+            <div className="grid gap-4">
+              {ajenasEncontradas.map((folder) => (
+                <FolderCard key={folder.id} folder={folder} catalog={catalog} readOnly />
+              ))}
+            </div>
+          )}
+        </Card>
       )}
 
       {editing && (
@@ -265,7 +359,7 @@ export default function RegisteredFoldersPage() {
  * estante de carpetas y no como la lista de revisiones que ya es "Datos
  * guardados".
  */
-function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
+function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument, readOnly = false }) {
   const [open, setOpen] = useState(false)
   const counts = countsLabel(folder.counts_by_type)
   const panelId = `folder-${folder.id}-documents`
@@ -309,17 +403,27 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
           </span>
         </button>
         <div className="ml-auto flex items-center gap-1.5">
-          <Link to={`/folder-analysis/folders/${folder.id}`}>
-            <Button size="sm" icon={FolderOpen}>Abrir</Button>
-          </Link>
-          <Button size="sm" variant="secondary" icon={Pencil} onClick={onEdit}>Editar</Button>
-          <IconButton
-            icon={Trash2}
-            tone="danger"
-            title="Eliminar carpeta"
-            aria-label={`Eliminar la carpeta ${folder.name}`}
-            onClick={onDelete}
-          />
+          {readOnly ? (
+            /* Una carpeta ajena se mira y nada más: abrirla, editarla o
+               borrarla son cosas de su dueño, y el backend las rechaza igual. */
+            <span className="text-xs font-semibold text-slate-500">
+              Solo lectura · {folder.owner ? `de ${folder.owner}` : 'de otro usuario'}
+            </span>
+          ) : (
+            <>
+              <Link to={`/folder-analysis/folders/${folder.id}`}>
+                <Button size="sm" icon={FolderOpen}>Abrir</Button>
+              </Link>
+              <Button size="sm" variant="secondary" icon={Pencil} onClick={onEdit}>Editar</Button>
+              <IconButton
+                icon={Trash2}
+                tone="danger"
+                title="Eliminar carpeta"
+                aria-label={`Eliminar la carpeta ${folder.name}`}
+                onClick={onDelete}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -327,8 +431,14 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
         <div id={panelId}>
           {folder.document_count === 0 ? (
             <p className="px-4 py-4 text-sm text-slate-500 sm:px-5">
-              Todavía no hay documentos en esta carpeta. <strong>Ábrala</strong> para cargarle fotos, o
-              use <strong>Editar</strong> para archivar en ella documentos ya revisados.
+              {readOnly ? (
+                'Esta carpeta todavía no tiene documentos.'
+              ) : (
+                <>
+                  Todavía no hay documentos en esta carpeta. <strong>Ábrala</strong> para cargarle
+                  fotos, o use <strong>Editar</strong> para archivar en ella documentos ya revisados.
+                </>
+              )}
             </p>
           ) : (
             <div className="grid gap-2 p-4 sm:p-5">
@@ -336,6 +446,8 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
                 <FolderDocumentRow
                   key={document.id}
                   document={document}
+                  readOnly={readOnly}
+                  folderId={readOnly ? folder.id : null}
                   onRemove={() => onRemoveDocument(document)}
                 />
               ))}
@@ -348,10 +460,14 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
 }
 
 /** Un documento archivado: cómo se llama, y sus datos guardados a un clic. */
-function FolderDocumentRow({ document, onRemove }) {
+function FolderDocumentRow({ document, onRemove, readOnly = false, folderId = null }) {
   const type = DOC_TYPES.find((item) => item.id === document.doc_type)
   const TypeIcon = type?.icon || FileSearch
   const data = savedData(document)
+  // Las fotos de un documento ajeno: se miran acá porque su pantalla de revisión
+  // guarda cambios, y lo que se pidió es poder verlas sin tocar nada.
+  const [fotos, setFotos] = useState(false)
+  const pages = document.pages || []
 
   return (
     <div
@@ -369,18 +485,34 @@ function FolderDocumentRow({ document, onRemove }) {
             </p>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <Link to={`/folder-analysis/documents/${document.id}`}>
-            <Button size="sm" variant="secondary">Abrir revisión</Button>
-          </Link>
-          <IconButton
-            icon={X}
-            tone="danger"
-            title="Eliminar de la carpeta"
-            aria-label={`Eliminar ${savedDocumentTitle(document)} de la carpeta`}
-            onClick={onRemove}
-          />
-        </div>
+        {readOnly ? (
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={Images}
+              disabled={pages.length === 0}
+              onClick={() => setFotos(true)}
+            >
+              {pages.length === 0
+                ? 'Sin fotos'
+                : `Ver ${pages.length} ${pages.length === 1 ? 'foto' : 'fotos'}`}
+            </Button>
+          </div>
+        ) : (
+          <div className="ml-auto flex items-center gap-1.5">
+            <Link to={`/folder-analysis/documents/${document.id}`}>
+              <Button size="sm" variant="secondary">Abrir revisión</Button>
+            </Link>
+            <IconButton
+              icon={X}
+              tone="danger"
+              title="Eliminar de la carpeta"
+              aria-label={`Eliminar ${savedDocumentTitle(document)} de la carpeta`}
+              onClick={onRemove}
+            />
+          </div>
+        )}
       </div>
       <details className="group border-t border-slate-100">
         <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold text-accent-700 hover:bg-slate-50">
@@ -391,7 +523,40 @@ function FolderDocumentRow({ document, onRemove }) {
           <ReadableValue value={data} />
         </dl>
       </details>
+
+      {fotos && (
+        <PhotosModal
+          document={document}
+          folderId={folderId}
+          pages={pages}
+          onClose={() => setFotos(false)}
+        />
+      )}
     </div>
+  )
+}
+
+/**
+ * Las fotos escaneadas de un documento, para mirarlas y nada más.
+ *
+ * Es el mismo visor de la pantalla de revisión --zoom, girar, pantalla
+ * completa-- pero sin el formulario al lado: acá no hay nada que guardar. Las
+ * fotos se piden por la carpeta (`folderId`), que es el único camino a las de
+ * una carpeta ajena.
+ */
+function PhotosModal({ document, folderId, pages, onClose }) {
+  const [page, setPage] = useState(0)
+
+  return (
+    <Modal open onClose={onClose} title={savedDocumentTitle(document)} icon={Images} size="xl">
+      <p className="mb-3 text-xs text-slate-500">
+        Fotos escaneadas, de solo lectura.{' '}
+        {pages.length > 1 ? `${pages.length} páginas.` : 'Una página.'}
+      </p>
+      <div className="h-[70vh] min-h-0">
+        <PagesViewer pages={pages} current={page} onChange={setPage} folderId={folderId} />
+      </div>
+    </Modal>
   )
 }
 

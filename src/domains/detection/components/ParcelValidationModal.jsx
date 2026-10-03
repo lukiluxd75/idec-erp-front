@@ -84,7 +84,7 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
         {isConfirm ? (
           <>
             <p className="text-sm text-slate-600">
-              Confirma que el cambio detectado es real y clasifica de qué tipo de construcción se trata.
+              Confirme que el cambio detectado es real y clasifique de qué tipo de construcción se trata.
             </p>
             <Select
               label="Tipo de cambio"
@@ -110,7 +110,7 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
         ) : (
           <>
             <p className="text-sm text-slate-600">
-              Marca este predio como sin cambio real. El comentario es opcional y queda solo como registro de
+              Marque este predio como sin cambio real. El comentario es opcional y queda solo como registro de
               auditoría.
             </p>
             <div>

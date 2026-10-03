@@ -78,8 +78,17 @@ export const NAV_SECTIONS = [
         label: 'Analizador y extractor de datos de carpetas',
         path: '/folder-analysis',
         icon: FolderSearch,
+        // Su pantalla propia no es un resumen del módulo sino la herramienta en
+        // sí (escanear la carpeta y sacarle los datos), así que en el abanico se
+        // llama por su nombre y no "Vista general".
+        overviewLabel: 'Extractor de datos',
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
+        // Acción propia del módulo, además de ver/editar: habilita buscar en
+        // "Carpetas registradas" entre las carpetas de todos los usuarios y no
+        // solo entre las propias. El back la exige como "folder-analysis.admin";
+        // acá es lo que la hace aparecer en la matriz de permisos de un rol.
+        actions: [{ id: 'admin', label: 'Administrar' }],
         children: [
           // "Datos guardados" (/folder-analysis/saved) and "Detección de Folios" (/folios)
           // are hidden from the menu because they are no longer used. Their routes and

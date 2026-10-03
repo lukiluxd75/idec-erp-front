@@ -59,7 +59,7 @@ export default function SearchBar({ onSelectProperty }) {
           {results.length === 0 ? (
             <div className="vc-res-empty">
               <b>Sin resultados para «{query}»</b>
-              Prueba con otra palabra, o con parte del código catastral.
+              Pruebe con otra palabra o con parte del código catastral.
             </div>
           ) : (
             results.map(({ property, field }) => {

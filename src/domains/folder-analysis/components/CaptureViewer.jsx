@@ -32,8 +32,11 @@ function clamp(value, min, max) {
  * architect zooms in far enough to tell the difference.
  *
  * Give it `key={captureId}`: each photo is its own view, with its own zoom.
+ *
+ * `folderId` pide la foto por la carpeta en vez de por su dueño, para mirar de
+ * solo lectura lo escaneado en una carpeta ajena.
  */
-export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpand }) {
+export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpand, folderId = null }) {
   const stageRef = useRef(null)
   const [zoom, setZoom] = useState(ZOOM_MIN)
   const [rotation, setRotation] = useState(() => rotations.get(captureId) || 0)
@@ -44,12 +47,12 @@ export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpan
   // The original is only asked for once the zoom goes past the preview's pixels.
   const [wantsHd, setWantsHd] = useState(false)
 
-  const preview = useCaptureUrl(captureId, 'preview')
-  const hd = useCaptureUrl(wantsHd ? captureId : null, 'original')
+  const preview = useCaptureUrl(captureId, 'preview', folderId)
+  const hd = useCaptureUrl(wantsHd ? captureId : null, 'original', folderId)
   // A server that does not make the web-sized copy (an older backend) must not
   // leave the architect without the photo: the original is the fallback, and
   // both of these share one download.
-  const fallback = useCaptureUrl(preview.failed ? captureId : null, 'original')
+  const fallback = useCaptureUrl(preview.failed ? captureId : null, 'original', folderId)
   const url = hd.url || preview.url || fallback.url
 
   useLayoutEffect(() => {

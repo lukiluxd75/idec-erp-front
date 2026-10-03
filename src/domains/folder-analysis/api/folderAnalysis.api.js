@@ -59,8 +59,17 @@ export const folderAnalysisApi = {
    * (web sized) for the viewer, 'original' only when the architect zooms past
    * what the preview can show -- the upload itself weighs several megabytes.
    * Requires Bearer -> cannot be a direct <img src>; downloaded as Blob.
+   *
+   * `folderId` pide la foto por la carpeta en vez de por su dueño, que es lo
+   * único que sirve para una carpeta ajena: el backend comprueba que la foto
+   * sea una página de un documento archivado en ESA carpeta y que quien
+   * pregunta pueda verla. Para las propias no hace falta.
    */
-  captureBlob: (id, variant = 'preview') => {
+  captureBlob: (id, variant = 'preview', folderId = null) => {
+    if (folderId) {
+      const query = new URLSearchParams({ variant }).toString()
+      return httpClient.get(`${E.FOLDER_PHOTO(folderId, id)}?${query}`, { responseType: 'blob' })
+    }
     const url =
       variant === 'thumbnail'
         ? E.CAPTURE_THUMBNAIL(id)
@@ -136,6 +145,15 @@ export const folderAnalysisApi = {
    * screen never has to ask for them one by one.
    */
   folders: () => httpClient.get(E.FOLDERS),
+
+  /**
+   * Busca carpetas por su nombre (el número de la carpeta física). Quien
+   * administra el módulo ("folder-analysis.admin") recibe también las de otros
+   * usuarios, marcadas con `mine: false` y el nombre de su dueño en `owner`;
+   * quien no, recibe solo las suyas. El back exige dos caracteres como mínimo.
+   */
+  searchFolders: (name) =>
+    httpClient.get(`${E.FOLDERS}?${new URLSearchParams({ name }).toString()}`),
 
   /**
    * "Guardar en carpeta": what was scanned on the loose board goes into a new

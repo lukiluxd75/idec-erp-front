@@ -272,7 +272,7 @@ export default function SavedFolderDataPage() {
             title={documents.length ? 'No se encontraron coincidencias' : 'No hay revisiones guardadas'}
             subtitle={
               documents.length
-                ? 'Prueba con otro texto, otra carpeta u otro tipo de documento.'
+                ? 'Pruebe con otro texto, otra carpeta u otro tipo de documento.'
                 : 'Al guardar una revisión, aparecerá aquí.'
             }
           />
@@ -454,12 +454,12 @@ function ArchiveInFolderModal({ nombre, folders, onArchive, onClose }) {
     <Modal open onClose={onClose} icon={FolderInput} title="Archivar en una carpeta">
       <form className="flex flex-col gap-4" onSubmit={submit}>
         <p className="text-sm text-slate-600">
-          <strong>{nombre}</strong> se guardará en la carpeta que elijas. Un documento se archiva en
-          una sola carpeta; podrás sacarlo de ahí cuando quieras.
+          <strong>{nombre}</strong> se guardará en la carpeta que elija. Un documento se archiva en
+          una sola carpeta; podrá retirarlo cuando lo requiera.
         </p>
         {folders.length === 0 ? (
           <Alert type="warning">
-            Todavía no hay carpetas registradas. Crea una en "Carpetas registradas" y vuelve aquí.
+            Todavía no hay carpetas registradas. Cree una en "Carpetas registradas" y regrese a esta pantalla.
           </Alert>
         ) : (
           <Select

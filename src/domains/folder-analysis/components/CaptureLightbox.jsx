@@ -12,7 +12,7 @@ import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
  *
  * @param items [{ captureId, label }]
  */
-export function CaptureLightbox({ items = [], startAt = 0, onClose }) {
+export function CaptureLightbox({ items = [], startAt = 0, onClose, folderId = null }) {
   const [current, setCurrent] = useState(startAt)
   const index = Math.min(Math.max(current, 0), Math.max(items.length - 1, 0))
   const item = items[index]
@@ -20,8 +20,8 @@ export function CaptureLightbox({ items = [], startAt = 0, onClose }) {
   // Its neighbours are downloaded while this one is being looked at, so paging
   // through the pages of a folio does not wait once per page.
   useEffect(() => {
-    items.forEach((it) => prefetchCapture(it.captureId, 'preview'))
-  }, [items])
+    items.forEach((it) => prefetchCapture(it.captureId, 'preview', folderId))
+  }, [items, folderId])
 
   useEffect(() => {
     const onKey = (event) => {
@@ -93,6 +93,7 @@ export function CaptureLightbox({ items = [], startAt = 0, onClose }) {
           <CaptureViewer
             key={item.captureId}
             captureId={item.captureId}
+            folderId={folderId}
             alt={item.label || 'Foto'}
             className="h-full"
           />

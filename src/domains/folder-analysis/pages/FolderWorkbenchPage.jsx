@@ -153,7 +153,7 @@ export default function FolderWorkbenchPage() {
 
           {folder.documents.length === 0 ? (
             <p className="text-xs text-slate-500">
-              Cuando revises y guardes un documento de esta carpeta, sus datos se podrán traer acá
+              Cuando revise y guarde un documento de esta carpeta, sus datos se podrán traer aquí
               sin volver a escribirlos.
             </p>
           ) : (

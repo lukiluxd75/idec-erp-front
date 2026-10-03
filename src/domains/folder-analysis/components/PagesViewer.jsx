@@ -9,8 +9,11 @@ import { cn } from '@/shared/utils'
  * The document's original photos, one tab per page, to compare against the form.
  * The selected page is controlled by the parent, which also shows what was read
  * from that same page.
+ *
+ * `folderId` pide las fotos por la carpeta en vez de por su dueño, que es como
+ * se mira, de solo lectura, lo escaneado en una carpeta ajena.
  */
-export function PagesViewer({ pages, current, onChange }) {
+export function PagesViewer({ pages, current, onChange, folderId = null }) {
   const [expanded, setExpanded] = useState(false)
   const index = Math.min(current, Math.max(pages.length - 1, 0))
   const page = pages[index]
@@ -18,8 +21,8 @@ export function PagesViewer({ pages, current, onChange }) {
   // The whole document is downloaded as soon as the screen opens: the architect
   // reads it page by page and no page should make them wait for it again.
   useEffect(() => {
-    pages.forEach((p) => prefetchCapture(p.capture_id, 'preview'))
-  }, [pages])
+    pages.forEach((p) => prefetchCapture(p.capture_id, 'preview', folderId))
+  }, [pages, folderId])
 
   const items = pages.map((p, i) => ({ captureId: p.capture_id, label: `Página ${i + 1}` }))
 
@@ -47,13 +50,21 @@ export function PagesViewer({ pages, current, onChange }) {
         <CaptureViewer
           key={page.capture_id}
           captureId={page.capture_id}
+          folderId={folderId}
           alt={`Página ${index + 1}`}
           className="min-h-0 flex-1"
           onExpand={() => setExpanded(true)}
         />
       )}
 
-      {expanded && <CaptureLightbox items={items} startAt={index} onClose={() => setExpanded(false)} />}
+      {expanded && (
+        <CaptureLightbox
+          items={items}
+          startAt={index}
+          folderId={folderId}
+          onClose={() => setExpanded(false)}
+        />
+      )}
     </div>
   )
 }

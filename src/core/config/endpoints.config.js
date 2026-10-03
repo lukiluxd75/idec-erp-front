@@ -113,6 +113,11 @@ export const API_ENDPOINTS = {
     FOLDERS_FROM_BOARD: '/api/folder-analysis/folders/from-board',
     FOLDER: (id) => `/api/folder-analysis/folders/${id}`,
     FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
+    // Una foto de una carpeta, pedida por la carpeta y no por su dueño: es como
+    // quien administra el módulo ve, de solo lectura, lo escaneado en una
+    // carpeta ajena que encontró buscándola por su nombre.
+    FOLDER_PHOTO: (folderId, captureId) =>
+      `/api/folder-analysis/folders/${folderId}/photos/${captureId}`,
     FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,
   },
   REPORTS: {

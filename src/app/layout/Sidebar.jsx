@@ -76,7 +76,9 @@ function NavLeaf({ node, depth, end = true }) {
  * `.nav-fan` en index.css). Pulsarla de nuevo la cierra.
  *
  * La fila no navega: si el módulo tiene pantalla propia (p. ej. el panel general
- * de una herramienta) aparece como la primera función del abanico, "Vista general".
+ * de una herramienta) aparece como la primera función del abanico, "Vista general"
+ * o el nombre que ese módulo le dé en `overviewLabel` (navConfig) cuando su pantalla
+ * propia es una herramienta con nombre y no un panel de resumen.
  * Así abrir un grupo no te saca de donde estás, y en móvil, donde cambiar de
  * pantalla cierra el cajón, el abanico no se cierra solo antes de poder usarlo.
  */
@@ -89,7 +91,7 @@ function NavGroup({ node, nested, expanded, onToggle, pathname, permissions, dep
   // Un grupo con pantalla propia que ningún hijo repite la ofrece como primera entrada.
   const ownScreen = nested.some((child) => child.path === node.path)
     ? []
-    : [{ label: 'Vista general', path: node.path, icon: LayoutGrid, own: true }]
+    : [{ label: node.overviewLabel || 'Vista general', path: node.path, icon: LayoutGrid, own: true }]
   const entries = [...ownScreen, ...nested]
 
   return (
