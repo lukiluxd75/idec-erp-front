@@ -12,6 +12,51 @@ const STATUS_STYLE = {
 
 const ALL_CAMPAIGNS_VALUE = '__all__'
 
+// Same 14 fields as the Excel export's columns (see export_excel.py's
+// HEADERS) -- the print profile keeps every technical column too, just laid
+// out as a vertical field:value ficha per predio instead of a wide table,
+// since a 14-column table would never fit a printed page legibly.
+const FICHA_FIELDS = [
+  { key: 'number', label: 'Nº' },
+  { key: 'sector_name', label: 'Sector' },
+  { key: 'cadastral_code', label: 'Código catastral' },
+  { key: 'change_type_label', label: 'Tipo de cambio' },
+  { key: 'change_detail', label: 'Detalle del cambio' },
+  { key: 'validation_status_label', label: 'Estado' },
+  { key: 'rejection_comment', label: 'Motivo de rechazo' },
+  { key: 'years', label: 'Años comparados' },
+  { key: 'campaign_code', label: 'Campaña' },
+  { key: 'probability_pct', label: 'Probabilidad (%)' },
+  { key: 'validated_by_username', label: 'Validado por' },
+  { key: 'validated_at', label: 'Fecha de validación' },
+]
+
+function PrintFicha({ row }) {
+  const coords = row.lat != null && row.lon != null ? `${row.lat.toFixed(6)}, ${row.lon.toFixed(6)}` : ''
+  return (
+    <table className="print-ficha">
+      <tbody>
+        {FICHA_FIELDS.map(({ key, label }) => {
+          const value = row[key]
+          if (value === null || value === undefined || value === '') return null
+          return (
+            <tr key={key}>
+              <th>{label}</th>
+              <td>{value}</td>
+            </tr>
+          )
+        })}
+        {coords && (
+          <tr>
+            <th>Coordenadas</th>
+            <td>{coords}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  )
+}
+
 function ParcelCard({ row, showCampaign }) {
   const style = STATUS_STYLE[row.validation_status] || { border: 'border-l-slate-300', badge: 'neutral' }
   return (
@@ -94,6 +139,14 @@ function ParcelCard({ row, showCampaign }) {
  * campañas" to list every confirmed/rejected parcel at once and see which
  * campaign each sector/detection belongs to (each row keeps its own
  * campaign_code). The map's own selection is never touched by this.
+ * "Sin campaña" is blocked from exporting (see `blocked` below) -- every
+ * processed sector must belong to a campaign, so that bucket is never worth
+ * a report.
+ *
+ * "Imprimir" renders a different profile than this preview: see PrintFicha,
+ * a vertical field:value table per predio (same fields as the Excel export)
+ * instead of either these cards or a 14-column spreadsheet table, neither of
+ * which prints legibly.
  */
 export default function ExportPreviewModal({ open, onClose, campaignId }) {
   const [data, setData] = useState(null)
@@ -120,9 +173,16 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
   const allCampaigns = selection === ALL_CAMPAIGNS_VALUE
   const selectedCampaignId = !allCampaigns && selection ? Number(selection) : null
   const selectedUnassignedOnly = !allCampaigns && !selection
+  // "Sin campaña" never has anything worth exporting (every processed sector
+  // must belong to a campaign now) -- block exporting instead of letting the
+  // architect generate an empty report, same rule as the map's draw guard.
+  const blocked = !allCampaigns && !selectedCampaignId
 
   useEffect(() => {
-    if (!open) return
+    if (!open || blocked) {
+      setData(null)
+      return
+    }
     setLoading(true)
     setError('')
     detectionApi
@@ -130,7 +190,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
       .then(setData)
       .catch((err) => setError(err.message || 'No se pudo cargar la vista previa.'))
       .finally(() => setLoading(false))
-  }, [open, selectedCampaignId, selectedUnassignedOnly, allCampaigns])
+  }, [open, blocked, selectedCampaignId, selectedUnassignedOnly, allCampaigns])
 
   function downloadJson() {
     const blob = new Blob([JSON.stringify(data.rows, null, 2)], { type: 'application/json' })
@@ -183,7 +243,11 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
 
         <div className="export-print-hide flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
           <p className="text-xs text-slate-500">
-            {data ? `${data.campaign_label} · ${data.rows.length} predios` : 'Cargando…'}
+            {blocked
+              ? 'Elija una campaña para exportar.'
+              : data
+                ? `${data.campaign_label} · ${data.rows.length} predios`
+                : 'Cargando…'}
           </p>
           <div className="flex flex-wrap gap-1.5">
             <Button
@@ -191,7 +255,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
               variant="secondary"
               icon={FileText}
               loading={busyFormat === 'pdf'}
-              disabled={!data || !!busyFormat}
+              disabled={blocked || !data || !!busyFormat}
               onClick={() => handleFormat('pdf')}
             >
               PDF
@@ -201,7 +265,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
               variant="secondary"
               icon={FileSpreadsheet}
               loading={busyFormat === 'excel'}
-              disabled={!data || !!busyFormat}
+              disabled={blocked || !data || !!busyFormat}
               onClick={() => handleFormat('excel')}
             >
               Excel
@@ -211,7 +275,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
               variant="secondary"
               icon={FileJson}
               loading={busyFormat === 'json'}
-              disabled={!data || !!busyFormat}
+              disabled={blocked || !data || !!busyFormat}
               onClick={() => handleFormat('json')}
             >
               JSON
@@ -220,7 +284,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
               size="sm"
               variant="secondary"
               icon={Printer}
-              disabled={!data || !!busyFormat}
+              disabled={blocked || !data || !!busyFormat}
               onClick={() => handleFormat('print')}
             >
               Imprimir
@@ -228,15 +292,22 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
           </div>
         </div>
 
-        {loading && (
+        {blocked && (
+          <EmptyState
+            title="Elija una campaña"
+            subtitle="Todo sector procesado pertenece a una campaña -- seleccione una (o «Todas las campañas») para exportar."
+          />
+        )}
+
+        {!blocked && loading && (
           <div className="flex items-center justify-center py-14">
             <Spinner className="h-7 w-7" />
           </div>
         )}
 
-        {!loading && error && <EmptyState title="No se pudo cargar la vista previa" subtitle={error} />}
+        {!blocked && !loading && error && <EmptyState title="No se pudo cargar la vista previa" subtitle={error} />}
 
-        {!loading && !error && data && (
+        {!blocked && !loading && !error && data && (
           <div className="export-print-root space-y-2">
             <div className="export-print-hide-until-print hidden print:mb-3 print:block">
               <h1 className="text-lg font-bold text-slate-900">Detección de construcciones — Reporte de predios</h1>
@@ -250,11 +321,21 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
                 subtitle="Esta campaña todavía no tiene hallazgos validados para exportar."
               />
             ) : (
-              <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 print:max-h-none print:overflow-visible">
-                {data.rows.map((row) => (
-                  <ParcelCard key={`${row.number}-${row.cadastral_code}`} row={row} showCampaign={allCampaigns} />
-                ))}
-              </div>
+              <>
+                <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 print:hidden">
+                  {data.rows.map((row) => (
+                    <ParcelCard key={`${row.number}-${row.cadastral_code}`} row={row} showCampaign={allCampaigns} />
+                  ))}
+                </div>
+                {/* Print's own profile: a vertical field:value ficha per
+                    predio instead of these cards -- see PrintFicha's own
+                    docstring for why a 14-column table wouldn't work here. */}
+                <div className="hidden print:block">
+                  {data.rows.map((row) => (
+                    <PrintFicha key={`print-${row.number}-${row.cadastral_code}`} row={row} />
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}

@@ -20,4 +20,33 @@
   .export-print-hide {
     display: none !important;
   }
+
+  /* Each predio's print ficha: a bordered vertical field:value table (not
+     the on-screen cards, not a 14-column spreadsheet table -- see
+     ExportPreviewModal.jsx's PrintFicha). break-inside keeps one predio's
+     fields together instead of splitting across a page boundary. */
+  .print-ficha {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    font-size: 11px;
+  }
+  .print-ficha th,
+  .print-ficha td {
+    border: 1px solid #cbd5e1;
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .print-ficha th {
+    width: 32%;
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #334155;
+  }
+  .print-ficha td {
+    color: #0f172a;
+  }
 }
