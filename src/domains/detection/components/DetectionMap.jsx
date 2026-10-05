@@ -117,6 +117,7 @@ function DetectionMapInner({
   highlightParcelGeom = null,
   resetSignal = null,
   onClearHighlight,
+  campaignSelected = true,
 }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
@@ -130,6 +131,7 @@ function DetectionMapInner({
   const redrawPolygonRef = useRef(() => {})
   const processedSectorsRef = useRef(processedSectors)
   const onClearHighlightRef = useRef(onClearHighlight)
+  const campaignSelectedRef = useRef(campaignSelected)
   const [ready, setReady] = useState(false)
   const [layersOn, setLayersOn] = useState(() =>
     Object.fromEntries(OVERLAY_DEFS.map((d) => [d.key, d.defaultOn]))
@@ -138,6 +140,7 @@ function DetectionMapInner({
   redrawPolygonRef.current = redrawPolygon
   processedSectorsRef.current = processedSectors
   onClearHighlightRef.current = onClearHighlight
+  campaignSelectedRef.current = campaignSelected
 
   const gisHost = (hosts && hosts[0]) || GIS_HOSTS[0]
 
@@ -177,6 +180,13 @@ function DetectionMapInner({
     }
 
     const onClick = (event) => {
+      // Every processed sector must belong to a campaign (engineer's rule) --
+      // "Sin campaña" is view-only on the map, drawing is blocked until the
+      // architect picks a real campaign.
+      if (!campaignSelectedRef.current) {
+        toast.warn('Seleccione una campaña antes de dibujar un polígono.')
+        return
+      }
       // Drawing a new area means any prior "explorar predio" highlight no
       // longer applies -- same rule for "clicks anywhere else on the map"
       // (the other half lives in DetectionPage's onViewSectorDetail wrapper,
@@ -420,9 +430,15 @@ function DetectionMapInner({
             <Button type="button" variant="secondary" size="sm" onClick={clearDrawing}>
               Limpiar área
             </Button>
-            <p className="text-[11px] font-medium text-slate-600 sm:ml-1">
-              Pulse el mapa para dibujar · mínimo 3 vértices
-            </p>
+            {campaignSelected ? (
+              <p className="text-[11px] font-medium text-slate-600 sm:ml-1">
+                Pulse el mapa para dibujar · mínimo 3 vértices
+              </p>
+            ) : (
+              <p className="text-[11px] font-bold text-amber-600 sm:ml-1">
+                Seleccione una campaña para poder dibujar
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">

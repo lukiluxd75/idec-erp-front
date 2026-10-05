@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { Plus } from 'lucide-react'
 import { Button, Input, Modal, Select } from '@/shared/ui'
+import { useAuth } from '@/auth/hooks'
 import { detectionApi } from '../api/detection.api'
 
 const NEW_CAMPAIGN_VALUE = '__new__'
@@ -18,6 +19,11 @@ const NEW_CAMPAIGN_VALUE = '__new__'
  * lock its own year selectors to it.
  */
 export default function CampaignPicker({ campaignId, onChange, yearOptions = [] }) {
+  const { user } = useAuth()
+  // "+ Nueva campaña" is admin-only (detection.manage_campaigns) -- everyone
+  // else with detection access still picks from campaigns that already
+  // exist, they just can't create new ones.
+  const canCreateCampaign = !!user?.permisos?.includes('detection.manage_campaigns')
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -118,10 +124,10 @@ export default function CampaignPicker({ campaignId, onChange, yearOptions = [] 
             {c.code} · {c.name}
           </option>
         ))}
-        <option value={NEW_CAMPAIGN_VALUE}>+ Nueva campaña…</option>
+        {canCreateCampaign && <option value={NEW_CAMPAIGN_VALUE}>+ Nueva campaña…</option>}
       </Select>
 
-      <Modal open={createOpen} onClose={closeCreate} title="Nueva campaña" icon={Plus}>
+      <Modal open={createOpen && canCreateCampaign} onClose={closeCreate} title="Nueva campaña" icon={Plus}>
         <div className="space-y-3">
           <Input
             label="Código"

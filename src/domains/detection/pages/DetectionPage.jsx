@@ -564,7 +564,9 @@ export default function DetectionPage() {
       : 'Revisar alineación'
   const polygonReady = !!(polygon && polygon.length >= 4)
   const gpuCount = Array.isArray(health?.engine?.gpus) ? health.engine.gpus.length : 0
-  const canStart = health?.reachable && polygonReady && yearRef && yearMov && !running
+  // Every processed sector must belong to a campaign -- "Sin campaña" is
+  // view-only (see DetectionMap's own draw-click guard for the other half).
+  const canStart = health?.reachable && polygonReady && !!campaignId && yearRef && yearMov && !running
 
   return (
     <div className="space-y-4">
@@ -842,6 +844,7 @@ export default function DetectionPage() {
                   setHighlightParcelGeom(null)
                   setExploring(null)
                 }}
+                campaignSelected={!!campaignId}
               />
             </Suspense>
 
