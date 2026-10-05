@@ -1,3 +1,14 @@
+/* Outside print, PrintReport's portal must stay fully invisible and take no
+   space. This MUST come before the @media print block below: both rules
+   target the same selector with equal specificity, so whichever is declared
+   LAST wins the cascade even inside @media print -- had this stayed below,
+   it would have silently beaten the block's `display: block` during an
+   actual print, leaving the print preview blank (confirmed: exactly what
+   happened before this fix). */
+.print-report-root {
+  display: none;
+}
+
 /* Printing: hide the whole app (and the Modal's on-screen panel) and show
    only PrintReport's own portal instead. PrintReport renders straight to
    `document.body` as a SIBLING of the Modal's own portal, not a descendant
@@ -60,10 +71,4 @@
   .print-ficha td {
     color: #0f172a;
   }
-}
-
-/* Outside print, PrintReport's portal must stay fully invisible and take no
-   space -- it exists purely for @media print, see above. */
-.print-report-root {
-  display: none;
 }
