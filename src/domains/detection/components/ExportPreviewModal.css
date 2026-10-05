@@ -18,14 +18,16 @@
    flowing from the top of the printed page (see PrintReport's docstring in
    ExportPreviewModal.jsx). As a plain body-level sibling with normal static
    flow, print-report-root has no such ancestor to fight and paginates
-   normally. */
+   normally.
+   `display: none` on every OTHER body-level child, not `visibility:
+   hidden` -- visibility keeps an element's layout box (so its full height
+   still reserves space), which pushed print-report-root down past an
+   entire blank first page (confirmed: exactly what happened before this
+   fix, since #root's hidden-but-still-laid-out height was taller than one
+   printed page). display:none removes that space entirely. */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .print-report-root,
-  .print-report-root * {
-    visibility: visible;
+  body > *:not(.print-report-root) {
+    display: none !important;
   }
   .print-report-root {
     display: block;
