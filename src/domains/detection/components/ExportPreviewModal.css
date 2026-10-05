@@ -1,24 +1,35 @@
-/* Printing the export preview: hide everything else on the page and let
-   only the marked subtree render, regardless of the Modal's own portal
-   structure (createPortal puts it directly under <body>, as a sibling of
-   the app root -- visibility-based hiding works across that boundary,
-   display-based hiding tied to a specific wrapper would not). */
+/* Printing: hide the whole app (and the Modal's on-screen panel) and show
+   only PrintReport's own portal instead. PrintReport renders straight to
+   `document.body` as a SIBLING of the Modal's own portal, not a descendant
+   of it -- the Modal panel is `max-h-[...] overflow-y-auto` to fit the
+   screen, and nesting print content inside that box confined `@media
+   print` output to the panel's own clipped, mid-screen position instead of
+   flowing from the top of the printed page (see PrintReport's docstring in
+   ExportPreviewModal.jsx). As a plain body-level sibling with normal static
+   flow, print-report-root has no such ancestor to fight and paginates
+   normally. */
 @media print {
   body * {
     visibility: hidden;
   }
-  .export-print-root,
-  .export-print-root * {
+  .print-report-root,
+  .print-report-root * {
     visibility: visible;
   }
-  .export-print-root {
-    position: absolute;
-    inset: 0;
-    width: 100%;
+  .print-report-root {
+    display: block;
     padding: 24px;
   }
-  .export-print-hide {
-    display: none !important;
+  .print-report-root h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px;
+  }
+  .print-report-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 16px;
   }
 
   /* Each predio's print ficha: a bordered vertical field:value table (not
@@ -49,4 +60,10 @@
   .print-ficha td {
     color: #0f172a;
   }
+}
+
+/* Outside print, PrintReport's portal must stay fully invisible and take no
+   space -- it exists purely for @media print, see above. */
+.print-report-root {
+  display: none;
 }

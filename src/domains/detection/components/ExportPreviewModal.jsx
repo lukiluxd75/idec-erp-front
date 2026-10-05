@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
 import { FileDown, FileJson, FileSpreadsheet, FileText, Printer } from 'lucide-react'
 import { Badge, Button, EmptyState, Modal, Select, Spinner } from '@/shared/ui'
@@ -54,6 +55,33 @@ function PrintFicha({ row }) {
         )}
       </tbody>
     </table>
+  )
+}
+
+/**
+ * "Imprimir"'s actual content -- rendered through its OWN portal straight to
+ * `document.body`, as a sibling of Modal's portal rather than a descendant
+ * of it. The Modal panel is `max-h-[...] overflow-y-auto` (it has to be, so
+ * a tall modal still fits the screen); nesting the print content inside it
+ * confines `@media print` output to that panel's own box -- clipped, and
+ * starting wherever the panel happened to sit on screen instead of the top
+ * of the page (confirmed: that's exactly the "corta a la mitad de la hoja"
+ * bug this replaced). A `print-report-root` sibling with plain static flow
+ * has no such ancestor to escape, so it paginates normally from the top.
+ */
+function PrintReport({ data }) {
+  if (!data) return null
+  return createPortal(
+    <div className="print-report-root">
+      <h1>Detección de construcciones — Reporte de predios</h1>
+      <p className="print-report-subtitle">
+        {data.campaign_label} · {data.rows.length} predios
+      </p>
+      {data.rows.map((row) => (
+        <PrintFicha key={`print-${row.number}-${row.cadastral_code}`} row={row} />
+      ))}
+    </div>,
+    document.body
   )
 }
 
@@ -221,125 +249,110 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Exportar reporte de predios" icon={FileDown} size="xl">
-      <div className="space-y-4">
-        <div className="export-print-hide flex flex-wrap items-end gap-3">
-          <div className="min-w-[14rem] flex-1">
-            <Select
-              label="Campaña a exportar"
-              value={selection}
-              onChange={(e) => setSelection(e.target.value)}
-            >
-              <option value="">Sin campaña</option>
-              {campaigns.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} · {c.name}
-                </option>
-              ))}
-              <option value={ALL_CAMPAIGNS_VALUE}>Todas las campañas</option>
-            </Select>
-          </div>
-        </div>
-
-        <div className="export-print-hide flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-          <p className="text-xs text-slate-500">
-            {blocked
-              ? 'Elija una campaña para exportar.'
-              : data
-                ? `${data.campaign_label} · ${data.rows.length} predios`
-                : 'Cargando…'}
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={FileText}
-              loading={busyFormat === 'pdf'}
-              disabled={blocked || !data || !!busyFormat}
-              onClick={() => handleFormat('pdf')}
-            >
-              PDF
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={FileSpreadsheet}
-              loading={busyFormat === 'excel'}
-              disabled={blocked || !data || !!busyFormat}
-              onClick={() => handleFormat('excel')}
-            >
-              Excel
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={FileJson}
-              loading={busyFormat === 'json'}
-              disabled={blocked || !data || !!busyFormat}
-              onClick={() => handleFormat('json')}
-            >
-              JSON
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon={Printer}
-              disabled={blocked || !data || !!busyFormat}
-              onClick={() => handleFormat('print')}
-            >
-              Imprimir
-            </Button>
-          </div>
-        </div>
-
-        {blocked && (
-          <EmptyState
-            title="Elija una campaña"
-            subtitle="Todo sector procesado pertenece a una campaña -- seleccione una (o «Todas las campañas») para exportar."
-          />
-        )}
-
-        {!blocked && loading && (
-          <div className="flex items-center justify-center py-14">
-            <Spinner className="h-7 w-7" />
-          </div>
-        )}
-
-        {!blocked && !loading && error && <EmptyState title="No se pudo cargar la vista previa" subtitle={error} />}
-
-        {!blocked && !loading && !error && data && (
-          <div className="export-print-root space-y-2">
-            <div className="export-print-hide-until-print hidden print:mb-3 print:block">
-              <h1 className="text-lg font-bold text-slate-900">Detección de construcciones — Reporte de predios</h1>
-              <p className="text-sm text-slate-500">
-                {data.campaign_label} · {data.rows.length} predios
-              </p>
+    <>
+      <Modal open={open} onClose={onClose} title="Exportar reporte de predios" icon={FileDown} size="xl">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[14rem] flex-1">
+              <Select label="Campaña a exportar" value={selection} onChange={(e) => setSelection(e.target.value)}>
+                <option value="">Sin campaña</option>
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} · {c.name}
+                  </option>
+                ))}
+                <option value={ALL_CAMPAIGNS_VALUE}>Todas las campañas</option>
+              </Select>
             </div>
-            {data.rows.length === 0 ? (
-              <EmptyState
-                title="Sin predios confirmados o rechazados"
-                subtitle="Esta campaña todavía no tiene hallazgos validados para exportar."
-              />
-            ) : (
-              <>
-                <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1 print:hidden">
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
+            <p className="text-xs text-slate-500">
+              {blocked
+                ? 'Elija una campaña para exportar.'
+                : data
+                  ? `${data.campaign_label} · ${data.rows.length} predios`
+                  : 'Cargando…'}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={FileText}
+                loading={busyFormat === 'pdf'}
+                disabled={blocked || !data || !!busyFormat}
+                onClick={() => handleFormat('pdf')}
+              >
+                PDF
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={FileSpreadsheet}
+                loading={busyFormat === 'excel'}
+                disabled={blocked || !data || !!busyFormat}
+                onClick={() => handleFormat('excel')}
+              >
+                Excel
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={FileJson}
+                loading={busyFormat === 'json'}
+                disabled={blocked || !data || !!busyFormat}
+                onClick={() => handleFormat('json')}
+              >
+                JSON
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={Printer}
+                disabled={blocked || !data || !!busyFormat}
+                onClick={() => handleFormat('print')}
+              >
+                Imprimir
+              </Button>
+            </div>
+          </div>
+
+          {blocked && (
+            <EmptyState
+              title="Elija una campaña"
+              subtitle="Todo sector procesado pertenece a una campaña -- seleccione una (o «Todas las campañas») para exportar."
+            />
+          )}
+
+          {!blocked && loading && (
+            <div className="flex items-center justify-center py-14">
+              <Spinner className="h-7 w-7" />
+            </div>
+          )}
+
+          {!blocked && !loading && error && (
+            <EmptyState title="No se pudo cargar la vista previa" subtitle={error} />
+          )}
+
+          {!blocked && !loading && !error && data && (
+            <div className="space-y-2">
+              {data.rows.length === 0 ? (
+                <EmptyState
+                  title="Sin predios confirmados o rechazados"
+                  subtitle="Esta campaña todavía no tiene hallazgos validados para exportar."
+                />
+              ) : (
+                <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
                   {data.rows.map((row) => (
                     <ParcelCard key={`${row.number}-${row.cadastral_code}`} row={row} showCampaign={allCampaigns} />
                   ))}
                 </div>
-                {/* Print's own profile: a vertical field:value ficha per
-                    predio instead of these cards -- see PrintFicha's own
-                    docstring for why a 14-column table wouldn't work here. */}
-                <div className="hidden print:block">
-                  {data.rows.map((row) => (
-                    <PrintFicha key={`print-${row.number}-${row.cadastral_code}`} row={row} />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </Modal>
+              )}
+            </div>
+          )}
+        </div>
+      </Modal>
+      <PrintReport data={!blocked && data?.rows.length ? data : null} />
+    </>
   )
 }
