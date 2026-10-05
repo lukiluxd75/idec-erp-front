@@ -49,9 +49,6 @@ import {
 const MAX_NAME_LENGTH = 120
 const MAX_NOTES_LENGTH = 500
 
-// Lo mínimo que hay que escribir para que se busque entre las carpetas de otros
-// usuarios, y lo que se espera a que deje de escribir. Es el mismo mínimo que
-// exige el back; acá además evita una consulta por tecla.
 const MIN_SEARCH_LENGTH = 2
 const SEARCH_DEBOUNCE_MS = 350
 
@@ -65,31 +62,12 @@ function countsLabel(countsByType) {
     .join(' · ')
 }
 
-/**
- * "Carpetas registradas": cada carpeta física escaneada en el Extractor de datos y
- * guardada con "Guardar en carpeta", con su número como nombre. Acá se completa
- * su hoja de datos y se abre para seguir trabajando sus documentos.
- *
- * Un documento se archiva en una sola carpeta (el backend lo impone), así que el
- * selector muestra deshabilitados los que ya están en otra, nombrándola.
- *
- * La lista es siempre la del usuario. Quien administra el módulo
- * ("folder-analysis.admin") ve además, al buscar, las carpetas de otros usuarios
- * que coinciden por nombre: una carpeta física la escanea quien la tiene en la
- * mano, y sin esto nadie más podía volver a encontrarla. Aparecen aparte, de
- * solo lectura y diciendo de quién son -- escribir en una carpeta ajena lo
- * sigue impidiendo el backend.
- */
 export default function RegisteredFoldersPage() {
   const { catalog } = useCatalog()
   const { user } = useAuth()
   const puedeBuscarAjenas = (user?.permisos || []).includes('folder-analysis.admin')
   const [folders, setFolders] = useState([])
-  // Carpetas de otros usuarios que coinciden con la búsqueda. Viven aparte de
-  // `folders` a propósito: no son de este usuario y no se editan ni se borran.
-  // Se guarda junto al término con el que se pidieron: comparar ese término con
-  // lo que hay escrito es lo que dice, sin más estado, si lo que está en
-  // pantalla corresponde a la búsqueda actual o es la respuesta anterior.
+  // Carpetas de otros usuarios que coinciden con la búsqueda.
   const [ajenas, setAjenas] = useState({ term: '', folders: [], error: null })
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -116,22 +94,13 @@ export default function RegisteredFoldersPage() {
   useEffect(() => { load() }, [load])
 
   const term = query.trim()
-  // Mientras no haya nada escrito no se busca nada afuera: una carpeta ajena
-  // solo aparece cuando se la busca por su nombre, nunca en la lista.
   const buscaAjenas = puedeBuscarAjenas && term.length >= MIN_SEARCH_LENGTH
   const respondida = buscaAjenas && ajenas.term === term
   const ajenasEncontradas = respondida ? ajenas.folders : []
   const errorAjenas = respondida ? ajenas.error : null
   const buscandoAjenas = buscaAjenas && !respondida
 
-  /**
-   * Las carpetas de otros usuarios que coinciden con lo escrito, para quien
-   * administra el módulo. Se piden al backend: la lista nunca las trajo, así que
-   * no hay nada que filtrar acá.
-   *
-   * `vigente` descarta la respuesta de una búsqueda que quedó vieja mientras el
-   * usuario seguía escribiendo y que puede llegar después que la nueva.
-   */
+  /** Las carpetas de otros usuarios que coinciden con lo escrito, para quien administra el módulo. */
   useEffect(() => {
     if (!buscaAjenas) return undefined
     let vigente = true
@@ -143,9 +112,6 @@ export default function RegisteredFoldersPage() {
             setAjenas({ term, folders: found.filter((folder) => !folder.mine), error: null })
           }
         })
-        // La lista propia tiene que seguir funcionando aunque esto falle, pero el
-        // error se dice: callarlo deja "no coincide ninguna" como respuesta a un
-        // permiso que falta o a un servidor caído, que es lo contrario de ayudar.
         .catch((e) => { if (vigente) setAjenas({ term, folders: [], error: e.message }) })
     }, SEARCH_DEBOUNCE_MS)
     return () => {
@@ -353,12 +319,7 @@ export default function RegisteredFoldersPage() {
   )
 }
 
-/**
- * Una carpeta cerrada: se ve el nombre y cuántos documentos tiene, y hay que
- * apretarla para que aparezca lo que archiva. Así la pantalla se lee como un
- * estante de carpetas y no como la lista de revisiones que ya es "Datos
- * guardados".
- */
+/** Una carpeta cerrada: se ve el nombre y cuántos documentos tiene, y hay que apretarla para que aparezca lo que archiva. */
 function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument, readOnly = false }) {
   const [open, setOpen] = useState(false)
   const counts = countsLabel(folder.counts_by_type)
@@ -372,8 +333,6 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument, readO
   return (
     <Card className="overflow-hidden p-0">
       <div className={`flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 px-4 py-3 sm:px-5 ${open ? 'border-b border-slate-100' : ''}`}>
-        {/* El botón ocupa toda la fila para que apretar la carpeta la abra,
-            pero deja fuera Editar/Eliminar: no deben abrirla al pulsarlas. */}
         <button
           type="button"
           onClick={() => setOpen((previous) => !previous)}
@@ -404,8 +363,6 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument, readO
         </button>
         <div className="ml-auto flex items-center gap-1.5">
           {readOnly ? (
-            /* Una carpeta ajena se mira y nada más: abrirla, editarla o
-               borrarla son cosas de su dueño, y el backend las rechaza igual. */
             <span className="text-xs font-semibold text-slate-500">
               Solo lectura · {folder.owner ? `de ${folder.owner}` : 'de otro usuario'}
             </span>
@@ -464,8 +421,6 @@ function FolderDocumentRow({ document, onRemove, readOnly = false, folderId = nu
   const type = DOC_TYPES.find((item) => item.id === document.doc_type)
   const TypeIcon = type?.icon || FileSearch
   const data = savedData(document)
-  // Las fotos de un documento ajeno: se miran acá porque su pantalla de revisión
-  // guarda cambios, y lo que se pidió es poder verlas sin tocar nada.
   const [fotos, setFotos] = useState(false)
   const pages = document.pages || []
 
@@ -536,14 +491,7 @@ function FolderDocumentRow({ document, onRemove, readOnly = false, folderId = nu
   )
 }
 
-/**
- * Las fotos escaneadas de un documento, para mirarlas y nada más.
- *
- * Es el mismo visor de la pantalla de revisión --zoom, girar, pantalla
- * completa-- pero sin el formulario al lado: acá no hay nada que guardar. Las
- * fotos se piden por la carpeta (`folderId`), que es el único camino a las de
- * una carpeta ajena.
- */
+/** Las fotos escaneadas de un documento, para mirarlas y nada más. */
 function PhotosModal({ document, folderId, pages, onClose }) {
   const [page, setPage] = useState(0)
 
@@ -560,17 +508,7 @@ function PhotosModal({ document, folderId, pages, onClose }) {
   )
 }
 
-/**
- * Crea o edita una carpeta: de qué trámite es, cómo se llama, su hoja de datos y
- * qué documentos ya revisados se archivan en ella.
- *
- * El tipo se elige al crearla y después no se cambia: sus documentos ya se
- * clasificaron con los carriles de ese tipo y su hoja se llenó con sus campos.
- * Ni los campos ni los tipos están escritos acá -- llegan del catálogo.
- */
 function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose, onSaved }) {
-  // Se monta solo mientras está abierto (ver arriba), así que los campos arrancan
-  // de la carpeta que se está editando y no hace falta reiniciarlos.
   const [name, setName] = useState(folder?.name || '')
   const [notes, setNotes] = useState(folder?.notes || '')
   const [typeKey, setTypeKey] = useState(
@@ -591,13 +529,24 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
 
   const cambiarCampo = (key, value) => setSheet((previous) => ({ ...previous, [key]: value }))
 
-  // Lo que los documentos ya revisados de la carpeta traen para su hoja. Una
-  // carpeta nueva no tiene ninguno todavía, así que no ofrece nada.
+  // Lo que los documentos ya revisados de la carpeta traen para su hoja.
   const suggestions = useMemo(
-    () => sheetSuggestions(type, folder?.documents),
-    [type, folder]
+    () => sheetSuggestions(type, documents.filter((document) => selectedIds.includes(document.id))),
+    [type, documents, selectedIds]
   )
   const pendientes = pendingFills(sheet, suggestions)
+
+  // Completa los campos vacíos con la extracción/revisión guardada de los
+  // documentos seleccionados. Los datos que el usuario ya cargó se conservan.
+  useEffect(() => {
+    if (!pendientes.length) return
+    setSheet((previous) => {
+      const missing = pendingFills(previous, suggestions)
+      return missing.length
+        ? { ...previous, ...Object.fromEntries(missing.map(([key, suggestion]) => [key, suggestion.value])) }
+        : previous
+    })
+  }, [pendientes.length, suggestions])
 
   const traerTodo = () =>
     setSheet((previous) => ({

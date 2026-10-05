@@ -4,9 +4,7 @@ import { toast } from 'react-toastify'
 import { Modal, Select, Input, Button, Spinner } from '@/shared/ui'
 import { templatesApi } from '../api/templates.api'
 
-/** Emits the next CITE for a chosen sigla. Switching the sigla dropdown to a
- * combination never used before will show 01 -- it is a different counter,
- * not a continuation of whichever sigla was selected last. */
+/** Emits the next CITE for a chosen sigla. */
 export function GenerateCiteModal({ open, onClose, onSaved }) {
   const [configuraciones, setConfiguraciones] = useState([])
   const [loading, setLoading] = useState(true)

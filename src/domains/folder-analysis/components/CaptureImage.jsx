@@ -4,13 +4,7 @@ import { useCaptureUrl } from '@/domains/folder-analysis/utils/captureImages'
 import { Spinner } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 
-/**
- * A capture's photo in a list row or a page strip.
- *
- * Anything bigger than the thumbnail shows the thumbnail first, blurred, and
- * swaps it for the real one when it arrives: the row never jumps and there is
- * something to look at from the first moment.
- */
+/** A capture's photo in a list row or a page strip. */
 export function CaptureImage({
   captureId,
   variant = 'thumbnail',

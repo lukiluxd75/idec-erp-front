@@ -18,11 +18,6 @@ import { Alert, Button, Card, ConfirmDialog, Input, SectionHeader, Spinner } fro
 
 const TEMPLATE_URL = '/plantilla-ph.xlsm'
 
-// Campos que van directo a celdas fijas de INICIO al generar el Excel (ver
-// INICIO_CAMPOS en sheet2Excel.js) -- salvo "propietario", que sigue siendo
-// solo de referencia interna (no se encontro una celda propia para el
-// nombre del propietario en la plantilla, a diferencia de sus documentos de
-// identidad).
 const DATOS_GENERALES_VACIO = {
   codigoCatastral: '',
   distrito: '',
@@ -39,8 +34,6 @@ const DATOS_GENERALES_VACIO = {
   ci2: '',
 }
 
-// Input controlado atado a un campo de `datosGenerales` -- evita repetir
-// value/onChange en cada uno de los ~12 campos de la tarjeta de abajo.
 function Campo({ campo, datosGenerales, setDatosGenerales, ...props }) {
   return (
     <Input
@@ -64,25 +57,13 @@ export default function ResolutionPage() {
   const [paginasTabla, setPaginasTabla] = useState(null)
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrError, setOcrError] = useState(null)
-  // Raw OCR blocks per page, for the "Descargar diagnóstico OCR" button —
-  // so the file can be sent directly instead of hand-copying from the browser
-  // console (which also only shows it collapsed).
   const [ocrDiagnostics, setOcrDiagnostics] = useState(null)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
 
-  // Datos generales del edificio: no salen del escaneo de la tabla de
-  // superficies -- se transcriben a mano mirando el plano/resolucion
-  // aprobados. Se guardan en el mismo JSON opaco "tabla" que las paginas
-  // (ver saveTable) y, al generar el Excel, casi todos se escriben en celdas
-  // fijas de la hoja INICIO (ver INICIO_CAMPOS en sheet2Excel.js) -- excepto
-  // "propietario", que queda solo de referencia interna.
   const [datosGenerales, setDatosGenerales] = useState(DATOS_GENERALES_VACIO)
   const [savingGeneralData, setSavingGeneralData] = useState(false)
 
-  // Sugerencias de COLINDANCIAS revisadas/editadas por el usuario:
-  // colindancias[planta][ambiente] = { norte, este, sud, oeste }. Mismo JSON
-  // opaco que datosGenerales/paginasTabla (ver ColindanciasSection.jsx).
   const [colindancias, setColindancias] = useState({})
 
   useEffect(() => {
@@ -126,14 +107,10 @@ export default function ResolutionPage() {
       const out = []
       const diag = []
       for (const img of paginasImg) {
-        // Deskews by perspective using the table's own borders and detects
-        // its row lines; if the photo has no detectable table borders, returns
-        // the image as-is with empty lineYs (parser falls back to its usual gap heuristic).
         const { blob: blobCorregido, lineYs, corregido } = await detectAndDeskewTable(img.blob)
         const bloques = await ocrImage(blobCorregido, `pagina_${img.orden}.jpg`)
         const parsed = parseSuperficiesPage(bloques, { lineYs })
-        // For diagnostics: "Descargar diagnóstico OCR" (below) downloads this
-        // as a file if column detection goes wrong.
+        // For diagnostics: "Descargar diagnóstico OCR" (below) downloads this as a file if column detection goes wrong.
          
         console.log(`[OCR] página ${img.orden} — deskew`, { corregido, lineYs })
          
@@ -175,13 +152,6 @@ export default function ResolutionPage() {
       ),
     }))
 
-  // El <select> de Planta que ve el usuario representa un bloque de varias
-  // filas fusionadas por rowSpan (ver calcularTramosPlanta en
-  // SurfacesTable.jsx), no solo la fila "cabecera" cuyo id llega acá --
-  // hay que propagar el valor elegido a todo el tramo contiguo que
-  // compartía el valor viejo, si no el resto del bloque queda con su
-  // planta original (vacía si el OCR no la pudo adivinar) aunque
-  // visualmente parezca ya asignado.
   const onPlantaChange = (pageIdx, rowId, text) =>
     upd(pageIdx, (p) => {
       const idx = p.rows.findIndex((row) => row.id === rowId)
@@ -251,9 +221,6 @@ export default function ResolutionPage() {
     }
   }
 
-  // Nombres de "Ambiente" ya cargados en Hoja2, agrupados por Planta -- lo
-  // que ColindanciasSection necesita para saber qué unidades buscar en cada
-  // página del plano (y qué ofrecer como vecino en el <input list>).
   const unidadesPorPlanta = {}
   if (paginasTabla) {
     buildRows(paginasTabla).forEach((f) => {
@@ -263,9 +230,6 @@ export default function ResolutionPage() {
     })
   }
 
-  // Una entrada por (página, planta): una hoja tipo ("PLANTA TIPO 2° - 4°
-  // PISO") sirve para las colindancias de cada uno de sus pisos. Las páginas
-  // cuya planta todavía se está leyendo no entran hasta que la tengan.
   const paginasPorPlanta = (resolucion?.plan_pages || []).flatMap((p) =>
     plantasDePagina(p).map((planta) => ({ ...p, planta })),
   )
@@ -278,9 +242,7 @@ export default function ResolutionPage() {
     }
     setGenerating(true)
     try {
-      // `no-cache`: revalidar siempre. La plantilla cambia de contenido con el mismo
-      // nombre y el navegador, sin esto, reutiliza la copia vieja varios dias (IIS
-      // solo manda Last-Modified) y los Excel salen con la plantilla anterior.
+      // `no-cache`: revalidar siempre.
       const buf = await fetch(TEMPLATE_URL, { cache: 'no-cache' }).then((r) => {
         if (!r.ok) throw new Error('No se encontró la plantilla (public/plantilla-ph.xlsm).')
         return r.arrayBuffer()
@@ -312,8 +274,6 @@ export default function ResolutionPage() {
     )
   }
 
-  // Borrada la resolución, esta pantalla ya no tiene qué mostrar: vuelve a la
-  // lista en vez de quedarse con un detalle que el backend ya no sirve.
   const eliminarResolucion = async () => {
     try {
       await resolutionsApi.remove(id)

@@ -3,10 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Card, Badge } from '@/shared/ui'
 import { PLACEHOLDER_ROUTES } from '@/shared/nav'
 
-/**
- * Generic screen for ERP modules that do not have real functionality yet.
- * Its only purpose is to show the full navigation shape in this trial dashboard.
- */
+/** Generic screen for ERP modules that do not have real functionality yet. */
 export function ModulePlaceholder() {
   const { pathname } = useLocation()
   const route = PLACEHOLDER_ROUTES.find((r) => r.path === pathname)

@@ -13,10 +13,6 @@ import { cn } from '@/shared/utils'
 
 const MULTILINE = new Set(['location', 'authority', 'document', 'filing'])
 
-/**
- * Review form for a Folio Real: the property description block and column
- * "A) Titularidad sobre el dominio", one card per asiento.
- */
 export function FolioForm({ value, onChange, lowConfidence: flagged }) {
   const entries = value.ownership_entries
   // Fields the reading was not sure about, already in this form's own keys.

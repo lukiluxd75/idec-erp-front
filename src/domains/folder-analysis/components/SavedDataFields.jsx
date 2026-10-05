@@ -18,13 +18,7 @@ function labelFor(key) {
   return LABELS[key] || key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-/**
- * Renders the saved JSON of a review as readable Spanish fields, at any depth the
- * extractor produced. Used by "Datos guardados" and by each document inside a
- * carpeta registrada, so both read the same.
- *
- * Expects to be placed inside a <dl> grid (it renders <dt>/<dd> pairs).
- */
+/** Renders the saved JSON of a review as readable Spanish fields, at any depth the extractor produced. */
 export function ReadableValue({ value, depth = 0 }) {
   if (value == null || value === '') return <span className="text-slate-400">Sin dato</span>
   if (typeof value === 'boolean') return <span>{value ? 'Sí' : 'No'}</span>
@@ -43,10 +37,7 @@ export function ReadableValue({ value, depth = 0 }) {
   const fields = entries.map(([key, child]) => (
     <Field key={key} label={labelFor(key)} value={child} depth={depth + 1} />
   ))
-  // Arriba del todo, el <dl> lo pone quien llama (ver el comentario de la
-  // función) y esto solo se encadena a su grilla. Más adentro, en cambio, esto
-  // vive dentro del <dd> de su campo, y ahí un <dt>/<dd> suelto no es HTML
-  // válido: cada nivel abre su propia lista.
+  // Arriba del todo, el <dl> lo pone quien llama (ver el comentario de la función) y esto solo se encadena a su grilla.
   return depth === 0 ? (
     <div className="contents">{fields}</div>
   ) : (

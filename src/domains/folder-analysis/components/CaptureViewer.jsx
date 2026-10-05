@@ -8,34 +8,14 @@ import { cn } from '@/shared/utils'
 const ZOOM_MIN = 1 // "100 %" is the photo fitted to the frame
 const ZOOM_MAX = 8
 const ZOOM_STEP = 1.35
-// Past this the web-sized copy starts to show its pixels, so the original -- a
-// several megabyte upload -- is worth downloading. Not before.
 const HD_FROM = 1.15
 
-/**
- * A photo a crooked phone shot left sideways stays crooked for the rest of the
- * review, so the turn the architect gives it is remembered for as long as the
- * screen is open, on whichever screen shows that photo again.
- */
 const rotations = new Map()
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
-/**
- * The photo with the controls the architects already know from geo-extracción:
- * zoom out / percentage / zoom in, plus turning it upright and dragging it
- * around once it no longer fits in the frame.
- *
- * It opens with the web-sized copy and only downloads the original once the
- * architect zooms in far enough to tell the difference.
- *
- * Give it `key={captureId}`: each photo is its own view, with its own zoom.
- *
- * `folderId` pide la foto por la carpeta en vez de por su dueño, para mirar de
- * solo lectura lo escaneado en una carpeta ajena.
- */
 export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpand, folderId = null }) {
   const stageRef = useRef(null)
   const [zoom, setZoom] = useState(ZOOM_MIN)
@@ -49,9 +29,6 @@ export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpan
 
   const preview = useCaptureUrl(captureId, 'preview', folderId)
   const hd = useCaptureUrl(wantsHd ? captureId : null, 'original', folderId)
-  // A server that does not make the web-sized copy (an older backend) must not
-  // leave the architect without the photo: the original is the fallback, and
-  // both of these share one download.
   const fallback = useCaptureUrl(preview.failed ? captureId : null, 'original', folderId)
   const url = hd.url || preview.url || fallback.url
 
@@ -68,8 +45,7 @@ export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpan
   const turned = rotation % 180 !== 0
   const shownWidth = natural ? (turned ? natural.height : natural.width) : 0
   const shownHeight = natural ? (turned ? natural.width : natural.height) : 0
-  // How much the photo has to shrink to fit the frame; a small photo is left at
-  // its own size instead of being blown up.
+  // How much the photo has to shrink to fit the frame; a small photo is left at its own size instead of being blown up.
   const fit =
     natural && stage.width && stage.height
       ? Math.min(1, stage.width / shownWidth, stage.height / shownHeight)
@@ -86,8 +62,6 @@ export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpan
     [shownWidth, shownHeight, drawn, stage.width, stage.height]
   )
 
-  // Zooming out or turning the photo can leave the stored offset outside the
-  // frame; what is drawn is always the offset brought back inside it.
   const view = contain(offset)
 
   /** Zooms keeping whatever is under `point` (frame coordinates) in place. */
@@ -117,8 +91,7 @@ export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpan
     setOffset({ x: 0, y: 0 })
   }
 
-  // React listens for wheel passively, so the zoom needs its own listener or the
-  // page would scroll behind the photo.
+  // React listens for wheel passively, so the zoom needs its own listener or the page would scroll behind the photo.
   useEffect(() => {
     const element = stageRef.current
     if (!element) return undefined
@@ -222,12 +195,10 @@ export function CaptureViewer({ captureId, alt = 'Foto', className = '', onExpan
             alt={alt}
             draggable={false}
             onLoad={(event) => {
-              // Read here and not inside the updater: React has already let go of
-              // the event by the time the updater runs.
+              // Read here and not inside the updater: React has already let go of the event by the time the updater runs.
               const size = { width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }
               if (!size.width || !size.height) return
-              // The box keeps the size of the copy that opened the viewer, so the
-              // original swapping in only makes it sharper.
+              // The box keeps the size of the copy that opened the viewer, so the original swapping in only makes it sharper.
               setNatural((current) => current || size)
             }}
             className="absolute left-1/2 top-1/2 max-w-none"

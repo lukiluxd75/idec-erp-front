@@ -1,8 +1,3 @@
-/* Printing the export preview: hide everything else on the page and let
-   only the marked subtree render, regardless of the Modal's own portal
-   structure (createPortal puts it directly under <body>, as a sibling of
-   the app root -- visibility-based hiding works across that boundary,
-   display-based hiding tied to a specific wrapper would not). */
 @media print {
   body * {
     visibility: hidden;

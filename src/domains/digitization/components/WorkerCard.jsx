@@ -6,8 +6,6 @@ import { Badge, Button } from '@/shared/ui'
 export function WorkerCard({ worker, onStop, stopping = false }) {
   const state = workerState(worker)
   const { label, variant, icon: Icon, iconClass, detail } = WORKER_STATES[state]
-  // Anything the PC is busy with can be cut short, whoever started it: a document
-  // from the digitization queue or a call another module borrowed the PC for.
   const canStop = Boolean(onStop && worker.used_by)
 
   return (

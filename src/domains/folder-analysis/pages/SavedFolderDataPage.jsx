@@ -44,20 +44,10 @@ const UNFILED = '__unfiled__'
 /** `?carpeta=` en la URL: un id de carpeta, o "sin-archivar". */
 const UNFILED_PARAM = 'sin-archivar'
 
-/**
- * "Datos guardados": todas las revisiones confirmadas del usuario.
- *
- * Un ingeniero que escaneó varias carpetas termina con decenas de revisiones, así
- * que la lista no es plana: arriba va lo recién guardado (lo que acaba de
- * analizar, que es lo que viene a buscar) y debajo el resto agrupado por la
- * carpeta que lo tiene, que es como lo piensa. Desde aquí también se archiva un
- * documento suelto sin pasar por "Carpetas registradas".
- */
+/** "Datos guardados": todas las revisiones confirmadas del usuario. */
 export default function SavedFolderDataPage() {
   const [searchParams] = useSearchParams()
   const [docType, setDocType] = useState('')
-  // "Carpetas registradas" enlaza acá con la carpeta ya elegida; de ahí en más
-  // manda el selector, así que el parámetro solo se lee al entrar.
   const [folderFilter, setFolderFilter] = useState(() => {
     const desde = searchParams.get('carpeta')
     return desde === UNFILED_PARAM ? UNFILED : desde || ''
@@ -66,12 +56,9 @@ export default function SavedFolderDataPage() {
   const [documents, setDocuments] = useState([])
   const [folders, setFolders] = useState([])
   const [loading, setLoading] = useState(true)
-  // Cuándo se trajo la lista: contra esta hora se mide qué es "recién guardado",
-  // para que no dependa del momento en que React vuelva a dibujar.
   const [loadedAt, setLoadedAt] = useState(0)
   const [error, setError] = useState(null)
-  // La revisión que se pidió borrar, junto al nombre con que se la muestra,
-  // para que el diálogo pueda nombrarla.
+  // La revisión que se pidió borrar, junto al nombre con que se la muestra, para que el diálogo pueda nombrarla.
   const [porEliminar, setPorEliminar] = useState(null)
   // El documento suelto que se está archivando: { document, nombre }.
   const [porArchivar, setPorArchivar] = useState(null)
@@ -79,8 +66,6 @@ export default function SavedFolderDataPage() {
   const load = useCallback(() => {
     setLoading(true)
     setError(null)
-    // Las carpetas vienen en la misma carga: sin ellas no se sabe dónde está
-    // archivado cada documento, que es lo que ordena toda la pantalla.
     Promise.all([
       folderAnalysisApi.reviewedDocuments(docType || undefined),
       folderAnalysisApi.folders(),
@@ -112,8 +97,6 @@ export default function SavedFolderDataPage() {
       if (folderFilter === UNFILED && folder) return false
       if (folderFilter && folderFilter !== UNFILED && folder?.id !== folderFilter) return false
       if (!term) return true
-      // El nombre de la carpeta también busca: escribir "Ballivián" trae todo lo
-      // de esa carpeta aunque ningún documento diga la palabra.
       return (
         savedDocumentHaystack(document).includes(term) ||
         normalizeSearch(folder?.name).includes(term)
@@ -121,10 +104,6 @@ export default function SavedFolderDataPage() {
     })
   }, [documents, query, folderFilter, folderByDocument])
 
-  /**
-   * Lo recién guardado se saca del resto y sube al tope; abajo queda agrupado por
-   * carpeta, con los sueltos al final porque son los que aún hay que archivar.
-   */
   const { recientes, grupos } = useMemo(() => {
     const nuevos = []
     const porCarpeta = new Map()
@@ -152,10 +131,6 @@ export default function SavedFolderDataPage() {
     [documents, folderByDocument]
   )
 
-  // Un folio, un impuesto y un plano son el mismo documento con otro doc_type,
-  // así que los tres se borran por el mismo endpoint. El backend se lleva con
-  // él la fila de reviewed_* (ON DELETE CASCADE) y devuelve las fotos a
-  // "Fotos recibidas", donde se las puede volver a clasificar.
   const eliminar = async ({ document, nombre }) => {
     try {
       await folderAnalysisApi.deleteDocument(document.id)
@@ -357,11 +332,7 @@ export default function SavedFolderDataPage() {
   )
 }
 
-/**
- * Una revisión guardada. Siempre dice en qué carpeta está -- aunque se la esté
- * viendo dentro de su grupo, porque buscando se la ve fuera de él -- y si no está
- * en ninguna, ofrece archivarla ahí mismo.
- */
+/** Una revisión guardada. */
 function SavedDocumentCard({ document, folder, highlight, onFilterFolder, onArchive, onDelete }) {
   const type = DOC_TYPES.find((item) => item.id === document.doc_type)
   const data = savedData(document)
@@ -429,11 +400,7 @@ function SavedDocumentCard({ document, folder, highlight, onFilterFolder, onArch
   )
 }
 
-/**
- * Archiva un documento suelto sin ir a "Carpetas registradas": se elige la
- * carpeta y se guarda. Un documento vive en una sola carpeta, así que desde aquí
- * solo se archiva lo que todavía no está en ninguna.
- */
+/** Archiva un documento suelto sin ir a "Carpetas registradas": se elige la carpeta y se guarda. */
 function ArchiveInFolderModal({ nombre, folders, onArchive, onClose }) {
   const [folderId, setFolderId] = useState(folders[0]?.id || '')
   const [saving, setSaving] = useState(false)

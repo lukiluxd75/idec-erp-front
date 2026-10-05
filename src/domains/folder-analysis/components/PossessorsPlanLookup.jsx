@@ -24,11 +24,6 @@ function sideLabel(side) {
   return 'Sin colindante en el GIS'
 }
 
-/**
- * El mapa del predio: el lote que el GIS devolvió para el código, sus vecinos, las
- * calles y, si el plano trae su tabla de coordenadas, el lote como lo dibuja el
- * plano -- para ver de un vistazo dónde no coinciden.
- */
 function ParcelMap({ result }) {
   const hostRef = useRef(null)
 
@@ -109,10 +104,6 @@ function ParcelMap({ result }) {
   return <div ref={hostRef} className="h-[26rem] w-full overflow-hidden rounded-xl border border-slate-200" />
 }
 
-/**
- * El croquis de ubicación tal como lo imprimen los certificados: el predio en gris,
- * el círculo rojo y su número sobre las capas del IDE. Lo arma el servidor.
- */
 function Croquis({ result }) {
   const [state, setState] = useState({ code: null, blob: null, url: null, failed: false })
   const code = result.code
@@ -169,8 +160,6 @@ function Croquis({ result }) {
   )
 }
 
-/** Lo que el IDE sabe del predio fuera de sus lados: uso de suelo, ubicación
- * administrativa y la manzana a la que pertenece. */
 function IdeData({ result }) {
   const { land_use: use, block_info: block } = result
   const restriction = use?.restriction
@@ -207,12 +196,6 @@ const CHECK_STATUS = {
   missing: { icon: HelpCircle, className: 'text-slate-400', text: 'No se leyó' },
 }
 
-/**
- * El recuadro de ubicación del plano (ZONA, DISTRITO, SUB DISTRITO, MANZANA, LOTE)
- * contra lo que dice el GIS del predio al que apunta el código. Un renglón que no
- * coincide es el que hay que mirar antes de cerrar la carpeta: o el código se leyó
- * mal o el plano se dibujó para otro lote.
- */
 function LocationChecks({ result }) {
   const checks = result.plan?.checks
   if (!checks) return null
@@ -330,14 +313,6 @@ function Comparison({ result }) {
   )
 }
 
-/**
- * Poseedores: ubica el plano en el IDE a partir de su código catastral y de ahí
- * saca lo que la hoja le copia al IDE -- colindancias por punto cardinal (los 8,
- * porque no todos los lotes están a escuadra del norte), calles y número de
- * predio. El código lo lee el OCR del plano; si lo leyó mal, se corrige acá y se
- * vuelve a buscar. Nada se guarda solo: "Usar en la hoja" lo pasa a los campos
- * del documento y queda por guardar la revisión.
- */
 export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }) {
   const [text, setText] = useState(code || '')
   const [loading, setLoading] = useState(false)
@@ -365,8 +340,7 @@ export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }
     }
   }
 
-  // El código que el OCR leyó se busca solo, una vez: es lo que pide el trámite
-  // (cargar el plano y ver el mapa). Si no lo leyó, queda el campo para escribirlo.
+  // El código que el OCR leyó se busca solo, una vez: es lo que pide el trámite (cargar el plano y ver el mapa).
   useEffect(() => {
     if (code && searchedFor.current === null) {
       searchedFor.current = code
@@ -377,8 +351,7 @@ export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }
   }, [code])
 
   const apply = () => {
-    // El número de predio no se pasa: arriba va el que dice el plano y la tabla de
-    // abajo lo compara con el IDE. Frente y fondos solo si se pudieron calcular.
+    // El número de predio no se pasa: arriba va el que dice el plano y la tabla de abajo lo compara con el IDE.
     onApply({
       cadastral_code: result.printed_code,
       street: result.street_text || null,

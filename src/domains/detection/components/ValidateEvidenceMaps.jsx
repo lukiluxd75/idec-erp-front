@@ -93,9 +93,7 @@ function applyOverlays(map, storeRef, layersOn, gisHost) {
   })
 }
 
-/**
- * Evidence A | B | Result with zoom and cadastral layers above the orthophoto.
- */
+/** Evidence A | B | Result with zoom and cadastral layers above the orthophoto. */
 export default function ValidateEvidenceMaps({
   row,
   yearA,

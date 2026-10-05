@@ -9,11 +9,7 @@ const PanelPage = lazy(() => import('./pages/PanelPage'))
 const MassForwardingPage = lazy(() => import('./pages/MassForwardingPage'))
 const ProcedureTracePage = lazy(() => import('./pages/ProcedureTracePage'))
 
-/**
- * Real routes for the procedurereports domain (reporte gerencial de
- * trámites -- see backend/app/domains/procedurereports). Registered in
- * `src/domains/index.js`, the single place that knows every domain.
- */
+/** Real routes for the procedurereports domain (reporte gerencial de trámites -- see backend/app/domains/procedurereports). */
 export const procedureReportsRoutes = [
   { path: '/procedurereports/panel', element: <PanelPage />, wide: true },
   { path: '/procedurereports/gerencial', element: <ReportsPage />, wide: true },

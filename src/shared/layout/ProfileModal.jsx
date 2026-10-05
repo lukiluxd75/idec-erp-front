@@ -11,10 +11,7 @@ const initialPasswordValues = {
   confirmPassword: '',
 }
 
-/**
- * Profile modal: authenticated user data + password change
- * (POST /api/change-password-institutional, directorio Zentyal).
- */
+/** Profile modal: authenticated user data + password change (POST /api/change-password-institutional, directorio Zentyal). */
 export function ProfileModal({ open, onClose, user }) {
   const [showForm, setShowForm] = useState(false)
   const [values, setValues] = useState(initialPasswordValues)

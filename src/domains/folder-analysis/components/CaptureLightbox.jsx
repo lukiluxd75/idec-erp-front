@@ -17,8 +17,6 @@ export function CaptureLightbox({ items = [], startAt = 0, onClose, folderId = n
   const index = Math.min(Math.max(current, 0), Math.max(items.length - 1, 0))
   const item = items[index]
 
-  // Its neighbours are downloaded while this one is being looked at, so paging
-  // through the pages of a folio does not wait once per page.
   useEffect(() => {
     items.forEach((it) => prefetchCapture(it.captureId, 'preview', folderId))
   }, [items, folderId])

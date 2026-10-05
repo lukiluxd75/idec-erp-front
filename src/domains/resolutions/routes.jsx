@@ -8,9 +8,7 @@ const ResolutionsListPage = lazy(() => import('./pages/ResolutionsListPage'))
 const NewResolutionPage = lazy(() => import('./pages/NewResolutionPage'))
 const ResolutionPage = lazy(() => import('./pages/ResolutionPage'))
 
-/**
- * Real routes for the resolutions domain. Registered in src/domains/index.js.
- */
+/** Real routes for the resolutions domain. */
 export const resolutionsRoutes = [
   { path: '/resolutions', element: <ResolutionsListPage /> },
   { path: '/resolutions/new', element: <NewResolutionPage />, wide: true },

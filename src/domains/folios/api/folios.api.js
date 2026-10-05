@@ -1,18 +1,13 @@
 import { httpClient } from '@/core/http'
 import { API_ENDPOINTS } from '@/core/config/endpoints.config'
 
-/**
- * ERP folios domain. Folios are uploaded from the mobile app ("Escaneo Folios")
- * and extracted in the backend (OpenCV + GAMC OCR); the web only lists,
- * reviews/corrects and confirms them.
- */
+/** ERP folios domain. */
 export const foliosApi = {
   list: () => httpClient.get(API_ENDPOINTS.FOLIOS.BASE),
 
   get: (id) => httpClient.get(API_ENDPOINTS.FOLIOS.ONE(id)),
 
-  // Requires Bearer -> cannot be a direct <img src>; downloaded as Blob and the
-  // page builds (and revokes) the objectURL.
+  // Requires Bearer -> cannot be a direct <img src>; downloaded as Blob and the page builds (and revokes) the objectURL.
   pageBlob: (id, index, upright = true) =>
     httpClient.get(API_ENDPOINTS.FOLIOS.PAGE(id, index, upright), { responseType: 'blob' }),
 

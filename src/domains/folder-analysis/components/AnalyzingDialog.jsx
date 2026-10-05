@@ -1,4 +1,4 @@
-import { Check, CheckCircle2, Clock, FileSearch, Loader2, ScanText, XCircle } from 'lucide-react'
+import { Check, CheckCircle2, Clock, Eye, FileSearch, Loader2, ScanText, XCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { DOC_TYPE_BY_ID } from '@/domains/folder-analysis/utils/documentMeta'
@@ -15,7 +15,7 @@ import { cn } from '@/shared/utils'
 const RADIUS = 52
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 
-/** Percentage ring. Stroke is drawn as a dash of the circle's own length. */
+/** Percentage ring. */
 function Ring({ percent, tone, spinning }) {
   return (
     <div className="relative mx-auto h-32 w-32">
@@ -77,12 +77,6 @@ function PageTicks({ pages, currentPage }) {
   )
 }
 
-/**
- * Stays open while a document is being analyzed and turns into the result when it
- * ends, so the architect sees the whole run without watching the lane: which
- * stage it is in (waiting its turn or already being read), a bar that keeps
- * moving between the server's updates, and how long it still needs.
- */
 export function AnalyzingDialog({ document, onClose }) {
   const progress = useReadingProgress(document)
   if (!document) return null
@@ -93,7 +87,6 @@ export function AnalyzingDialog({ document, onClose }) {
 
   const failed = phase === 'failed'
   const finished = phase === 'done'
-  // Between pressing "Analizar" and the server's first answer.
   const starting = phase === 'draft'
   const working = progress.live || starting
   const stage = PHASE_META[phase]
@@ -102,7 +95,7 @@ export function AnalyzingDialog({ document, onClose }) {
     <Modal
       open
       onClose={onClose}
-      icon={finished ? CheckCircle2 : failed ? XCircle : ScanText}
+      icon={finished ? CheckCircle2 : failed ? XCircle : phase === 'vision' ? Eye : ScanText}
       title={
         finished ? `Se leyó ${noun}` : failed ? `No se pudo leer ${noun}` : `Leyendo ${noun}`
       }

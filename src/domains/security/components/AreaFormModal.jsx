@@ -4,13 +4,7 @@ import { toast } from 'react-toastify'
 import { Modal, Input, Button } from '@/shared/ui'
 import { securityActions } from '../data/securityStore'
 
-/**
- * Creates a new area or renames an existing one — name is always free text.
- *
- * Parent must mount this with a `key` that changes on each open (see RolesPage) so the
- * form starts with the correct name (empty when creating, current when editing) without
- * an effect that resets state.
- */
+/** Creates a new area or renames an existing one — name is always free text. */
 export function AreaFormModal({ open, onClose, area }) {
   const isEditing = Boolean(area)
   const [areaName, setAreaName] = useState(area?.nombre || '')

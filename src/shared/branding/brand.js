@@ -1,6 +1,4 @@
 // Logo is taken automatically from the ONLY image in `src/assets/branding/`.
-// To change it: remove the current image in that folder and drop the new one
-// (any name: .png/.jpg/.svg/.webp). No need to edit this file.
 const logos = import.meta.glob('@/assets/branding/*.{png,jpg,jpeg,svg,webp}', {
   eager: true,
   import: 'default',

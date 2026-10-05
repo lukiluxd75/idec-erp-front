@@ -26,7 +26,5 @@ export const templatesApi = {
   createCiteConfiguracion: (payload) => httpClient.post(API_ENDPOINTS.TEMPLATES.CITES_CONFIGURACIONES, payload),
 
   // Emits the next correlative CITE for a sigla (area_codigo + tipo_documento_codigo).
-  // A sigla never used before starts its own counter at 01 -- see backend
-  // GenerateCiteUseCase / SqlCiteRepository.generate.
   generateCite: (payload) => httpClient.post(API_ENDPOINTS.TEMPLATES.CITES_GENERAR, payload),
 }

@@ -1,6 +1,7 @@
 import { DoorOpen, Hash, Layers, MapPin, Ruler, Scaling } from 'lucide-react'
 import { useState } from 'react'
 
+import { PageText } from '@/domains/folder-analysis/components/forms/PageText'
 import {
   categorizePlanChunk,
   chunkPlanNote,
@@ -19,8 +20,7 @@ const CATEGORY_META = {
   other: { icon: Hash, classes: 'bg-slate-100 text-slate-700' },
 }
 
-// What each icon means, spelled out once so a first-time viewer does not have
-// to guess it from color alone.
+// What each icon means, spelled out once so a first-time viewer does not have to guess it from color alone.
 const CATEGORY_LABELS = {
   area: 'Superficie',
   scale: 'Escala',
@@ -30,12 +30,7 @@ const CATEGORY_LABELS = {
   other: 'Otro dato',
 }
 
-/**
- * What the server read from the plano page currently shown in PagesViewer, in
- * the architect's own words -- the raw JSON blob is what this replaces.
- */
 export function PlanPageInfo({ value, onChange, pageIndex }) {
-  const [showText, setShowText] = useState(false)
   const [editingField, setEditingField] = useState(null)
   const pages = Array.isArray(value?.pages) ? value.pages : []
   const page = pages[pageIndex]
@@ -44,8 +39,6 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
     return <p className="text-sm text-slate-500">Esta página todavía no tiene datos leídos.</p>
   }
 
-  // Every superficie mentioned on the page, wherever its field put it -- the
-  // number an architect looks for first, pulled to the top as its own tile.
   const areas = (page.fields || [])
     .flatMap((field) => chunkPlanNote(field.value))
     .filter((chunk) => categorizePlanChunk(chunk) === 'area')
@@ -184,22 +177,7 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
           </div>
         ))}
 
-      {page.full_text && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowText((v) => !v)}
-            className="text-xs font-semibold text-accent-700 hover:underline"
-          >
-            {showText ? 'Ocultar' : 'Ver'} todo el texto leído en esta página
-          </button>
-          {showText && (
-            <p className="mt-2 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-              {page.full_text}
-            </p>
-          )}
-        </div>
-      )}
+      <PageText text={page.full_text} />
     </div>
   )
 }

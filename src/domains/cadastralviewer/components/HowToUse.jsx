@@ -1,5 +1,4 @@
 // Instructions block explaining how to use the viewer.
-// UI text stays in Spanish (product language). Comments stay in English.
 
 const STEPS = [
   { icon: '🗺️', title: '1. Abra el mapa',    text: 'Toque cualquier parte de esta pantalla y se abrirá el visor satelital.' },

@@ -25,13 +25,7 @@ const compareNames = (a, b) =>
 
 const sortByName = (names) => [...names].sort(compareNames)
 
-/**
- * Role chips for one row, sorted A–Z. Collapsed it never wraps, so a user with nine
- * roles and one with two get the same row height. "+N" expands that row only.
- *
- * The "+N" sits outside the clipped chip list and never shrinks: when the visible chips
- * don't fit, they truncate instead of pushing the counter out of view.
- */
+/** Role chips for one row, sorted A–Z. */
 function RoleChips({ names }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -86,10 +80,7 @@ function RoleChips({ names }) {
   )
 }
 
-/**
- * Lists users with roles and area. Assignment opens UserAssignmentModal (role + area
- * together). Deactivation is soft (is_active) — row kept for reactivation.
- */
+/** Lists users with roles and area. */
 export default function UsersPage() {
   const { users, roles, areas, loading, error } = useSecurityData()
   const [reloading, setReloading] = useState(false)

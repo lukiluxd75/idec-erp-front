@@ -122,9 +122,7 @@ function SectionBlock({ title, children }) {
   )
 }
 
-/**
- * SISCAT panel + full case file (procedure, legal/technical reports, etc.).
- */
+/** SISCAT panel + full case file (procedure, legal/technical reports, etc.). */
 export default function EntriesPanel({ row }) {
   const [detalle, setDetalle] = useState(null)
   const [loadingId, setLoadingId] = useState(null)

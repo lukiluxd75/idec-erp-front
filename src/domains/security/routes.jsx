@@ -8,10 +8,7 @@ const UsersPage = lazy(() => import('./pages/UsersPage'))
 const RolesPage = lazy(() => import('./pages/RolesPage'))
 const AreasPage = lazy(() => import('./pages/AreasPage'))
 
-/**
- * Security domain routes. Registered in src/domains/index.js.
- * Domain home /security is provided by app DomainHome via NAV_SECTIONS.
- */
+/** Security domain routes. */
 export const securityRoutes = [
   { path: '/security/users', element: <UsersPage /> },
   { path: '/security/roles', element: <RolesPage /> },

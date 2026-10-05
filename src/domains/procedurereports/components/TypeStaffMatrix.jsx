@@ -1,7 +1,6 @@
 import { fmt } from '../api/reports.api'
 
-/** Exact port of the standalone project's TipoPersonaMatrix -- same markup
- * and CSS classes (see ../pages/ReportsPage.css). */
+/** Exact port of the standalone project's TipoPersonaMatrix -- same markup and CSS classes (see ../pages/ReportsPage.css). */
 export function TypeStaffMatrix({ matrix }) {
   if (!matrix.columns.length) return <p className="caption">Sin despachos en el filtro.</p>
   return (

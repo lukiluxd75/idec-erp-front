@@ -12,37 +12,11 @@ import { detectNorth } from '@/shared/colindancias/planNorthDetector'
 import { Button, Card, SectionHeader } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
 
-/** El primer rótulo "PLANTA ..." que el OCR haya leído en la página, tal cual
- * salió -- solo para encabezar la sección con algo más útil que "Página N".
- * Sin ese rótulo (no es un edificio con plantas, o el OCR no lo agarró), se
- * usa el número de página. */
 function tituloDePagina(bloques, indice) {
   const rotulo = bloques.find((b) => /^\s*planta\b/i.test(b.text || ''))
   return rotulo ? rotulo.text.trim().toUpperCase() : `Página ${indice + 1}`
 }
 
-/**
- * Colindancias del plano, dentro de "Analizador y extractor de datos de
- * carpetas" -- extra sobre lo que ya lee el modelo de visión: por cada
- * página del documento (una unidad de "plan" puede tener varias, ver
- * documentMeta.js), lee el OCR, detecta el norte dibujado y sugiere, para
- * cada unidad que encuentra, su vecino en cada dirección. Mismo algoritmo
- * que usa Resoluciones P.H. (shared/colindancias), adaptado a este dominio:
- *
- *   - Acá no hay una tabla de superficies (Hoja2) que traiga los nombres de
- *     antemano -- SIEMPRE se autodetectan del propio plano
- *     (autodetectarUnidades), por eso cada tarjeta pide revisarla con más
- *     cuidado que si vinieran de una lista conocida.
- *   - Las páginas no se agrupan por "planta" (no hay backend que la lea del
- *     título como en resolutions): cada página de la foto es su propia
- *     sección, encabezada con el rótulo "PLANTA ..." que el OCR haya
- *     encontrado en ella, o "Página N" si no hay ninguno.
- *
- * Es una herramienta de repaso, no reemplaza la revisión del documento: lo
- * detectado NO se guarda en el JSON del documento (Guardar revisión no lo
- * toca), solo queda en pantalla y en el PDF que arma "Generar PDF" mientras
- * la pestaña siga abierta.
- */
 export function PlanColindancias({ documentId, pages }) {
   const [detectando, setDetectando] = useState(false)
   const [generandoPdf, setGenerandoPdf] = useState(false)
@@ -54,9 +28,6 @@ export function PlanColindancias({ documentId, pages }) {
   const cargadasRef = useRef(new Set())
   const objectUrlsRef = useRef({})
 
-  // Precarga la foto original de cada página (no la preview web-sized que ya
-  // usa PagesViewer: acá hace falta la resolución completa para el OCR y
-  // para que el zoom de cada tarjeta no se vea pixelado).
   useEffect(() => {
     pages.forEach((p) => {
       if (cargadasRef.current.has(p.capture_id)) return

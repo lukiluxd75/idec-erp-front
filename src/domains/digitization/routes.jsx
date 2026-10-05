@@ -6,8 +6,5 @@ import { lazy } from 'react'
 
 const WorkersPage = lazy(() => import('./pages/WorkersPage'))
 
-/**
- * Routes for the digitization domain ("Digitalización IA"). Registered in
- * src/domains/index.js.
- */
+/** Routes for the digitization domain ("Digitalización IA"). */
 export const digitizationRoutes = [{ path: '/digitization', element: <WorkersPage /> }]

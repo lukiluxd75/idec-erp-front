@@ -2,10 +2,6 @@ import { PHASE_META, formatEta, readingHeadline } from '@/domains/folder-analysi
 import { useReadingProgress } from '@/domains/folder-analysis/utils/useReadingProgress'
 import { cn } from '@/shared/utils'
 
-/**
- * Inline progress for the lane card and the review screen: the stage the document
- * is in, a bar that keeps moving between polls, and what is left to wait.
- */
 export function ReadingProgress({ document, className = '' }) {
   const progress = useReadingProgress(document)
   const { phase, percent, etaSec } = progress

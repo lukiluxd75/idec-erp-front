@@ -5,10 +5,7 @@ import { Card, Button, IconButton, SectionHeader } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 import { geoextractionApi } from '../api/geoextraction.api'
 
-/**
- * Shapefile merge: upload several ZIPs (one per polygon/layer) and return one joined layer.
- * Adaptado de geo-extract/frontend/src/pages/MergeShapefiles.jsx.
- */
+/** Shapefile merge: upload several ZIPs (one per polygon/layer) and return one joined layer. */
 export default function MergePage() {
   const [selectedFiles, setSelectedFiles] = useState([])
   const [loading, setLoading] = useState(false)

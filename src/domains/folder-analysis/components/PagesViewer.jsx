@@ -5,21 +5,12 @@ import { CaptureViewer } from '@/domains/folder-analysis/components/CaptureViewe
 import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { cn } from '@/shared/utils'
 
-/**
- * The document's original photos, one tab per page, to compare against the form.
- * The selected page is controlled by the parent, which also shows what was read
- * from that same page.
- *
- * `folderId` pide las fotos por la carpeta en vez de por su dueño, que es como
- * se mira, de solo lectura, lo escaneado en una carpeta ajena.
- */
+/** The document's original photos, one tab per page, to compare against the form. */
 export function PagesViewer({ pages, current, onChange, folderId = null }) {
   const [expanded, setExpanded] = useState(false)
   const index = Math.min(current, Math.max(pages.length - 1, 0))
   const page = pages[index]
 
-  // The whole document is downloaded as soon as the screen opens: the architect
-  // reads it page by page and no page should make them wait for it again.
   useEffect(() => {
     pages.forEach((p) => prefetchCapture(p.capture_id, 'preview', folderId))
   }, [pages, folderId])

@@ -1,10 +1,3 @@
-/**
- * Helpers over the folio JSON produced by the backend (see
- * backend/app/domains/folios/application/use_cases/process_folio_use_case.py,
- * `_assemble`). Paths are dot/array paths like ['linderos', 'norte'] -- the same
- * keys the backend uses in `confianza` ('linderos.norte'), so a field knows if
- * it was read with low confidence.
- */
 
 /** Statuses where the backend is still extracting (the page keeps polling). */
 export const IN_PROGRESS = new Set(['pending', 'processing'])
@@ -48,11 +41,6 @@ export function emptyAsiento(numero) {
   }
 }
 
-/**
- * People of the highest-numbered asiento listing titulares -- same rule as the
- * backend's current_owners(), recomputed on save so it follows the reviewer's
- * corrections.
- */
 export function currentOwners(asientos = []) {
   const sorted = [...asientos].sort((a, b) => (b.numero ?? -1) - (a.numero ?? -1))
   for (const a of sorted) {
@@ -77,11 +65,9 @@ export function parseNumber(text) {
   return Number.isFinite(n) ? n : null
 }
 
-// Not compared: scores and messages the pipeline recomputes, and the raw OCR
-// text of each asiento (the reviewer never edits it).
 const NOT_COMPARED = new Set(['version', 'confianza', 'campos_baja_confianza', 'observaciones', 'texto'])
 
-/** { 'linderos.norte': 'CON ...', 'titularidad_dominio.asientos.1.personas.0.ci': '123', ... } */
+/** { 'linderos.norte': 'CON ...', 'titularidad_dominio.asientos.1.personas.0.ci': '123', ... */
 function flattenLeaves(value, prefix = '', out = {}) {
   if (value !== null && typeof value === 'object') {
     const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v]) : Object.entries(value)
@@ -110,11 +96,6 @@ export function compareFill(extracted, current) {
   return { campos: keys.length, sin_cambios: keys.length - corregidos.length, corregidos }
 }
 
-/**
- * Everything needed to judge a fill in one file: the backend's fill log (where
- * each value came from) plus the comparison against the data on screen --
- * unsaved edits included, so the reviewer can correct and download right away.
- */
 export function buildFillReport(folio, fillLog, draft) {
   const current = draft ? prepareForSave(draft) : null
   const hasLog = fillLog && Object.keys(fillLog).length > 0

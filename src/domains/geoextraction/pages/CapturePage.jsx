@@ -40,12 +40,7 @@ function downloadBlob(blob, nombreArchivo) {
   document.body.removeChild(link)
 }
 
-/**
- * OCR capture: cartographic digitization from scanned documents. Crops the coordinates
- * area, extracts with OCR, edits the resulting table, and exports to Excel or Shapefile.
- * Adapted from geo-extract/frontend/src/pages/Capture.jsx — same X/Y column detection,
- * cell editing, and Ctrl+U shortcut, on top of ERP design and authentication.
- */
+/** OCR capture: cartographic digitization from scanned documents. */
 export default function CapturePage() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [imageSrc, setImageSrc] = useState(null)
@@ -79,12 +74,6 @@ export default function CapturePage() {
     })
   }
 
-  /**
-   * Infers which column is X (East) and which is Y (North) from the header or, if there are
-   * no text hints, from the typical digit count of each coordinate in Cochabamba (6 for East,
-   * 7 for North). If they came swapped, reorders the rows. Computed once when a new extraction
-   * arrives (not in an effect) — avoids reordering when the user already edited column types.
-   */
   const inferColumns = (rows) => {
     if (rows.length === 0) return { rows, columnTypes: {} }
 
@@ -163,8 +152,6 @@ export default function CapturePage() {
     try {
       setMobileCaptures(await geoextractionApi.listCaptures())
     } catch {
-      // Silent: if listing fails (backend down, network), the rest of the page
-      // keeps working the same as before mobile captures existed.
     }
   }, [])
 
@@ -172,24 +159,12 @@ export default function CapturePage() {
     refreshMobileCaptures()
   }, [refreshMobileCaptures])
 
-  // WS notifies instantly, but only if the browser landed on the same backend
-  // worker that received the change (backend runs multiple workers, each with
-  // its own socket registry — see CapturesConnectionManager). As a fallback,
-  // polling every 10s keeps the list fresh without depending on which worker
-  // each connection hit, instead of staying stale until a manual reload.
   useCapturesUpdates(refreshMobileCaptures, setPhoneConnected)
   useEffect(() => {
     const interval = setInterval(refreshMobileCaptures, 10000)
     return () => clearInterval(interval)
   }, [refreshMobileCaptures])
 
-  // Both actions below remove the capture from the local list *before* calling
-  // the backend (optimistic): otherwise, while the request is in flight, the
-  // 10s poll or a WS notify from another tab can refetch the still-pending
-  // capture and let it be clicked a second time, so the second call 404s /
-  // "no hay ninguna captura pendiente" against an id already consumed by the
-  // first. If the backend call actually fails, refreshMobileCaptures()
-  // resyncs the list from the server instead of leaving it wrongly removed.
   const loadMobileCapture = async (id) => {
     if (results.length > 0 && !confirm('Cambiar imagen perderá los datos actuales de la tabla. ¿Continuar?')) {
       return
@@ -505,8 +480,6 @@ export default function CapturePage() {
     }
   }
 
-  // Results table only appears once "Extraer" is pressed (loading) or data already exists —
-  // before that, the screen only shows image capture.
   const showTable = loading || results.length > 0
 
   return (

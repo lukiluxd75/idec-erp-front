@@ -17,8 +17,6 @@ import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/util
 import { Button, IconButton } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 
-// 'filed' entra: el carril que no se lee queda guardado desde que se suelta,
-// y aun así hay que poder agregarle o sacarle fotos.
 const PAGES_EDITABLE = new Set(['draft', 'failed', 'filed'])
 const HAS_DATA = new Set(['extracted', 'reviewed'])
 
@@ -155,10 +153,6 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                 <span>{formatDateTime(document.created_at)}</span>
               </p>
             </div>
-            {/* Los que ya estaban clasificados como carnets antes de que el carril
-                dejara de leerse conservan su estado viejo en la base. Se muestran
-                por lo que son hoy -- guardados -- en vez de quedar con un "Por
-                revisar" que ya no lleva a ninguna parte. */}
             <DocumentStatusBadge status={read ? document.status : 'filed'} />
           </div>
 
@@ -185,7 +179,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                   icon={FileSearch}
                   variant={document.status === 'extracted' ? 'primary' : 'secondary'}
                 >
-                  {document.status === 'extracted' ? 'Revisar' : 'Ver datos'}
+                  {document.status === 'extracted' ? 'Revisar datos' : 'Ver datos'}
                 </Button>
               </Link>
             )}

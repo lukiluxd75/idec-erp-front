@@ -10,11 +10,6 @@ function getInputClass(confidence, text) {
     : 'bg-state-success/10 border-state-success/30 text-slate-800'
 }
 
-/**
- * Editable table of OCR-extracted coordinates: X/Y column assignment, manual cell editing,
- * and export actions (Excel, individual Shapefile, add to layer).
- * Adapted from the "Edición de Datos" section of geo-extract/frontend/src/pages/Capture.jsx.
- */
 export function CoordinatesTable({
   results,
   columnTypes,

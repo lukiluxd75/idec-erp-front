@@ -1,9 +1,8 @@
 // Central configuration for all WMS endpoints from Cochabamba Cadastre.
-// If the base URL changes, this is the only file to touch.
 
 export const WMS_BASE = 'https://gs.catastrocbba.com/arcgis/services';
 
-// Satellite imagery available per year. Ordered newest → oldest.
+// Satellite imagery available per year.
 export const IMAGERY_BY_YEAR = [
   { year: 2023, url: `${WMS_BASE}/imagenes/imagen_2023_500/MapServer/WMSServer` },
   { year: 2022, url: `${WMS_BASE}/imagenes/imagen2022/MapServer/WMSServer` },
@@ -30,7 +29,7 @@ export const IMAGERY_BY_YEAR = [
 
 export const DEFAULT_YEAR = 2023;
 
-// Transparent WMS overlays. Each key matches the chip identifier in the UI.
+// Transparent WMS overlays.
 export const VECTOR_LAYERS = {
   manzanas: {
     label: 'Manzanas',
@@ -46,7 +45,7 @@ export const VECTOR_LAYERS = {
   }
 };
 
-// Leaflet uses [lat, lng] format. Keep it that way to avoid confusion.
+// Leaflet uses [lat, lng] format.
 export const INITIAL_CENTER = [-17.38950, -66.15680];
 export const INITIAL_ZOOM = 16;
 export const MAX_ZOOM = 22;

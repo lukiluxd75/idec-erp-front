@@ -18,10 +18,6 @@ function fmtDate(value) {
   }
 }
 
-/** Detail of one alignment_block: its control points, RMSE, and the
- * confirm/delete actions -- opened from AlignmentMap's overlay click or the
- * blocks table in AlignmentPage. `onPreviewResult` (optional) shows the
- * warped "after" image on the main map -- see AlignmentPage/correctedOverlay.js. */
 export default function AlignmentBlockDetailModal({ open, blockId, onClose, onChanged, onPreviewResult }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(false)

@@ -97,11 +97,6 @@ export function AppRoutes() {
             />
           ))}
 
-          {/* Suspense porque las paginas de cada dominio se cargan con React.lazy
-              (ver cualquier src/domains/<dominio>/routes.jsx): sin el, la primera
-              navegacion a un dominio reventaria al suspender. El fallback va dentro
-              del ModuleGuard para que un usuario sin permiso se redirija al
-              dashboard sin llegar a descargar el chunk. */}
           {DOMAIN_ROUTES.map((route) => (
             <Route
               key={route.path}

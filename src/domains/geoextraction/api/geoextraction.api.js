@@ -24,10 +24,6 @@ function mergeShapefiles(files) {
   return httpClient.post(API_ENDPOINTS.GEOEXTRACTION.MERGE_SHAPEFILES, formData, { responseType: 'blob' })
 }
 
-/**
- * External OCR service (outside the ERP backend, see VITE_OCR_API_URL) — same
- * behavior as the original project, only relocated into this domain.
- */
 async function uploadOcrImage(file) {
   const formData = new FormData()
   formData.append('file', file)
@@ -58,11 +54,7 @@ async function waitForOcrResult(jobId) {
   throw new ApiError('Tiempo agotado esperando el resultado del OCR.')
 }
 
-/**
- * Captures sent from the mobile app (geoextract mobile: take photo and upload —
- * crop and OCR still happen on this page). Stored in ERP process memory, not DB:
- * the list is ephemeral.
- */
+/** Captures sent from the mobile app (geoextract mobile: take photo and upload — crop and OCR still happen on this page). */
 function listCaptures() {
   return httpClient.get(API_ENDPOINTS.GEOEXTRACTION.CAPTURES)
 }
@@ -75,10 +67,6 @@ function discardCapture(id) {
   return httpClient.delete(API_ENDPOINTS.GEOEXTRACTION.CAPTURE(id))
 }
 
-/**
- * Presence snapshot polled by useCapturesUpdates.js — cross-worker-safe
- * fallback for PhoneConnectedBadge, see CapturesConnectionManager.is_mobile_connected.
- */
 function getPresence() {
   return httpClient.get(API_ENDPOINTS.GEOEXTRACTION.CAPTURES_PRESENCE)
 }

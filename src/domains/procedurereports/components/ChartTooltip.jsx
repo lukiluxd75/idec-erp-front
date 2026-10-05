@@ -2,8 +2,6 @@ import { fmt } from '../api/reports.api'
 
 const PURPLE = '#341a67'
 
-/** Exact port of the standalone project's TooltipBox/PieTip -- same markup
- * and CSS classes (see ../pages/ReportsPage.css), just English field names. */
 export function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   const rows = payload.filter((p) => Number(p.value) > 0)

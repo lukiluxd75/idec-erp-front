@@ -3,10 +3,7 @@ import { API_ENDPOINTS } from '@/core/config/endpoints.config'
 import { ApiError } from '@/core/errors/ApiError'
 import { storageService } from '@/core/storage/storageService'
 
-/**
- * Base HTTP client for Backend and Keycloak services.
- * Encapsulates header setup, auth interceptors, silent session refresh, and standard error handling.
- */
+/** Base HTTP client for Backend and Keycloak services. */
 class HttpClient {
   constructor(baseUrl = ENV.API_BASE_URL) {
     this.baseUrl = baseUrl
@@ -101,7 +98,7 @@ class HttpClient {
       )
     }
 
-    // Binary response (e.g. ZIP/Shapefile download) — do not parse as JSON/text
+    // Return file downloads as blobs.
     if (responseType === 'blob') {
       if (!response.ok) {
         if (response.status === 401 && requiresAuth && !_isRetry) {
@@ -132,9 +129,6 @@ class HttpClient {
 
     // HTTP error handling
     if (!response.ok) {
-      // Missing/expired access token: try a silent refresh with the refresh_token and
-      // retry the same request once (_isRetry avoids loops). Only if refresh also fails
-      // (invalid/expired refresh_token) is the session closed.
       if (response.status === 401 && requiresAuth) {
         if (!_isRetry) {
           return this._retryAfterRefresh(endpoint, options)
@@ -154,10 +148,7 @@ class HttpClient {
     return responseData
   }
 
-  /**
-   * Tries to renew the access_token and retries the original request once.
-   * If refresh fails (invalid/expired refresh_token), closes the session.
-   */
+  /** Tries to renew the access_token and retries the original request once. */
   async _retryAfterRefresh(endpoint, options) {
     try {
       const newToken = await this._refreshAccessToken()

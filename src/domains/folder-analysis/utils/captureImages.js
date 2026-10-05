@@ -2,14 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 
-/**
- * The photos of the module, downloaded once each.
- *
- * They need the Bearer token, so they cannot be a plain <img src> and travel as
- * blobs. A photo never changes once it is uploaded: the blob URL is kept for the
- * session (the board re-renders every few seconds while polling) and the server
- * sends it with a long cache, so a reload does not download it again either.
- */
+/** The photos of the module, downloaded once each. */
 const cache = new Map()
 
 function entryKey(captureId, variant, folderId) {
@@ -31,20 +24,11 @@ function loadUrl(captureId, variant, folderId) {
   return cache.get(key)
 }
 
-/**
- * Starts a download now so the photo is already there when it is shown -- the
- * other pages of the document being reviewed, the photo under the pointer.
- */
 export function prefetchCapture(captureId, variant = 'preview', folderId = null) {
   if (captureId) loadUrl(captureId, variant, folderId).catch(() => {})
 }
 
-/**
- * The blob URL of one copy of a photo, and whether it is still on its way.
- *
- * `folderId` la pide por la carpeta: es el único camino a la foto de una
- * carpeta ajena, y va en la clave de la caché porque es otra petición.
- */
+/** The blob URL of one copy of a photo, and whether it is still on its way. */
 export function useCaptureUrl(captureId, variant = 'preview', folderId = null) {
   const [state, setState] = useState({ key: null, url: null, failed: false })
   const key = entryKey(captureId, variant, folderId)

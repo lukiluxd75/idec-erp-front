@@ -15,12 +15,6 @@ function clearLeafletNode(node) {
   }
 }
 
-/**
- * Read-only map for "Historial": no drawing, no basemap picker, no
- * "Reprocesar" -- just the same green-polygon overlay as DetectionMap
- * (see processedSectorsLayer.js) for browsing past sectors and opening
- * ProcessedSectorDetailModal.
- */
 export default function HistorialMap({
   processedSectors = [],
   onViewSectorDetail,

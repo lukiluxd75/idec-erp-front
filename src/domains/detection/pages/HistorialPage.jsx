@@ -23,12 +23,7 @@ function fmtDate(value) {
   }
 }
 
-/**
- * Read-only history of every processed sector: who ran it, what it found,
- * how each parcel was validated. No "Reprocesar" here on purpose (see
- * DetectionPage, the only place that can start a new run) — this tab is
- * strictly for consulting what already happened.
- */
+/** Read-only history of every processed sector: who ran it, what it found, how each parcel was validated. */
 export default function HistorialPage() {
   const [sectors, setSectors] = useState([])
   const [loading, setLoading] = useState(false)

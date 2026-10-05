@@ -18,9 +18,6 @@ import { buildCorrectedOverlay } from '../utils/correctedOverlay'
 
 const AlignmentMap = lazy(() => import('../components/AlignmentMap'))
 
-// The fixed reference year -- its own predios/manzanas layer is "ground
-// truth", every other year gets corrected against it (see
-// doc/alignment_schema.sql on the backend).
 const REFERENCE_YEAR = 2015
 
 const STATUS_BADGE = {
@@ -37,15 +34,6 @@ function fmtDate(value) {
   }
 }
 
-/**
- * Alineación: manual, block-by-block georeferencing of every year's
- * orthophoto coverage against the fixed 2015 predios/manzanas layer -- see
- * doc/CAMBIOS_DETECCION_CONSTRUCCIONES.md's sibling design discussion. A
- * completely separate module from "Detección de construcciones": its own
- * map component (AlignmentMap, not DetectionMap), own API, own backend
- * schema (alignment_results). Single-architect MVP -- no concurrent-editing
- * handling yet, see the module's own notes.
- */
 export default function AlignmentPage() {
   const [wmsMeta, setWmsMeta] = useState({ layers: [], hosts: [], years: [] })
   const [loadingMeta, setLoadingMeta] = useState(false)

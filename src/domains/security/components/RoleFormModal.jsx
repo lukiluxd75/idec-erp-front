@@ -5,10 +5,7 @@ import { Modal, Input, Button } from '@/shared/ui'
 import { securityActions } from '../data/securityStore'
 import { RolePermissionsCheckboxes } from './RolePermissionsCheckboxes'
 
-/**
- * Creates a new role or edits permissions of an existing one.
- * Name is typed only when creating; when editing, only the permission matrix changes.
- */
+/** Creates a new role or edits permissions of an existing one. */
 export function RoleFormModal({ open, onClose, role }) {
   const isEditing = Boolean(role)
   const [roleName, setRoleName] = useState(role?.nombre || '')
