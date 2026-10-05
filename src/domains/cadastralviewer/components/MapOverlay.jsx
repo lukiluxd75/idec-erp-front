@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FileText, Layers3, LocateFixed, Search, X } from 'lucide-react'
+import shieldUrl from '../../../assets/escudo-gamc.png'
 import { cadastralViewerApi } from '../api/cadastralViewerApi'
 import { useLeafletMap } from '../hooks/useLeafletMap';
 import MapControls from './MapControls';
+import OnScreenKeyboard from './OnScreenKeyboard'
 
 const PANEL_ITEMS = [
   { id: 'search', label: 'Buscar', icon: Search },
@@ -20,12 +22,22 @@ export default function MapOverlay({ visible, layers = [], procedures = [], onCl
   const [mapSearchState, setMapSearchState] = useState({ query: '', kind: 'parcel', results: [], isLoading: false, error: '' })
   const [procedureQuery, setProcedureQuery] = useState('')
   const [selectedProcedure, setSelectedProcedure] = useState(null)
-  const map = useLeafletMap({ targetElement: mapElement, active: visible, layers })
+  const [mapFeatureInfo, setMapFeatureInfo] = useState({ loading: false, feature: null, error: '' })
+  const [keyboardTarget, setKeyboardTarget] = useState('')
+  const mapSearchInputRef = useRef(null)
+  const procedureSearchInputRef = useRef(null)
+  const handleFeatureInfo = useCallback((info) => {
+    setMapFeatureInfo(info)
+    if (info.loading || info.feature || info.error) setActivePanel('search')
+  }, [])
+  const map = useLeafletMap({ targetElement: mapElement, active: visible, layers, onFeatureInfo: handleFeatureInfo })
   const vectorLayers = layers.filter((layer) => layer.layer_type === 'vector' && STOREFRONT_VECTOR_CODES.has(layer.code))
   const currentSearch = mapSearchState.query === query.trim() && mapSearchState.kind === searchKind
   const mapSearchResults = currentSearch ? mapSearchState.results : []
   const isSearching = currentSearch && mapSearchState.isLoading
+  const isSearchPending = activePanel === 'search' && query.trim().length >= 2 && (!currentSearch || isSearching)
   const searchError = currentSearch ? mapSearchState.error : ''
+
   const filteredProcedures = useMemo(() => {
     const term = procedureQuery.trim().toLocaleLowerCase('es')
     if (!term) return procedures
@@ -56,17 +68,49 @@ export default function MapOverlay({ visible, layers = [], procedures = [], onCl
 
   function togglePanel(panel) {
     setSelectedProcedure(null)
+    setKeyboardTarget('')
     setActivePanel((current) => current === panel ? '' : panel)
   }
 
+  function handleKeyboardKey(key) {
+    const input = keyboardTarget === 'map-search' ? mapSearchInputRef.current : procedureSearchInputRef.current
+    if (!input) return
+
+    const setValue = keyboardTarget === 'map-search' ? setQuery : setProcedureQuery
+    const value = input.value
+    const start = input.selectionStart ?? value.length
+    const end = input.selectionEnd ?? value.length
+    let nextValue
+    let cursor
+
+    if (key === 'Clear') {
+      nextValue = ''
+      cursor = 0
+    } else if (key === 'Backspace') {
+      nextValue = start === end
+        ? `${value.slice(0, Math.max(0, start - 1))}${value.slice(end)}`
+        : `${value.slice(0, start)}${value.slice(end)}`
+      cursor = start === end ? Math.max(0, start - 1) : start
+    } else {
+      nextValue = `${value.slice(0, start)}${key}${value.slice(end)}`
+      cursor = start + key.length
+    }
+
+    setValue(nextValue)
+    window.requestAnimationFrame(() => {
+      input.focus()
+      input.setSelectionRange(cursor, cursor)
+    })
+  }
+
   return (
-    <div className={`vc-map-overlay vc-map-fullscreen ${visible ? 'show' : ''}`}
+    <div className={`vc-map-overlay vc-map-fullscreen ${visible ? 'show' : ''} ${keyboardTarget ? 'keyboard-open' : ''}`}
       onPointerDown={onActivity} onPointerMove={onActivity} onKeyDown={onActivity} onWheel={onActivity} onTouchStart={onActivity}>
       <div ref={setMapElement} id="vc-map" />
       <div className={`vc-layer-loader ${map.isLoadingLayer ? 'show' : ''}`}><div className="vc-spin" /><span>Cargando capa…</span></div>
 
       <header className="vc-map-main-header">
-        <div className="vc-map-brand"><span className="vc-brand-mark">G</span><div><b>Visor Catastral</b><small>GAMC · Cochabamba</small></div></div>
+        <div className="vc-map-brand"><img src={shieldUrl} alt="Escudo del Gobierno Autónomo Municipal de Cochabamba" className="vc-brand-mark" /><div><b>Visor Catastral</b><small>GAMC · Cochabamba</small></div></div>
         <div className="vc-map-header-actions">
           <div className="vc-map-year-indicator">{map.year ? `Imagen ${map.year}` : 'Sin imagen satelital configurada'}</div>
           <button type="button" className="vc-map-close" onClick={onClose} aria-label="Cerrar mapa" title="Cerrar mapa"><X size={19} /></button>
@@ -84,7 +128,7 @@ export default function MapOverlay({ visible, layers = [], procedures = [], onCl
 
       {activePanel && <section className="vc-map-panel" aria-label={`Panel ${PANEL_ITEMS.find((item) => item.id === activePanel)?.label || ''}`}>
         <header className="vc-map-panel-head"><div><span>VISOR CATASTRAL</span><h2>{activePanel === 'search' ? 'Buscar predio o calle' : activePanel === 'procedures' ? 'Trámites municipales' : activePanel === 'layers' ? 'Capas del mapa' : 'Imágenes por año'}</h2></div>
-          <button type="button" onClick={() => setActivePanel('')} aria-label="Cerrar panel"><X size={18} /></button></header>
+          <button type="button" onClick={() => { setKeyboardTarget(''); setActivePanel('') }} aria-label="Cerrar panel"><X size={18} /></button></header>
 
         <div className="vc-map-panel-body">
           {activePanel === 'search' && <>
@@ -92,17 +136,25 @@ export default function MapOverlay({ visible, layers = [], procedures = [], onCl
               <button type="button" aria-pressed={searchKind === 'parcel'} className={searchKind === 'parcel' ? 'selected' : ''} onClick={() => { setSearchKind('parcel'); setQuery('') }}>Predio</button>
               <button type="button" aria-pressed={searchKind === 'street'} className={searchKind === 'street' ? 'selected' : ''} onClick={() => { setSearchKind('street'); setQuery('') }}>Calle</button>
             </div>
-            <label className="vc-map-search"><Search size={17} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchKind === 'parcel' ? 'Código catastral…' : 'Nombre de calle…'} /><button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">×</button></label>
+            <label className="vc-map-search"><Search size={17} /><input ref={mapSearchInputRef} autoFocus inputMode="none" value={query} onFocus={() => setKeyboardTarget('map-search')} onChange={(event) => setQuery(searchKind === 'parcel' ? event.target.value.replace(/\D/g, '') : event.target.value)} placeholder={searchKind === 'parcel' ? 'Código catastral…' : 'Nombre de calle…'} /><button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda">×</button></label>
+            {mapFeatureInfo.loading && <p className="vc-search-message" role="status">Consultando datos del predio…</p>}
+            {mapFeatureInfo.error && <p className="vc-search-error" role="alert">{mapFeatureInfo.error}</p>}
+            {mapFeatureInfo.feature && <div className="vc-map-feature-details">
+              <div className="vc-map-feature-head"><b>Datos del predio</b><button type="button" onClick={() => setMapFeatureInfo({ loading: false, feature: null, error: '' })} aria-label="Cerrar datos del predio">×</button></div>
+              <dl>{Object.entries(mapFeatureInfo.feature.properties || mapFeatureInfo.feature.attributes || {})
+                .filter(([, value]) => value !== null && value !== undefined && typeof value !== 'object')
+                .map(([key, value]) => <div key={key}><dt>{key.replace(/_/g, ' ')}</dt><dd>{String(value)}</dd></div>)}</dl>
+            </div>}
             {query.trim().length === 1 && <p className="vc-search-message">Escribe al menos 2 caracteres para buscar.</p>}
-            {isSearching && <p className="vc-search-message" role="status">Buscando en Catastro Municipal…</p>}
+            {isSearchPending && <p className="vc-search-message" role="status">Buscando en Catastro Municipal…</p>}
             {searchError && <p className="vc-search-error" role="alert">{searchError}</p>}
-            {!isSearching && !searchError && query.trim().length >= 2 && mapSearchResults.length === 0 && <p className="vc-panel-empty">No se encontraron {searchKind === 'parcel' ? 'predios' : 'calles'}.</p>}
-            {mapSearchResults.map((result) => <button key={`${result.kind}-${result.id}`} className="vc-catalog-result" type="button" onClick={() => map.focusGeometry(result.geometry)}><span className="vc-result-icon">{result.kind === 'parcel' ? '🏠' : '🛣️'}</span><span><b>{result.title}</b><small>{result.subtitle}</small></span><span className="vc-result-arrow">›</span></button>)}
+            {currentSearch && !isSearching && !searchError && query.trim().length >= 2 && mapSearchResults.length === 0 && <p className="vc-panel-empty">No se encontraron {searchKind === 'parcel' ? 'predios' : 'calles'}.</p>}
+            {mapSearchResults.map((result) => <button key={`${result.kind}-${result.id}`} className="vc-catalog-result" type="button" onClick={() => { setKeyboardTarget(''); map.focusGeometry(result.geometry) }}><span className="vc-result-icon">{result.kind === 'parcel' ? '🏠' : '🛣️'}</span><span><b>{result.title}</b><small>{result.subtitle}</small></span><span className="vc-result-arrow">›</span></button>)}
           </>}
 
-          {activePanel === 'procedures' && (selectedProcedure ? <div className="vc-procedure-detail"><button type="button" className="vc-back-link" onClick={() => setSelectedProcedure(null)}>← Todos los trámites</button><span className="vc-procedure-icon">{selectedProcedure.icon || '📋'}</span><h3>{selectedProcedure.name}</h3><p>{selectedProcedure.description || 'Consulta los requisitos en la oficina municipal correspondiente.'}</p><dl><div><dt>Plazo estimado</dt><dd>{selectedProcedure.estimated_days || 'No especificado'}</dd></div><div><dt>Ubicación</dt><dd>{selectedProcedure.location || 'No especificada'}</dd></div></dl>{selectedProcedure.requirements?.length > 0 && <><h4>Requisitos</h4><ul>{selectedProcedure.requirements.map((requirement, index) => <li key={`${requirement}-${index}`}>{requirement}</li>)}</ul></>}</div> : <>
-            <label className="vc-map-search"><Search size={17} /><input value={procedureQuery} onChange={(event) => setProcedureQuery(event.target.value)} placeholder="Buscar trámite…" /><button type="button" onClick={() => setProcedureQuery('')} aria-label="Limpiar búsqueda">×</button></label>
-            {filteredProcedures.length ? filteredProcedures.map((procedure) => <button key={procedure.id} className="vc-catalog-result" type="button" onClick={() => setSelectedProcedure(procedure)}><span className="vc-result-icon">{procedure.icon || '📋'}</span><span><b>{procedure.name}</b><small>{procedure.estimated_days || 'Plazo no indicado'} · {procedure.location || procedure.category}</small></span><span className="vc-result-arrow">›</span></button>) : <p className="vc-panel-empty">{procedureQuery ? 'No se encontraron trámites.' : 'No hay trámites publicados.'}</p>}
+          {activePanel === 'procedures' && (selectedProcedure ? <div className="vc-procedure-detail"><button type="button" className="vc-back-link" onClick={() => { setKeyboardTarget(''); setSelectedProcedure(null) }}>← Todos los trámites</button><span className="vc-procedure-icon">{selectedProcedure.icon || '📋'}</span><h3>{selectedProcedure.name}</h3><p>{selectedProcedure.description || 'Consulta los requisitos en la oficina municipal correspondiente.'}</p><dl><div><dt>Plazo estimado</dt><dd>{selectedProcedure.estimated_days || 'No especificado'}</dd></div><div><dt>Ubicación</dt><dd>{selectedProcedure.location || 'No especificada'}</dd></div></dl>{selectedProcedure.requirements?.length > 0 && <><h4>Requisitos</h4><ul>{selectedProcedure.requirements.map((requirement, index) => <li key={`${requirement}-${index}`}>{requirement}</li>)}</ul></>}</div> : <>
+            <label className="vc-map-search"><Search size={17} /><input ref={procedureSearchInputRef} inputMode="none" value={procedureQuery} onFocus={() => setKeyboardTarget('procedure-search')} onChange={(event) => setProcedureQuery(event.target.value)} placeholder="Buscar trámite…" /><button type="button" onClick={() => setProcedureQuery('')} aria-label="Limpiar búsqueda">×</button></label>
+            {filteredProcedures.length ? filteredProcedures.map((procedure) => <button key={procedure.id} className="vc-catalog-result" type="button" onClick={() => { setKeyboardTarget(''); setSelectedProcedure(procedure) }}><span className="vc-result-icon">{procedure.icon || '📋'}</span><span><b>{procedure.name}</b><small>{procedure.estimated_days || 'Plazo no indicado'} · {procedure.location || procedure.category}</small></span><span className="vc-result-arrow">›</span></button>) : <p className="vc-panel-empty">{procedureQuery ? 'No se encontraron trámites.' : 'No hay trámites publicados.'}</p>}
           </>)}
 
           {activePanel === 'layers' && <div className="vc-map-layer-list">{vectorLayers.length ? vectorLayers.map((layer) => <button key={layer.id} type="button" className={`vc-map-layer-option ${map.activeOverlays[layer.code] ? 'selected' : ''}`} onClick={() => map.toggleOverlay(layer.code)}><span className="vc-layer-check">{map.activeOverlays[layer.code] ? '✓' : ''}</span><span><b>{layer.name}</b><small>{layer.source || 'Catastro Municipal'}</small></span></button>) : <p className="vc-panel-empty">No hay capas de manzanas, vías o predios configuradas.</p>}</div>}
@@ -114,6 +166,11 @@ export default function MapOverlay({ visible, layers = [], procedures = [], onCl
 
       <MapControls onZoomIn={map.zoomIn} onZoomOut={map.zoomOut} onRecenter={map.recenter} />
       <div className="vc-coords">{map.coords.lat.toFixed(5)}, {map.coords.lng.toFixed(5)} · <b>z{map.coords.zoom}</b></div>
+      {keyboardTarget && <OnScreenKeyboard
+        onKey={handleKeyboardKey}
+        onClose={() => setKeyboardTarget('')}
+        numericOnly={keyboardTarget === 'map-search' && searchKind === 'parcel'}
+      />}
     </div>
   )
 }

@@ -74,7 +74,6 @@ export default function KioskPage() {
           {activeAdvertisement ? (
             <section className="vc-storefront-video" aria-label="Video institucional">
               <AdvertisementPlayer
-                key={activeAdvertisement.id}
                 advertisement={activeAdvertisement}
                 className="vc-storefront-video-player"
                 autoPlay

@@ -18,12 +18,13 @@ function createWmsLayer(record, transparent) {
   })
 }
 
-export function useLeafletMap({ targetElement, active, layers }) {
+export function useLeafletMap({ targetElement, active, layers, onFeatureInfo }) {
   const mapRef = useRef(null)
   const imageryLayerRef = useRef(null)
   const overlayLayersRef = useRef({})
   const markerRef = useRef(null)
   const searchFeatureRef = useRef(null)
+  const onFeatureInfoRef = useRef(onFeatureInfo)
   const [initialized, setInitialized] = useState(false)
   const [year, setYear] = useState(null)
   const [isLoadingLayer, setIsLoadingLayer] = useState(false)
@@ -33,6 +34,8 @@ export function useLeafletMap({ targetElement, active, layers }) {
   const vectorLayers = useMemo(() => layers.filter((layer) => layer.layer_type === 'vector'), [layers])
   const years = useMemo(() => [...new Set(imageryLayers.map((layer) => layer.year))].sort((a, b) => b - a), [imageryLayers])
   const selectedYear = years.includes(year) ? year : years[0] ?? null
+
+  useEffect(() => { onFeatureInfoRef.current = onFeatureInfo }, [onFeatureInfo])
 
   useEffect(() => {
     if (!active || mapRef.current || !targetElement) return undefined
@@ -103,6 +106,69 @@ export function useLeafletMap({ targetElement, active, layers }) {
       overlayLayersRef.current[record.code] = layer
     })
   }, [active, initialized, vectorLayers, activeOverlays])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!active || !initialized || !map) return undefined
+
+    let controller
+    const handleMapClick = async (event) => {
+      const parcelLayer = vectorLayers.find((layer) => layer.code === 'predios' && activeOverlays[layer.code])
+      if (!parcelLayer) return
+
+      controller?.abort()
+      controller = new AbortController()
+      onFeatureInfoRef.current?.({ loading: true, feature: null, error: '' })
+
+      const size = map.getSize()
+      const point = map.latLngToContainerPoint(event.latlng)
+      const bounds = map.getBounds()
+      const southwest = map.options.crs.project(bounds.getSouthWest())
+      const northeast = map.options.crs.project(bounds.getNorthEast())
+      const params = new URLSearchParams({
+        SERVICE: 'WMS',
+        VERSION: '1.1.1',
+        REQUEST: 'GetFeatureInfo',
+        SRS: 'EPSG:3857',
+        BBOX: `${southwest.x},${southwest.y},${northeast.x},${northeast.y}`,
+        WIDTH: String(size.x),
+        HEIGHT: String(size.y),
+        LAYERS: parcelLayer.service_layer || '0',
+        QUERY_LAYERS: parcelLayer.service_layer || '0',
+        STYLES: '',
+        FORMAT: 'image/png',
+        INFO_FORMAT: 'application/geojson',
+        FEATURE_COUNT: '5',
+        X: String(Math.round(point.x)),
+        Y: String(Math.round(point.y)),
+      })
+
+      try {
+        const response = await fetch(`${parcelLayer.service_url}?${params}`, { signal: controller.signal })
+        if (!response.ok) throw new Error(`El servicio catastral respondió ${response.status}.`)
+        const result = await response.json()
+        const feature = result.features?.[0] || null
+        onFeatureInfoRef.current?.({
+          loading: false,
+          feature,
+          error: feature ? '' : 'No se encontró información para el predio seleccionado.',
+        })
+      } catch (error) {
+        if (error.name === 'AbortError') return
+        onFeatureInfoRef.current?.({
+          loading: false,
+          feature: null,
+          error: error?.message || 'No se pudo consultar la información del predio.',
+        })
+      }
+    }
+
+    map.on('click', handleMapClick)
+    return () => {
+      map.off('click', handleMapClick)
+      controller?.abort()
+    }
+  }, [active, activeOverlays, initialized, vectorLayers])
 
   useEffect(() => {
     if (!initialized || !active || !mapRef.current) return undefined

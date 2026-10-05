@@ -10,7 +10,6 @@ import {
   Plus,
   Search,
   Trash2,
-  Upload,
   Video,
 } from 'lucide-react'
 import { cadastralViewerApi } from '../api/cadastralViewerApi'
@@ -31,7 +30,7 @@ const EMPTY_LAYER = {
   service_layer: '0', year: '', source: '', is_active: true, display_order: 0,
 }
 const EMPTY_ADVERTISEMENT = {
-  title: '', source_url: '', is_active: false, display_order: 0,
+  title: '', is_active: false, display_order: 0,
 }
 
 const SECTION_META = {
@@ -56,7 +55,6 @@ export default function CadastralViewerAdminPage() {
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_PROCEDURE)
-  const [mediaMode, setMediaMode] = useState('upload')
   const [selectedFile, setSelectedFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -101,7 +99,6 @@ export default function CadastralViewerAdminPage() {
     setEditing(null)
     setForm(section === 'procedures' ? EMPTY_PROCEDURE : section === 'layers' ? EMPTY_LAYER : EMPTY_ADVERTISEMENT)
     setSelectedFile(null)
-    setMediaMode('upload')
     setError('')
     setNotice('')
   }
@@ -114,8 +111,7 @@ export default function CadastralViewerAdminPage() {
     } else if (section === 'layers') {
       setForm({ ...item, year: item.year ?? '' })
     } else {
-      setForm({ title: item.title, source_url: item.source_url || '', is_active: item.is_active, display_order: item.display_order })
-      setMediaMode(item.source_type === 'url' ? 'url' : 'upload')
+      setForm({ title: item.title, is_active: item.is_active, display_order: item.display_order })
     }
     setSelectedFile(null)
     setError('')
@@ -148,15 +144,6 @@ export default function CadastralViewerAdminPage() {
       } else if (section === 'layers') {
         const payload = { ...form, year: form.year === '' ? null : Number(form.year), display_order: Number(form.display_order || 0) }
         await cadastralViewerApi.saveLayer(payload, editing?.id)
-      } else if (mediaMode === 'url') {
-        const payload = {
-          title: form.title,
-          source_url: form.source_url,
-          is_active: Boolean(form.is_active),
-          display_order: Number(form.display_order || 0),
-        }
-        if (editing) await cadastralViewerApi.updateAdvertisement(editing.id, payload)
-        else await cadastralViewerApi.saveAdvertisementLink(payload)
       } else if (selectedFile) {
         const payload = new FormData()
         payload.append('file', selectedFile)
@@ -170,8 +157,8 @@ export default function CadastralViewerAdminPage() {
           is_active: Boolean(form.is_active),
           display_order: Number(form.display_order || 0),
         })
-      } else {
-        throw new Error('Selecciona un archivo de video o cambia a la opción de enlace.')
+      } else if (!editing) {
+        throw new Error('Selecciona un archivo de video.')
       }
       setNotice(`${SECTION_META[section].title} guardado.`)
       closeForm()
@@ -283,8 +270,7 @@ export default function CadastralViewerAdminPage() {
           <div className="divide-y divide-slate-100">
             {filteredItems.map((item) => <article key={item.id} className="flex flex-wrap items-center gap-4 px-4 py-4 sm:px-5">
               <AdvertisementPlayer advertisement={item} className="h-16 w-28 rounded bg-slate-900 object-cover" />
-              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold text-slate-900">{item.title}</h2><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{item.is_active ? 'Activo' : 'Inactivo'}</span></div><p className="mt-1 text-sm text-slate-500">{item.source_type === 'url' ? 'Enlace externo' : item.original_file_name} · {formatBytes(item.file_size)}</p></div>
-              {item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer" aria-label="Abrir enlace" className="rounded p-2 text-slate-500 hover:bg-slate-100"><ExternalLink size={16} /></a>}
+              <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-semibold text-slate-900">{item.title}</h2><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${item.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{item.is_active ? 'Activo' : 'Inactivo'}</span></div><p className="mt-1 text-sm text-slate-500">{item.source_type === 'url' ? 'Enlace externo (legado)' : item.original_file_name} · {formatBytes(item.file_size)}</p></div>
               <button type="button" disabled={busy} onClick={() => toggleAdvertisement(item)} className={`min-h-9 rounded-md px-3 text-xs font-semibold ${item.is_active ? 'border border-slate-300 text-slate-700' : 'bg-emerald-700 text-white'}`}>{item.is_active ? 'Desactivar' : 'Activar'}</button>
               <div className="flex gap-1"><ActionButton label="Editar video" onClick={() => beginEdit(item)}><Pencil size={16} /></ActionButton><ActionButton label="Eliminar video" onClick={() => deleteItem(item)}><Trash2 size={16} /></ActionButton></div>
             </article>)}
@@ -324,10 +310,8 @@ export default function CadastralViewerAdminPage() {
             </>}
             {section === 'advertisements' && <>
               <FormField label="Título" wide required><input required name="title" value={form.title} onChange={updateField} className={inputClass} /></FormField>
-              {!editing && <FormField label="Origen" wide><div className="flex gap-2"><button type="button" onClick={() => setMediaMode('upload')} className={`min-h-10 flex-1 rounded-md border text-sm font-semibold ${mediaMode === 'upload' ? 'border-cyan-700 bg-cyan-50 text-cyan-800' : 'border-slate-300 text-slate-600'}`}><Upload size={15} className="mr-2 inline" />Subir video</button><button type="button" onClick={() => setMediaMode('url')} className={`min-h-10 flex-1 rounded-md border text-sm font-semibold ${mediaMode === 'url' ? 'border-cyan-700 bg-cyan-50 text-cyan-800' : 'border-slate-300 text-slate-600'}`}><ExternalLink size={15} className="mr-2 inline" />Usar enlace</button></div></FormField>}
-              {(mediaMode === 'url' || editing?.source_type === 'url') && <FormField label="URL del video" wide required><input required type="url" name="source_url" value={form.source_url || ''} onChange={updateField} placeholder="URL directa, YouTube o Vimeo" className={inputClass} /></FormField>}
-              {!editing && mediaMode === 'upload' && <FormField label="Archivo de video" wide required><input required type="file" accept="video/mp4,video/webm,video/quicktime,video/ogg,.m4v" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} className={inputClass} /><small className="mt-1 block text-xs text-slate-500">Tamaño máximo: 250 MB.</small></FormField>}
-              {editing && <p className="sm:col-span-2 text-sm text-slate-500">{editing.source_type === 'upload' ? editing.original_file_name : 'Video externo'}. Para cambiar el archivo, elimina este registro y crea uno nuevo.</p>}
+              {!editing && <FormField label="Archivo de video" wide required><input required type="file" accept="video/mp4,video/webm,video/quicktime,video/ogg,.m4v" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} className={inputClass} /><small className="mt-1 block text-xs text-slate-500">Tamaño máximo: 250 MB.</small></FormField>}
+              {editing && <p className="sm:col-span-2 text-sm text-slate-500">{editing.source_type === 'upload' ? editing.original_file_name : 'Video externo legado'}. Para cambiar el archivo, elimina este registro y crea uno nuevo subiendo un archivo.</p>}
               <FormField label="Orden"><input name="display_order" type="number" value={form.display_order} onChange={updateField} className={inputClass} /></FormField>
               <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-slate-700"><input type="checkbox" name="is_active" checked={Boolean(form.is_active)} onChange={updateField} /> Mostrar en StoreFront</label>
             </>}

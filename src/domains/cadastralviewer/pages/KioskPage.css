@@ -1104,16 +1104,11 @@ html[data-theme="dark"] .vc-icon-btn span + span {
 }
 
 .vc-brand-mark {
-  display: grid;
+  display: block;
   width: 38px;
   height: 38px;
   flex: 0 0 38px;
-  place-items: center;
-  border-radius: 8px;
-  color: #fff;
-  background: #187fae;
-  font-size: 17px;
-  font-weight: 800;
+  object-fit: contain;
 }
 
 .vc-map-brand b,
@@ -1216,6 +1211,55 @@ html[data-theme="dark"] .vc-icon-btn span + span {
 
 .vc-map-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; font-size: 13px; }
 .vc-map-search button { border: 0; color: var(--text-dim); background: transparent; cursor: pointer; font-size: 19px; }
+.vc-map-feature-details { margin-top: 12px; padding: 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); }
+.vc-map-feature-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--text); font-size: 13px; }
+.vc-map-feature-head button { width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 5px; color: var(--text-dim); background: var(--surface); cursor: pointer; font-size: 19px; }
+.vc-map-feature-details dl { display: grid; gap: 7px; margin: 10px 0 0; }
+.vc-map-feature-details dl div { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.vc-map-feature-details dt { color: var(--text-mute); font-size: 10px; text-transform: capitalize; }
+.vc-map-feature-details dd { overflow-wrap: anywhere; margin: 0; color: var(--text); font-size: 11px; font-weight: 600; }
+.vc-onscreen-keyboard {
+  position: absolute;
+  z-index: 700;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  width: min(680px, calc(100% - 24px));
+  margin-inline: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface) 98%, transparent);
+  box-shadow: 0 8px 28px rgba(18, 50, 74, 0.3);
+}
+
+.vc-onscreen-keyboard-rows { display: grid; gap: 6px; }
+.vc-onscreen-keyboard-row { display: flex; justify-content: center; gap: 5px; }
+.vc-onscreen-keyboard button {
+  min-width: 0;
+  min-height: 43px;
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: 0 2px 0 color-mix(in srgb, var(--border) 80%, transparent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.vc-onscreen-keyboard button:active { transform: translateY(1px); box-shadow: none; }
+.vc-onscreen-keyboard .vc-keyboard-action { flex: 1.4; color: var(--primary-dark); }
+.vc-onscreen-keyboard-bottom button { min-height: 40px; font-size: 13px; }
+.vc-onscreen-keyboard-bottom .vc-keyboard-space { flex: 3; }
+.vc-onscreen-keyboard-bottom .vc-keyboard-done { color: #fff; background: var(--primary-dark); }
+.vc-onscreen-keyboard.numeric { width: min(340px, calc(100% - 24px)); }
+.vc-onscreen-keyboard.numeric .vc-onscreen-keyboard-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vc-onscreen-keyboard.numeric .vc-onscreen-keyboard-bottom { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.vc-map-overlay.keyboard-open .vc-map-panel { bottom: 292px; }
 .vc-data-note { margin: 10px 2px 7px; padding: 9px 10px; border-left: 3px solid #dda53d; color: var(--text-dim); background: #fff8e9; font-size: 11px; line-height: 1.45; }
 .vc-search-segment { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin-bottom: 9px; padding: 4px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); }
 .vc-search-segment button { min-height: 34px; border: 0; border-radius: 5px; color: var(--text-dim); background: transparent; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
@@ -1290,6 +1334,12 @@ html[data-theme="dark"] .vc-icon-btn span + span {
   .vc-map-side-actions button { width: 46px; height: 46px; border-radius: 7px; }
   .vc-map-side-actions button small { font-size: 8px; }
   .vc-map-panel { top: auto; right: 8px; bottom: 132px; left: 8px; width: auto; max-height: min(58dvh, 490px); }
+  .vc-onscreen-keyboard { right: 6px; bottom: 8px; left: 6px; width: auto; padding: 7px; }
+  .vc-onscreen-keyboard-rows { gap: 5px; }
+  .vc-onscreen-keyboard-row { gap: 4px; }
+  .vc-onscreen-keyboard button { min-height: 39px; border-radius: 5px; font-size: 15px; }
+  .vc-onscreen-keyboard-bottom button { min-height: 36px; font-size: 12px; }
+  .vc-map-overlay.keyboard-open .vc-map-panel { bottom: 260px; max-height: calc(100dvh - 390px); }
   .vc-map-panel-head { min-height: 58px; }
   .vc-storefront .vc-map-tools { right: 10px; bottom: 16px; }
   .vc-storefront .vc-map-tools button { width: 38px; height: 38px; }

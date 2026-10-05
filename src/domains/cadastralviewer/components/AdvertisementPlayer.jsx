@@ -8,8 +8,15 @@ function getEmbedInfo(source) {
   try {
     const url = new URL(source)
     const host = url.hostname.replace(/^www\./, '')
-    if (host === 'youtu.be' || host.endsWith('youtube.com') || host === 'youtube-nocookie.com') {
-      const videoId = host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v') || url.pathname.match(/\/embed\/([^/]+)/)?.[1]
+    const isYouTubeHost = host === 'youtu.be'
+      || host === 'youtube.com'
+      || host.endsWith('.youtube.com')
+      || host === 'youtube-nocookie.com'
+      || host.endsWith('.youtube-nocookie.com')
+    if (isYouTubeHost) {
+      const videoId = host === 'youtu.be'
+        ? url.pathname.match(/^\/([^/]+)/)?.[1]
+        : url.searchParams.get('v') || url.pathname.match(/\/(?:embed|shorts|live|v)\/([^/]+)/)?.[1]
       return videoId ? { provider: 'youtube', videoId } : null
     }
     if (host === 'vimeo.com' || host === 'player.vimeo.com') {
@@ -169,30 +176,36 @@ function YouTubePlayer({ videoId, title, className, autoPlay, loop, onEnded }) {
   const containerRef = useRef(null)
   const playerRef = useRef(null)
   const onEndedRef = useRef(onEnded)
+  const videoIdRef = useRef(videoId)
+  const loadedVideoIdRef = useRef(videoId)
+  const playerReadyRef = useRef(false)
+  const startTimeoutRef = useRef(null)
+  const advanceRef = useRef(null)
   const finishedRef = useRef(false)
   const [apiFailed, setApiFailed] = useState(false)
 
   useEffect(() => { onEndedRef.current = onEnded }, [onEnded])
+  useEffect(() => { videoIdRef.current = videoId }, [videoId])
 
   useEffect(() => {
     let cancelled = false
     let playbackPoll
-    let startTimeout
     finishedRef.current = false
     const advance = () => {
       if (finishedRef.current) return
       finishedRef.current = true
       window.clearInterval(playbackPoll)
-      window.clearTimeout(startTimeout)
+      window.clearTimeout(startTimeoutRef.current)
       onEndedRef.current?.()
     }
+    advanceRef.current = advance
 
     loadYouTubeApi().then((youtube) => {
       if (cancelled || !containerRef.current) return
       playerRef.current = new youtube.Player(containerRef.current, {
         width: '100%',
         height: '100%',
-        videoId,
+        videoId: loadedVideoIdRef.current,
         playerVars: {
           autoplay: Number(autoPlay),
           controls: 0,
@@ -200,26 +213,38 @@ function YouTubePlayer({ videoId, title, className, autoPlay, loop, onEnded }) {
           enablejsapi: 1,
           fs: 0,
           loop: Number(loop),
-          mute: Number(autoPlay),
           origin: window.location.origin,
           playsinline: 1,
-          playlist: loop ? videoId : undefined,
+          playlist: loop ? loadedVideoIdRef.current : undefined,
           rel: 0,
         },
         events: {
           onReady: () => {
-            startTimeout = window.setTimeout(() => {
-              if (playerRef.current?.getPlayerState() !== youtube.PlayerState.PLAYING && !loop) advance()
-            }, 30000)
+            playerReadyRef.current = true
+            if (autoPlay) {
+              playerRef.current?.mute()
+              if (videoIdRef.current !== loadedVideoIdRef.current) {
+                loadedVideoIdRef.current = videoIdRef.current
+                playerRef.current?.loadVideoById(videoIdRef.current)
+              } else {
+                playerRef.current?.playVideo()
+              }
+            }
+            if (!loop) {
+              startTimeoutRef.current = window.setTimeout(() => {
+                if (playerRef.current?.getPlayerState() !== youtube.PlayerState.PLAYING) advance()
+              }, 30000)
+            }
             playbackPoll = window.setInterval(() => {
               const player = playerRef.current
               if (!player) return
+              if (player.getVideoData()?.video_id !== videoIdRef.current) return
               const duration = player.getDuration()
               if (player.getPlayerState() === youtube.PlayerState.ENDED || (duration > 0 && player.getCurrentTime() >= duration - 0.75)) advance()
             }, 1000)
           },
           onStateChange: (event) => {
-            if (event.data === youtube.PlayerState.PLAYING) window.clearTimeout(startTimeout)
+            if (event.data === youtube.PlayerState.PLAYING) window.clearTimeout(startTimeoutRef.current)
             if (event.data === youtube.PlayerState.ENDED) advance()
           },
           onError: advance,
@@ -230,9 +255,27 @@ function YouTubePlayer({ videoId, title, className, autoPlay, loop, onEnded }) {
     return () => {
       cancelled = true
       window.clearInterval(playbackPoll)
-      window.clearTimeout(startTimeout)
+      window.clearTimeout(startTimeoutRef.current)
+      playerReadyRef.current = false
+      advanceRef.current = null
       playerRef.current?.destroy()
       playerRef.current = null
+    }
+  }, [autoPlay, loop])
+
+  useEffect(() => {
+    const player = playerRef.current
+    if (!player || !playerReadyRef.current || videoId === loadedVideoIdRef.current) return
+
+    finishedRef.current = false
+    loadedVideoIdRef.current = videoId
+    if (autoPlay) player.mute()
+    player.loadVideoById(videoId)
+    window.clearTimeout(startTimeoutRef.current)
+    if (!loop) {
+      startTimeoutRef.current = window.setTimeout(() => {
+        if (player.getPlayerState() !== window.YT.PlayerState.PLAYING) advanceRef.current?.()
+      }, 30000)
     }
   }, [autoPlay, loop, videoId])
 
