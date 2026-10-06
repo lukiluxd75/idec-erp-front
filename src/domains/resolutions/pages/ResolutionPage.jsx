@@ -1,4 +1,4 @@
-import { ArrowLeft, Bug, FileSpreadsheet, Landmark, Save, ScanText, Table2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Bug, Compass, FileSpreadsheet, Landmark, Save, ScanText, Table2, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -49,6 +49,7 @@ export default function ResolutionPage() {
   const navigate = useNavigate()
 
   const [confirmarEliminar, setConfirmarEliminar] = useState(false)
+  const [pestana, setPestana] = useState('superficies') // 'superficies' | 'colindancias'
   const [resolucion, setResolucion] = useState(null)
   const [paginasImg, setPaginasImg] = useState([]) // [{ orden, url, blob }]
   const [loadingPage, setLoadingPage] = useState(true)
@@ -480,15 +481,33 @@ export default function ResolutionPage() {
         onChanged={refrescarResolucion}
       />
 
-      <ColindanciasSection
-        resolutionId={id}
-        resolutionNumber={resolucion.resolution_number}
-        planPages={paginasPorPlanta}
-        unidadesPorPlanta={unidadesPorPlanta}
-        colindancias={colindancias}
-        setColindancias={setColindancias}
-      />
+      <div role="tablist" aria-label="Resultados del OCR" className="flex gap-2 border-b border-slate-200">
+        {[
+          { id: 'superficies', label: 'Tabla de superficies', icon: Table2 },
+          { id: 'colindancias', label: 'Colindancias', icon: Compass },
+        ].map(({ id: tabId, label, icon: Icon }) => (
+          <button
+            key={tabId}
+            type="button"
+            role="tab"
+            aria-selected={pestana === tabId}
+            onClick={() => setPestana(tabId)}
+            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              pestana === tabId
+                ? 'border-accent-600 text-accent-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
 
+      {/* Las dos pestañas quedan montadas (solo se ocultan): ColindanciasSection
+          guarda el resultado del OCR y las imágenes en su propio estado, y
+          desmontarla al cambiar de pestaña lo perdería. */}
+      <div role="tabpanel" hidden={pestana !== 'superficies'}>
       {paginasTabla && (
         <Card className="animate-card-in">
           <SectionHeader
@@ -520,6 +539,25 @@ export default function ResolutionPage() {
           </p>
         </Card>
       )}
+        {!paginasTabla && (
+          <Card className="animate-card-in">
+            <p className="text-sm text-slate-500">
+              Todavía no hay tabla de superficies. Pulse "Extraer con OCR" arriba para llenarla.
+            </p>
+          </Card>
+        )}
+      </div>
+
+      <div role="tabpanel" hidden={pestana !== 'colindancias'}>
+      <ColindanciasSection
+        resolutionId={id}
+        resolutionNumber={resolucion.resolution_number}
+        planPages={paginasPorPlanta}
+        unidadesPorPlanta={unidadesPorPlanta}
+        colindancias={colindancias}
+        setColindancias={setColindancias}
+      />
+      </div>
 
       <ConfirmDialog
         open={confirmarEliminar}

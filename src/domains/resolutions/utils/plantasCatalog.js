@@ -3,6 +3,11 @@ export const PLANTAS_RESUMEN = [
   'PLANTA SEMISOTANO',
   'PLANTA BAJA',
   ...Array.from({ length: 32 }, (_, i) => `PLANTA ${i + 1}º PISO`),
+  // Terraza (azotea habitable con areas comunes, p. ej. "PLANTA TERRAZA" del
+  // formato 3). La plantilla NO tiene fila para ella en RESUMEN: sus filas si se
+  // escriben en Hoja2 (con su subtotal), pero RESUMEN/MODEL SISCAT no la
+  // suman hasta que la plantilla oficial la incluya.
+  'PLANTA TERRAZA',
 ]
 
 function normPlanta(s) {
@@ -19,6 +24,7 @@ export function guessPlantaCanonica(rawText) {
   if (s.includes('SEMISOTANO')) return 'PLANTA SEMISOTANO'
   if (s.includes('SOTANO')) return 'PLANTA SOTANO'
   if (s.includes('BAJA') || /^PB\b/.test(s)) return 'PLANTA BAJA'
+  if (s.includes('TERRAZA')) return 'PLANTA TERRAZA'
   const m = s.match(/(\d+)/)
   if (m) {
     const n = parseInt(m[1], 10)
