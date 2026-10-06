@@ -7,8 +7,6 @@ import { DOC_TYPES } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import { Alert, Button, Card, SectionHeader, Select, Spinner } from '@/shared/ui'
 
-// El tipo elegido se recuerda en el equipo: quien trabaja poseedores toda la
-// mañana no tiene que volver a elegirlo cada vez que entra a la pantalla.
 const STORAGE_KEY = 'folder-analysis.folder-type'
 
 function remembered() {
@@ -19,29 +17,12 @@ function remembered() {
   }
 }
 
-/**
- * El tablero de clasificación.
- *
- * Arriba se elige de qué tipo de carpeta es lo que se va a analizar, y los
- * carriles son los de ese tipo: en poseedores aparecen avalúo, plano,
- * formulario, declaración jurada y carnets, y ya no folio ni impuesto. Los tipos
- * y sus documentos los da el catálogo del back (domain/folder_types.py), así que
- * un tipo nuevo aparece acá solo.
- *
- * Acá se escanea una carpeta física completa: lo que se clasifica y lee queda a
- * un costado, en el tablero, hasta que "Guardar en carpeta" lo pasa a una
- * carpeta registrada cuyo nombre es el número de la física. La hoja de datos de
- * la carpeta (dirección, colindancias, notario) se completa después, en
- * Carpetas registradas.
- */
+/** El tablero de clasificación. */
 export default function FolderAnalysisPage() {
   const { catalog, error, loading } = useCatalog()
   const [typeKey, setTypeKey] = useState(remembered)
 
-  // Con el catálogo en mano se resuelve qué tipo mostrar: el recordado, si
-  // todavía existe. Sin nada elegido arranca en "general", que son los carriles
-  // que esta pantalla tuvo siempre -- quien ya trabajaba acá la encuentra igual
-  // y elige otro tipo cuando lo necesita.
+  // Con el catálogo en mano se resuelve qué tipo mostrar: el recordado, si todavía existe.
   const types = catalog?.folder_types || []
   const current = folderTypeOf(catalog, typeKey) || folderTypeOf(catalog, 'general') || types[0] || null
   const lanes = current ? DOC_TYPES.filter((type) => current.document_types.includes(type.id)) : []

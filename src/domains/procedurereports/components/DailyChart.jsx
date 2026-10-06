@@ -5,8 +5,6 @@ import { ChartTooltip } from './ChartTooltip'
 const PURPLE = '#341a67'
 const CYAN = '#009ed0'
 
-/** Stacked daily bar chart, one series per active staff member, with a
- * reference line at the weekday average (kpis.avgTeamPerDay). */
 export function DailyChart({ days, ranking, staffDaily, average }) {
   const active = useMemo(() => ranking.filter((r) => r.dispatches > 0), [ranking])
   const data = useMemo(() => {

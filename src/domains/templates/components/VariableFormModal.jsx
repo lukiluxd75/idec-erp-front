@@ -8,8 +8,7 @@ const EMPTY_FORM = { nombre: '', clave: '', tipo_dato: '', descripcion: '', valo
 
 const CLAVE_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*$/
 
-/** Registers a new reusable variable (placeholder). There is no edit/delete yet
- * -- the catalog only exposes "Registrar variable", so that is all this wires up. */
+/** Registers a new reusable variable (placeholder). */
 export function VariableFormModal({ open, onClose, onSaved }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)

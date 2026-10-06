@@ -10,10 +10,7 @@ const FolderWorkbenchPage = lazy(() => import('./pages/FolderWorkbenchPage'))
 const RegisteredFoldersPage = lazy(() => import('./pages/RegisteredFoldersPage'))
 const SavedFolderDataPage = lazy(() => import('./pages/SavedFolderDataPage'))
 
-/**
- * Routes for the folder analysis domain ("Analizador y extractor de datos de
- * carpetas", inside Herramientas OCR+IA). Registered in src/domains/index.js.
- */
+/** Routes for the folder analysis domain ("Analizador y extractor de datos de carpetas", inside Herramientas OCR+IA). */
 export const folderAnalysisRoutes = [
   { path: '/folder-analysis', element: <FolderAnalysisPage />, wide: true },
   { path: '/folder-analysis/saved', element: <SavedFolderDataPage />, wide: true },

@@ -78,13 +78,6 @@ function ParcelCard({ row }) {
   )
 }
 
-/**
- * "Exportar" on the detection map: a presentable preview (styled cards, not
- * a flat spreadsheet-style table -- per the engineer's request, this is what
- * authorities actually see) before picking a format. XML/XLSM were
- * considered and dropped: no system consumes them yet, and we don't ship
- * exports nobody uses.
- */
 export default function ExportPreviewModal({ open, onClose, campaignId, unassignedOnly }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)

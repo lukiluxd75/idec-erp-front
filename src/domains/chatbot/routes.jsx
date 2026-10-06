@@ -9,9 +9,7 @@ const ProceduresAdminPage = lazy(() => import('./pages/ProceduresAdminPage'))
 const IngestPage = lazy(() => import('./pages/IngestPage'))
 const FeedbackPage = lazy(() => import('./pages/FeedbackPage'))
 
-/**
- * Real routes for the chatbot domain. Registered in src/domains/index.js.
- */
+/** Real routes for the chatbot domain. */
 export const chatbotRoutes = [
   { path: '/chatbot/chat', element: <ChatPage /> },
   { path: '/chatbot/procedures', element: <ProceduresAdminPage /> },

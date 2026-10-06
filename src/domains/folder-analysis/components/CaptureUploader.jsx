@@ -8,11 +8,6 @@ import { cn } from '@/shared/utils'
 /** True only for a drag coming from the desktop, not for a photo dragged between lanes. */
 const isFileDrag = (event) => Array.from(event.dataTransfer?.types || []).includes('Files')
 
-/**
- * Second way into the inbox, next to the mobile app: photos and PDFs chosen in
- * the computer's file explorer or dropped here from the desktop. A PDF is
- * separated on the server into one photo per page.
- */
 export function CaptureUploader({ disabled, uploading, onFiles }) {
   const [isDragging, setIsDragging] = useState(false)
   const blocked = disabled || uploading

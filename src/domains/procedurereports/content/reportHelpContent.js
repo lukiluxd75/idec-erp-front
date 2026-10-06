@@ -1,7 +1,4 @@
-/**
- * Textos de ayuda (UI en español) para interpretar el reporte gerencial.
- * Una sola fuente para la guía general y los hints por sección.
- */
+/** Textos de ayuda (UI en español) para interpretar el reporte gerencial. */
 
 export const REPORT_GUIDE_SECTIONS = [
   {

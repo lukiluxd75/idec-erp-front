@@ -1,6 +1,4 @@
-/**
- * API endpoint catalog (service-oriented architecture).
- */
+/** API endpoint catalog (service-oriented architecture). */
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/login',
@@ -97,9 +95,7 @@ export const API_ENDPOINTS = {
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
     CAPTURE_PREVIEW: (id) => `/api/folder-analysis/captures/${id}/preview`,
     CAPTURE_THUMBNAIL: (id) => `/api/folder-analysis/captures/${id}/thumbnail`,
-    // Indicador "Celular conectado". Se consulta por REST (no hay websocket en
-    // este modulo) y el backend lo responde desde Postgres, asi que cualquiera
-    // de los 4 workers da la misma respuesta.
+    // Indicador "Celular conectado".
     CAPTURES_PRESENCE: '/api/folder-analysis/captures/presence',
     DOCUMENTS: '/api/folder-analysis/documents',
     REVIEWED_DOCUMENTS: '/api/folder-analysis/documents/reviewed',
@@ -113,6 +109,8 @@ export const API_ENDPOINTS = {
     FOLDERS_FROM_BOARD: '/api/folder-analysis/folders/from-board',
     FOLDER: (id) => `/api/folder-analysis/folders/${id}`,
     FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
+    FOLDER_PHOTO: (folderId, captureId) =>
+      `/api/folder-analysis/folders/${folderId}/photos/${captureId}`,
     FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,
   },
   REPORTS: {

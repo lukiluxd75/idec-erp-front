@@ -1,5 +1,4 @@
-// Sample data used during development and as fallback when the backend
-// is unavailable. Replace with real API responses when ready.
+// Sample data used during development and as fallback when the backend is unavailable.
 
 export const SAMPLE_PROPERTIES = [
   { cadastralCode: 'CBBA-001-234', address: 'Av. Ballivián # 345',     neighborhood: 'Cala Cala',   lat: -17.37620, lng: -66.16470, area: '412 m²',   landUse: 'Residencial',   stratum: '4', builtYear: '1998' },

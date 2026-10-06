@@ -1,10 +1,6 @@
 import { cn } from '@/shared/utils'
 
-/**
- * Labeled text box for one extracted value. Empty text is stored as null.
- * `warn` marks a value the reading flagged as low confidence, so the architect
- * checks it against the photo instead of re-reading every field.
- */
+/** Labeled text box for one extracted value. */
 export function FieldInput({ label, value, onChange, multiline = false, warn = false, className = '' }) {
   const common = cn(
     'w-full rounded-lg border bg-white px-2.5 py-1.5 text-sm text-slate-800 shadow-xs focus:outline-none focus:ring-2',
@@ -16,8 +12,6 @@ export function FieldInput({ label, value, onChange, multiline = false, warn = f
 
   return (
     <label className={cn('flex flex-col gap-1', className)}>
-      {/* Sin rótulo cuando quien lo usa ya lo puso encima (la hoja de una
-          carpeta dibuja su propio rótulo con la insignia de dónde sale). */}
       {(label || warn) && (
         <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {label}

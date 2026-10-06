@@ -1,10 +1,3 @@
-/**
- * Cliente del servicio de OCR del GAMC (mismo que usa geoextracción): el
- * navegador le habla DIRECTO, no a través del backend del ERP. Lo usan
- * resolutions (tabla de superficies y colindancias) y folder-analysis
- * (colindancias del plano) por igual -- por eso vive en shared, no en
- * ninguno de los dos dominios.
- */
 import { ENV } from '@/core/config/env.config'
 import { ApiError } from '@/core/errors'
 

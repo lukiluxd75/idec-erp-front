@@ -7,10 +7,7 @@ import { lazy } from 'react'
 const CapturePage = lazy(() => import('./pages/CapturePage'))
 const MergePage = lazy(() => import('./pages/MergePage'))
 
-/**
- * Real routes for the geoextraction domain. Registered in src/domains/index.js.
- * `wide: true` asks AppShell for the wide container instead of max-w-4xl.
- */
+/** Real routes for the geoextraction domain. */
 export const geoextractionRoutes = [
   { path: '/geoextraction/capture', element: <CapturePage />, wide: true },
   { path: '/geoextraction/merge', element: <MergePage /> },

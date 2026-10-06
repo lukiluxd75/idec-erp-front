@@ -1,9 +1,5 @@
 import { Cpu, Monitor, MonitorOff, MonitorX } from 'lucide-react'
 
-/**
- * The four states a PC can be in, derived from what the backend reports:
- * `reachable` (responde en la red) y `model_available` (tiene el modelo de visión).
- */
 /** `used_by` as the backend reports it (the domain that took the PC). */
 const USED_BY_LABELS = {
   digitization: 'Administrador de servidores de visión por computadora',
@@ -11,7 +7,7 @@ const USED_BY_LABELS = {
   chatbot: 'Asistente de Trámites',
 }
 
-/** Who is using the PC, in words. Falls back to the raw name the backend sent. */
+/** Who is using the PC, in words. */
 export function usedByLabel(worker) {
   return USED_BY_LABELS[worker?.used_by] || worker?.used_by || 'otro módulo'
 }

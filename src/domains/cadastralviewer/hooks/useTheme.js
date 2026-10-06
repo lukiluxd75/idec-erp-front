@@ -19,7 +19,6 @@ function detectInitialTheme() {
 }
 
 // Manages light/dark theme with localStorage persistence.
-// Applies `data-theme` to <html> so the CSS can react.
 export function useTheme() {
   const [theme, setTheme] = useState(detectInitialTheme);
 

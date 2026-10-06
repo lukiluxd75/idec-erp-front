@@ -1,10 +1,6 @@
 import { API_ENDPOINTS } from '@/core/config/endpoints.config'
 import { httpClient } from '@/core/http/httpClient'
 
-/**
- * Servicio de Usuario (User Profile Domain Service)
- * Encapsulates user profile queries and private resources protected by roles/token
- */
 export const userService = {
   /**
    * Fetches private profile info from the backend (/api/private)

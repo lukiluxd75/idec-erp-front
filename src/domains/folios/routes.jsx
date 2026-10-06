@@ -7,10 +7,7 @@ import { lazy } from 'react'
 const FoliosListPage = lazy(() => import('./pages/FoliosListPage'))
 const FolioDetailPage = lazy(() => import('./pages/FolioDetailPage'))
 
-/**
- * Routes for the folios domain ("Detección de Folios"). Registered in
- * src/domains/index.js.
- */
+/** Routes for the folios domain ("Detección de Folios"). */
 export const foliosRoutes = [
   { path: '/folios', element: <FoliosListPage /> },
   { path: '/folios/:id', element: <FolioDetailPage />, wide: true },

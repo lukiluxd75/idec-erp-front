@@ -1,10 +1,6 @@
 import { ACTIONS, ERP_MODULES } from '../data/moduleCatalog'
 
-/**
- * Permission matrix (modules × actions) for assigning permissions to a role.
- * Only catalog codes — never free text (IDEC guide §8 / §10).
- * Extra module actions (e.g. chatbot.feedback) appear as additional columns.
- */
+/** Permission matrix (modules × actions) for assigning permissions to a role. */
 export function RolePermissionsCheckboxes({ permissions, onChange }) {
   const selected = permissions || []
 

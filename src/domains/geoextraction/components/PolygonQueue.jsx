@@ -1,10 +1,7 @@
 import { Layers, XCircle } from 'lucide-react'
 import { Button, IconButton } from '@/shared/ui'
 
-/**
- * Notice for queued polygons pending bulk-layer export.
- * Adapted from the amber strip in geo-extract/frontend/src/pages/Capture.jsx.
- */
+/** Notice for queued polygons pending bulk-layer export. */
 export function PolygonQueue({ count, onExport, onDiscard }) {
   if (count === 0) return null
 

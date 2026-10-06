@@ -17,11 +17,6 @@ function summary(documents) {
     .join(' · ')
 }
 
-/**
- * "Guardar en carpeta": once a whole physical folder has been scanned on the
- * loose board, the number written on it is typed here and everything on the
- * board goes into a new registered folder named after that number.
- */
 export function SaveToFolderModal({ documents, folderType, folderTypeLabel, looseCaptures, onClose, onSaved }) {
   const [number, setNumber] = useState('')
   const [saving, setSaving] = useState(false)

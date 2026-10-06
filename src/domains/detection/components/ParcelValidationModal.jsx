@@ -4,10 +4,6 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { Button, Input, Modal, Select } from '@/shared/ui'
 import { detectionApi } from '../api/detection.api'
 
-// Kept in sync with the backend's ALLOWED_CONSTRUCTION_TYPES (see
-// ReviewAffectedParcelUseCase) -- "otro" is a UI-only trigger, never sent as
-// such: picking it reveals a short free-text title that gets sent (and
-// stored in affected_parcel.construction_type) instead of the literal word.
 const CONSTRUCTION_TYPES = [
   { value: 'nueva_construccion', label: 'Construcción nueva' },
   { value: 'ampliacion', label: 'Ampliación' },
@@ -20,14 +16,6 @@ const CONSTRUCTION_TYPES = [
 // Matches affected_parcel.construction_type's VARCHAR(30) on the backend.
 const CONSTRUCTION_TYPE_MAX_LENGTH = 30
 
-/**
- * The architect's two validation actions on an affected_parcel (see
- * ParcelValidationButtons — used from the hallazgos table). Confirming
- * requires classifying the real change (construction_type); rejecting
- * accepts an optional free-text comment kept only for audit -- why that
- * finding was dismissed. The retroalimentación/model-retraining workflow was
- * dropped entirely (alignment wasn't reliable enough for it).
- */
 export default function ParcelValidationModal({ row, mode, open, onClose, onReviewed }) {
   const [busy, setBusy] = useState(false)
   const [constructionType, setConstructionType] = useState(CONSTRUCTION_TYPES[0].value)
@@ -84,7 +72,7 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
         {isConfirm ? (
           <>
             <p className="text-sm text-slate-600">
-              Confirma que el cambio detectado es real y clasifica de qué tipo de construcción se trata.
+              Confirme que el cambio detectado es real y clasifique de qué tipo de construcción se trata.
             </p>
             <Select
               label="Tipo de cambio"
@@ -110,7 +98,7 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
         ) : (
           <>
             <p className="text-sm text-slate-600">
-              Marca este predio como sin cambio real. El comentario es opcional y queda solo como registro de
+              Marque este predio como sin cambio real. El comentario es opcional y queda solo como registro de
               auditoría.
             </p>
             <div>

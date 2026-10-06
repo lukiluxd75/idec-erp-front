@@ -8,10 +8,7 @@ import { Alert, Button, Card, ConfirmDialog, EmptyState, SectionHeader, Spinner 
 
 const POLL_MS = 5000
 
-/**
- * Live monitor of the architects' PCs that run the vision model. The backend
- * probes each one on every request, so the screen just re-asks periodically.
- */
+/** Live monitor of the architects' PCs that run the vision model. */
 export default function WorkersPage() {
   const [workers, setWorkers] = useState([])
   const [loading, setLoading] = useState(true)

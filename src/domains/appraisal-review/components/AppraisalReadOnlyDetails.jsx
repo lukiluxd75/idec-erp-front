@@ -17,10 +17,6 @@ function ownerName(owner) {
   return owner.legal_name || [owner.first_name, owner.last_name_1, owner.last_name_2].filter(Boolean).join(' ')
 }
 
-/**
- * Read-only display of the appraisal's data — the reviewer never edits this, only
- * writes observations underneath (see ObservationsEditor).
- */
 export function AppraisalReadOnlyDetails({ owner, property, constructionUnits }) {
   return (
     <div className="space-y-6">

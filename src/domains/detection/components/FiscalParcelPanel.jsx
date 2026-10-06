@@ -18,10 +18,6 @@ function Fact({ label, value }) {
   )
 }
 
-/**
- * SISCAT fiscal card oriented to quick architect validation:
- * does what is seen in the image match what is declared in cadastre?
- */
 export default function FiscalParcelPanel({ row, onOpenFullExpediente }) {
   const [detalle, setDetalle] = useState(null)
   const [loading, setLoading] = useState(false)

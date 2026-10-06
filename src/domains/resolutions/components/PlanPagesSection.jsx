@@ -7,9 +7,6 @@ import { PLANTAS_RESUMEN, plantasDePagina } from '@/domains/resolutions/utils/pl
 import { pdfToImages } from '@/domains/resolutions/utils/planoPdf'
 import { Button, Card, SectionHeader, Spinner } from '@/shared/ui'
 
-// Mientras alguna página está leyendo su título, se vuelve a pedir la
-// resolución cada tanto para mostrar la planta apenas quede (el backend
-// avisa por WS, pero esta pantalla no lo escucha y entre workers no llega).
 const POLL_DETECCION_MS = 3000
 
 /** "PLANTA 2º PISO, 3º PISO, 4º PISO" -- corto para la miniatura. */
@@ -31,8 +28,7 @@ function ChecklistPlantas({ elegidas, onToggle }) {
   )
 }
 
-/** ¿El backend rechazó la planta por ser anterior a la detección automática
- * (no entiende "" ni "A|B")? Ese backend responde 400 "Planta '…' inválida". */
+/** ¿El backend rechazó la planta por ser anterior a la detección automática (no entiende "" ni "A|B")? */
 function esBackendSinDeteccion(err) {
   return err?.status === 400 && /planta '.*' inválida/i.test(err.message || '')
 }
@@ -74,22 +70,7 @@ function EstadoPlanta({ pagina }) {
   }
 }
 
-/**
- * Páginas del plano de división, usadas para calcular colindancias. A
- * diferencia de la tabla de superficies (que hoy solo sube el celular), esta
- * sección deja subir desde CUALQUIER canal -- la app y la web pegan al mismo
- * endpoint (`source` en resolutions.api.js es solo metadata de quien subió).
- *
- * La planta de cada página NO hace falta elegirla: si se sube sin marcar, el
- * backend la lee del título del plano ("PLANTA TIPO 2° - 4° PISO") en segundo
- * plano. Una misma hoja puede valer para varias plantas iguales (plano tipo):
- * se guarda UNA vez con todas sus plantas, y ColindanciasSection la usa para
- * cada una. Si el título no se pudo leer, se asigna acá a mano.
- *
- * Si el archivo elegido es un PDF, se convierte a una imagen JPEG por página
- * ANTES de subir (ver planoPdf.js): el backend y la detección por visión por
- * computadora solo trabajan con imágenes, igual que las fotos del celular.
- */
+/** Páginas del plano de división, usadas para calcular colindancias. */
 export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
   const [imagenes, setImagenes] = useState({}) // { [order_index]: objectURL }
   const [loadingImgs, setLoadingImgs] = useState(true)
@@ -98,8 +79,7 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
   const [subiendo, setSubiendo] = useState(false)
   const [editando, setEditando] = useState(null) // { orden, plantas }
 
-  // Solo vuelve a bajar las miniaturas si cambian las páginas, no en cada
-  // refresco del estado de detección.
+  // Solo vuelve a bajar las miniaturas si cambian las páginas, no en cada refresco del estado de detección.
   const ordenes = planPages.map((p) => p.order_index).join(',')
   useEffect(() => {
     let alive = true
@@ -125,8 +105,7 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
     }
   }, [resolutionId, ordenes])
 
-  // En un ref: el callback del padre cambia en cada render y no debe
-  // reiniciar el intervalo.
+  // En un ref: el callback del padre cambia en cada render y no debe reiniciar el intervalo.
   const onChangedRef = useRef(onChanged)
   useEffect(() => {
     onChangedRef.current = onChanged
@@ -179,9 +158,7 @@ export function PlanPagesSection({ resolutionId, planPages, onChanged }) {
           pendientes.map((p) => ({ blob: p.blob, plantas: p.plantas })),
         )
       } catch (err) {
-        // Backend anterior a la detección de planta: solo acepta UNA planta
-        // por foto y la exige. Con varias marcadas se reintenta como antes
-        // (la foto una vez por planta); sin planta no hay cómo -- se pide.
+        // Backend anterior a la detección de planta: solo acepta UNA planta por foto y la exige.
         if (!esBackendSinDeteccion(err)) throw err
         if (pendientes.some((p) => p.plantas.length === 0)) {
           throw new Error(

@@ -1,11 +1,10 @@
 // Instructions block explaining how to use the viewer.
-// UI text stays in Spanish (product language). Comments stay in English.
 
 const STEPS = [
-  { icon: '🗺️', title: '1. Abre el mapa',    text: 'Toca cualquier parte de esta pantalla y se abrirá el visor satelital.' },
-  { icon: '🔍', title: '2. Busca tu predio', text: <>Escribe el <b>código catastral</b> o la <b>dirección</b> en el mismo campo.</> },
-  { icon: '🕓', title: '3. Cambia el año',   text: 'Desliza la barra de años para comparar la imagen satelital histórica (1964 – 2023).' },
-  { icon: '📄', title: '4. Revisa la ficha', text: 'Toca el marcador y verás área, uso de suelo, estrato y año de construcción.' }
+  { icon: '🗺️', title: '1. Abra el mapa',    text: 'Toque cualquier parte de esta pantalla y se abrirá el visor satelital.' },
+  { icon: '🔍', title: '2. Busque su predio', text: <>Escriba el <b>código catastral</b> o la <b>dirección</b> en el mismo campo.</> },
+  { icon: '🕓', title: '3. Cambie el año',   text: 'Deslice la barra de años para comparar la imagen satelital histórica (1964 – 2023).' },
+  { icon: '📄', title: '4. Revise la ficha', text: 'Toque el marcador y verá el área, el uso de suelo, el estrato y el año de construcción.' }
 ];
 
 export default function HowToUse() {
@@ -13,8 +12,8 @@ export default function HowToUse() {
     <section className="vc-howto">
       <h1>¿Cómo usar <em>el programa</em>?</h1>
       <p className="vc-howto-sub">
-        Consulta cualquier predio del municipio en cuatro pasos.
-        Solo necesitas el código catastral o la dirección.
+        Consulte cualquier predio del municipio en cuatro pasos.
+        Solo necesita el código catastral o la dirección.
       </p>
 
       <ol className="vc-steps">

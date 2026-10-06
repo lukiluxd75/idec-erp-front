@@ -25,13 +25,7 @@ const compareNames = (a, b) =>
 
 const sortByName = (names) => [...names].sort(compareNames)
 
-/**
- * Role chips for one row, sorted A–Z. Collapsed it never wraps, so a user with nine
- * roles and one with two get the same row height. "+N" expands that row only.
- *
- * The "+N" sits outside the clipped chip list and never shrinks: when the visible chips
- * don't fit, they truncate instead of pushing the counter out of view.
- */
+/** Role chips for one row, sorted A–Z. */
 function RoleChips({ names }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -86,10 +80,7 @@ function RoleChips({ names }) {
   )
 }
 
-/**
- * Lists users with roles and area. Assignment opens UserAssignmentModal (role + area
- * together). Deactivation is soft (is_active) — row kept for reactivation.
- */
+/** Lists users with roles and area. */
 export default function UsersPage() {
   const { users, roles, areas, loading, error } = useSecurityData()
   const [reloading, setReloading] = useState(false)
@@ -193,7 +184,7 @@ export default function UsersPage() {
             type="button"
             onClick={handleReload}
             disabled={reloading}
-            title="Vuelve a pedir la lista de usuarios al backend"
+            title="Solicitar nuevamente la lista de usuarios al servidor"
             className="mt-1 flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${reloading ? 'animate-spin' : ''}`} />

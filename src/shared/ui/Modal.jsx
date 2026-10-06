@@ -2,10 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
-/**
- * Generic design-system modal (see CLAUDE.md §3 — shared/ for domain-agnostic pieces).
- * Closes on Escape or click outside the panel.
- */
+/** Generic design-system modal (see CLAUDE.md §3 — shared/ for domain-agnostic pieces). */
 const SIZE_CLASS = {
   md: 'max-w-md',
   lg: 'max-w-2xl',
@@ -28,10 +25,6 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
 
   return createPortal(
     <div
-      // z-[2000]: Leaflet's own panes/controls go up to z-index 1000 (see
-      // leaflet.css .leaflet-pane/.leaflet-top/.leaflet-bottom); z-50 let the
-      // map (DetectionMap, ValidateEvidenceMaps, CompareZoomPanel) render on
-      // top of every modal in the app, including ConfirmDialog.
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
@@ -40,9 +33,6 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        // max-h + scroll propio: en una pantalla baja (un móvil apaisado, un
-        // portátil pequeño) un formulario largo dejaba sus botones fuera de la
-        // vista y el diálogo no se podía terminar de usar.
         className={`animate-card-in max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain ${widthClass} rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xl sm:p-6 ${className}`}
       >
         <div className="mb-5 flex items-center justify-between">

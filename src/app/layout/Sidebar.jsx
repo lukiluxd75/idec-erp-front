@@ -12,7 +12,7 @@ import {
 
 const INICIO = NAV_SECTIONS.find((section) => section.path === '/dashboard')
 
-/** Funciones visibles de un nodo, en orden alfabético. Vacío si es una hoja. */
+/** Funciones visibles de un nodo, en orden alfabético. */
 function nestedOf(node, permissions) {
   return (node.children || []).filter((item) => canViewChild(permissions, item)).sort(compareNavLabels)
 }
@@ -48,11 +48,7 @@ function rowTone(isActive, { group = false } = {}) {
   return 'font-medium text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-950'
 }
 
-/**
- * Una función del menú: un enlace. `depth` > 0 es lo que sale al abrir un grupo,
- * un poco más compacto para que se lea como contenido del grupo y no como otro
- * módulo.
- */
+/** Una función del menú: un enlace. */
 function NavLeaf({ node, depth, end = true }) {
   const NodeIcon = node.icon
   const nested = depth > 0
@@ -70,16 +66,7 @@ function NavLeaf({ node, depth, end = true }) {
   )
 }
 
-/**
- * Un módulo con funciones dentro. La fila entera es el botón: se abre solo cuando
- * el usuario la pulsa, y sus funciones salen en abanico justo debajo (ver
- * `.nav-fan` en index.css). Pulsarla de nuevo la cierra.
- *
- * La fila no navega: si el módulo tiene pantalla propia (p. ej. el panel general
- * de una herramienta) aparece como la primera función del abanico, "Vista general".
- * Así abrir un grupo no te saca de donde estás, y en móvil, donde cambiar de
- * pantalla cierra el cajón, el abanico no se cierra solo antes de poder usarlo.
- */
+/** Un módulo con funciones dentro. */
 function NavGroup({ node, nested, expanded, onToggle, pathname, permissions, depth }) {
   const NodeIcon = node.icon
   const isOpen = expanded.has(node.path)
@@ -89,7 +76,7 @@ function NavGroup({ node, nested, expanded, onToggle, pathname, permissions, dep
   // Un grupo con pantalla propia que ningún hijo repite la ofrece como primera entrada.
   const ownScreen = nested.some((child) => child.path === node.path)
     ? []
-    : [{ label: 'Vista general', path: node.path, icon: LayoutGrid, own: true }]
+    : [{ label: node.overviewLabel || 'Vista general', path: node.path, icon: LayoutGrid, own: true }]
   const entries = [...ownScreen, ...nested]
 
   return (
@@ -113,8 +100,7 @@ function NavGroup({ node, nested, expanded, onToggle, pathname, permissions, dep
           aria-hidden
         />
         <span className="min-w-0 flex-1 leading-snug">{node.label}</span>
-        {/* Cuántas funciones esconde: solo mientras está cerrado, para que quien
-            busca algo sepa si vale la pena abrirlo. */}
+        {/* Cuántas funciones esconde: solo mientras está cerrado, para que quien busca algo sepa si vale la pena abrirlo. */}
         <span
           aria-hidden
           className={`shrink-0 rounded-full px-1.5 text-[11px] font-bold tabular-nums transition-opacity duration-150 ${
@@ -168,21 +154,6 @@ function NavNode({ node, expanded, onToggle, pathname, permissions, depth }) {
   )
 }
 
-/**
- * Contextual sidebar: frosted glass (misma familia "liquid glass" que el resto del ERP),
- * pero con opacidad alta a propósito — es navegación densa de lectura constante, necesita
- * más contraste que una tarjeta de contenido.
- *
- * Los módulos con funciones dentro nacen cerrados y se abren en abanico solo cuando se
- * pulsa su fila; el que esconde la pantalla abierta nace abierto, para no perder de vista
- * dónde estás. No se recuerda lo abierto entre visitas: cerrado es el estado de descanso.
- *
- * Dos comportamientos según el ancho, porque 16rem de menú no caben al lado del
- * contenido en un teléfono:
- *  - desde `lg`: en el flujo, empujando el contenido, animando su ancho (como siempre).
- *  - por debajo: cajón fijo por encima del contenido, con fondo oscuro detrás; se
- *    cierra tocando ese fondo, con su propia X, o al abrir una pantalla (AppShell).
- */
 export function Sidebar({ open = true, onClose }) {
   const { pathname } = useLocation()
   const { user } = useAuth()
@@ -199,9 +170,7 @@ export function Sidebar({ open = true, onClose }) {
 
   const [expanded, setExpanded] = useState(() => new Set(groupsHiding(moduleNavItems, pathname, permissions)))
 
-  // Al llegar a una pantalla escondida en un grupo cerrado (un enlace de otra parte,
-  // el botón Atrás), ese grupo se abre. Los que el usuario abrió no se tocan.
-  // Ajuste de estado durante el render, como en AppShell.
+  // Al llegar a una pantalla escondida en un grupo cerrado (un enlace de otra parte, el botón Atrás), ese grupo se abre.
   const [syncedPath, setSyncedPath] = useState(pathname)
   if (pathname !== syncedPath) {
     setSyncedPath(pathname)
@@ -253,8 +222,7 @@ export function Sidebar({ open = true, onClose }) {
               </span>
               <p className="line-clamp-2 text-[13px] font-bold leading-snug text-slate-900">{currentDomain.label}</p>
             </div>
-            {/* En móvil el cajón tapa el contenido, así que necesita su propia
-                salida además del fondo oscuro. */}
+            {/* En móvil el cajón tapa el contenido, así que necesita su propia salida además del fondo oscuro. */}
             <button
               type="button"
               onClick={onClose}

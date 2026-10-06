@@ -85,13 +85,6 @@ class MapErrorBoundary extends Component {
   }
 }
 
-/**
- * Own map for the Alineación module -- not DetectionMap.jsx, not shared with
- * it (see the module's design: this is a completely separate module). Shows
- * either the fixed 2015 base or the year being corrected (basemapYear),
- * lets the architect draw a block polygon and mark control-point pairs, and
- * overlays already-drawn blocks colored by status.
- */
 function AlignmentMapInner({
   wmsLayers = [],
   hosts = GIS_HOSTS,
@@ -251,8 +244,6 @@ function AlignmentMapInner({
     }
   }, [ready, blockRing])
 
-  // Control-point markers: ref points only make sense while looking at 2015,
-  // mov points only while looking at the target year (see AlignmentPage).
   useEffect(() => {
     const group = pointsLayer.current
     if (!ready || !group) return
@@ -290,9 +281,6 @@ function AlignmentMapInner({
     })
   }, [ready, blocks, onViewBlock])
 
-  // The client-side-warped "after" image for whichever block the architect
-  // asked to preview (see correctedOverlay.js) -- this is the actual visual
-  // proof an alignment worked, not just its RMSE number.
   useEffect(() => {
     const group = resultLayer.current
     if (!ready || !group) return

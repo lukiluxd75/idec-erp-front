@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom'
 import { FileSearch, GripHorizontal, X } from 'lucide-react'
 import EntriesPanel from './EntriesPanel'
 
-/**
- * Draggable modal for the full SISCAT case file (drag by the header).
- */
+/** Draggable modal for the full SISCAT case file (drag by the header). */
 export default function SiscatFileModal({ open, row, onClose }) {
   const [pos, setPos] = useState({ x: 48, y: 48 })
   const dragRef = useRef(null)

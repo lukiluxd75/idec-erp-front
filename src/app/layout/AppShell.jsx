@@ -13,31 +13,23 @@ function isDesktopViewport() {
   return typeof window !== 'undefined' && window.matchMedia(DESKTOP_QUERY).matches
 }
 
-/**
- * Authenticated app shell: sidebar + header + active route content.
- * Any protected route (dashboard, ERP modules) mounts inside <Outlet/>.
- */
+/** Authenticated app shell: sidebar + header + active route content. */
 export function AppShell() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const isInsideModule = Boolean(getCurrentDomain(location.pathname))
 
-  // En escritorio el menú acompaña al contenido, así que entra visible dentro de un
-  // módulo. En móvil es un cajón que lo tapa: entra cerrado y se abre a propósito.
+  // En escritorio el menú acompaña al contenido, así que entra visible dentro de un módulo.
   const [sidebarOpen, setSidebarOpen] = useState(() => isInsideModule && isDesktopViewport())
 
-  // On entering or leaving a module, sidebar resets to its default: visible inside the
-  // module, hidden on Home (see React "Adjusting state when a prop changes"; avoids the
-  // useEffect + setState pattern that triggers a cascading render).
   const [syncedInsideModule, setSyncedInsideModule] = useState(isInsideModule)
   if (isInsideModule !== syncedInsideModule) {
     setSyncedInsideModule(isInsideModule)
     setSidebarOpen(isInsideModule && isDesktopViewport())
   }
 
-  // Y en móvil, abrir cualquier pantalla cierra el cajón: si quedara abierto taparía
-  // justamente lo que se acaba de abrir.
+  // Y en móvil, abrir cualquier pantalla cierra el cajón: si quedara abierto taparía justamente lo que se acaba de abrir.
   const [syncedPath, setSyncedPath] = useState(location.pathname)
   if (location.pathname !== syncedPath) {
     setSyncedPath(location.pathname)

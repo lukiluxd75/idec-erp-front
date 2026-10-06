@@ -1,10 +1,3 @@
-// A plano's rótulo prints several notes run together with no punctuation between
-// them ("1:100 PLANTA BAJA LOTE N°I 24.27 PASILLO CUBIERTO+SALON..."). There is
-// no rule line or gap in the source to tell one note from the next, so this
-// cannot be parsed into true separate fields -- but the words the draughtsman
-// always writes around a new note (SUP, PLANTA, LOTE, a "+" joining rooms, the
-// end of an area in m2) are a reliable enough place to break the line so it
-// reads as a list instead of one wall of text.
 const BREAK_BEFORE = [/\bPLANTA\b/gi, /\bLOTE\b/gi, /\bSUP\b/gi, /\+/g]
 const BREAK_AFTER = [/\d+(?:[.,]\d+)?\s*m[2²]/gi]
 const MARK = '\u0001'
@@ -44,10 +37,6 @@ export function formatArea(chunk) {
   return match[0].replace(/\s*m[2²]/i, ' m²').replace(/^(\d)/, '$1')
 }
 
-// The OCR's own label, as it comes off the sheet ("ESC", "SUP", "COD CAT") --
-// an architect reads these fine, but someone who has never opened a plano
-// would not. Spanish words for the ones common enough to be worth it; an
-// unlisted label is shown as the OCR read it, not guessed at.
 const PLAN_FIELD_LABELS = {
   ESC: 'Escala',
   ESCALA: 'Escala',
@@ -70,9 +59,6 @@ export function planFieldLabel(name) {
 
 const LOTE_ID_RE = /LOTE\s*N?°?\s*([A-Z0-9-]+)/i
 
-/** "Lote N°I", pulled out of whatever text on the page mentions it -- the one
- * thing besides the surface an architect wants to see before reading anything
- * else, and today it is buried in the middle of a chunk. */
 export function extractLoteId(text) {
   const match = LOTE_ID_RE.exec(text || '')
   return match ? match[1] : null

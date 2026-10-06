@@ -1,18 +1,6 @@
 import { NAV_SECTIONS } from '@/shared/nav'
 
-/**
- * ERP module catalog used to build role permissions. Derived from NAV_SECTIONS
- * (Home excluded — it is not a business module). Keeps the checklist aligned with
- * what exists in the menu instead of a hardcoded list that can drift.
- *
- * Every module gets the generic view/edit pair; a module can add its own extra
- * actions via NAV_SECTIONS[i].actions (e.g. chatbot's `feedback`). The permission
- * code is always `module.action`.
- *
- * The backend does NOT auto-create these — a module's `resources`/`permissions`
- * rows have to be seeded before a role can be granted them here.
- * This screen only ever offers what's in this catalog, never free text.
- */
+/** ERP module catalog used to build role permissions. */
 export const BASE_ACTIONS = [
   { id: 'view', label: 'Ver' },
   { id: 'edit', label: 'Editar' },
@@ -47,7 +35,7 @@ export const ACTIONS = (() => {
   return [...seen.values()]
 })()
 
-/** Human-readable label for a permission code (e.g. detection.view → "Detección… · Ver"). */
+/** Human-readable label for a permission code (e.g. */
 export function permissionLabel(code) {
   if (!code || typeof code !== 'string') return code || ''
   const [moduleId, actionId, ...rest] = code.split('.')

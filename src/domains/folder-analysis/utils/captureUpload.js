@@ -1,10 +1,6 @@
-// Limits mirrored from the backend (UploadCapturesUseCase): rejecting here lets the
-// architect fix the selection instead of losing the whole batch on a 400.
-export const MAX_FILES_PER_UPLOAD = 10
 export const MAX_FILE_BYTES = 15 * 1024 * 1024
+export const MAX_UPLOAD_BYTES = 300 * 1024 * 1024
 
-// A PDF is separated on the server into one photo per page, so from the bandeja
-// on it is indistinguishable from photos taken with the phone.
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 const ACCEPTED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
 
@@ -42,11 +38,22 @@ export function splitValidCaptures(picked) {
   return { files, rejected }
 }
 
-/** The backend accepts MAX_FILES_PER_UPLOAD files per request; bigger selections go in several. */
+/** La selección partida en las tandas en que se va a mandar. */
 export function chunkForUpload(files) {
   const chunks = []
-  for (let i = 0; i < files.length; i += MAX_FILES_PER_UPLOAD) {
-    chunks.push(files.slice(i, i + MAX_FILES_PER_UPLOAD))
+  let current = []
+  let weight = 0
+
+  for (const file of files) {
+    if (current.length > 0 && weight + file.size > MAX_UPLOAD_BYTES) {
+      chunks.push(current)
+      current = []
+      weight = 0
+    }
+    current.push(file)
+    weight += file.size
   }
+  if (current.length > 0) chunks.push(current)
+
   return chunks
 }

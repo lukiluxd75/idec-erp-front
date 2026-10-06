@@ -3,8 +3,7 @@ import { ChartTooltip } from './ChartTooltip'
 
 const PURPLE = '#341a67'
 
-/** Horizontal bar chart, one bar per staff member, colored by their own
- * assigned color (see generate_report.py's color_at). */
+/** Horizontal bar chart, one bar per staff member, colored by their own assigned color (see generate_report.py's color_at). */
 export function RankingChart({ ranking }) {
   return (
     <ResponsiveContainer width="100%" height={Math.max(360, ranking.length * 22)}>

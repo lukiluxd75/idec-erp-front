@@ -8,14 +8,6 @@ import { Button, Card, Input, SectionHeader } from '@/shared/ui'
 
 let nextPageId = 0
 
-/**
- * "Escanear" flow: lets the web (desktop or phone browser) create a resolution
- * directly, instead of only through the external mobile app that already POSTs
- * to the same backend endpoint (see resolutionsApi.create). The "Escanear
- * página" input uses `capture="environment"` so it opens the camera directly
- * on a phone; on desktop `capture` is simply ignored and it behaves like a
- * normal file picker.
- */
 export default function NewResolutionPage() {
   const navigate = useNavigate()
 

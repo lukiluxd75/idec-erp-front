@@ -69,10 +69,7 @@ function loadImage(url) {
   })
 }
 
-/**
- * Architect validation: zoom year A | year B around a detection bbox.
- * If there is no bbox, shows full aligned frames so the user can still compare.
- */
+/** Architect validation: zoom year A | year B around a detection bbox. */
 export default function CompareZoomPanel({ row, yearA, yearB, imageUrlA, imageUrlB }) {
   const canvasA = useRef(null)
   const canvasB = useRef(null)

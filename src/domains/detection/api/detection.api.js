@@ -67,8 +67,6 @@ function getProcessedSectorDetail(sectorId) {
   return httpClient.get(API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId))
 }
 
-/** "Continuar validación": the sector's persisted result, shaped just like
- * a live job's job_result -- feed it straight into the same Hallazgos table. */
 function resumeSectorValidation(sectorId) {
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId)}/resume-validation`)
 }
@@ -80,17 +78,12 @@ function exportParams(campaignId, unassignedOnly) {
   return params.toString()
 }
 
-/** The "Exportar" preview modal's data source -- same confirmed/rejected
- * rows the Excel/PDF exports use, already carrying their display labels. */
 function fetchCampaignReportData(campaignId, { unassignedOnly = false } = {}) {
   const query = exportParams(campaignId, unassignedOnly)
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}/export/data?${query}`)
 }
 
-/** Downloads a file export (Excel/PDF) of the campaign's confirmed/rejected
- * parcels. A binary file response, so this bypasses httpClient (JSON-only)
- * the same way resolveAssetObjectUrl does, but triggers a save instead of an
- * object URL. */
+/** Downloads a file export (Excel/PDF) of the campaign's confirmed/rejected parcels. */
 async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = false } = {}) {
   const query = exportParams(campaignId, unassignedOnly)
   const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/${kind}?${query}`
@@ -121,10 +114,7 @@ function exportCampaignReportPdf(campaignId, opts) {
   return downloadCampaignReportFile('pdf', campaignId, opts)
 }
 
-/**
- * Engine image URLs already come rewritten as `/api/detection/engine/...`.
- * Attach the ERP base URL + bearer via fetch blob URL for <img> tags.
- */
+/** Engine image URLs already come rewritten as `/api/detection/engine/...`. */
 async function resolveAssetObjectUrl(proxyPath) {
   if (!proxyPath) return null
   const path = proxyPath.startsWith('http') ? proxyPath : `${ENV.API_BASE_URL}${proxyPath}`

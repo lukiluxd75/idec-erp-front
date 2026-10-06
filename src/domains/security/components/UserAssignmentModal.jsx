@@ -4,15 +4,7 @@ import { toast } from 'react-toastify'
 import { Modal, Select, Button } from '@/shared/ui'
 import { securityActions } from '../data/securityStore'
 
-/**
- * Modal to assign role(s) + area to ONE user, matching ProfileModal's visual language
- * (identity card on top, form below). Replaces the checkboxes that used to live inline
- * in the UsersPage table row: a per-user modal opens for roomier assignment with less
- * visual friction.
- *
- * Parent must mount this with a `key` that changes on each open (same as
- * RoleFormModal/AreaFormModal) so it starts clean with the current user's values.
- */
+/** Modal to assign role(s) + area to ONE user, matching ProfileModal's visual language (identity card on top, form below). */
 export function UserAssignmentModal({ open, onClose, user, roles, areas }) {
   const [rolIds, setRolIds] = useState(user?.rolIds || [])
   const [areaId, setAreaId] = useState(user?.areaId || '')

@@ -1,20 +1,12 @@
 import { DOC_TYPES } from '@/domains/folder-analysis/utils/documentMeta'
 
-/**
- * How a saved review is named and searched for. Shared by "Datos guardados" and
- * "Carpetas registradas" so the same document reads the same in both screens.
- */
+/** How a saved review is named and searched for. */
 
 /** The saved data of a document: what the reviewer confirmed, else the extraction. */
 export function savedData(document) {
   return document?.reviewed_data || document?.data || {}
 }
 
-/**
- * The matrícula, wherever the extractor put it: a folio carries it at the top
- * level, a comprobante inside the property block, and a plano sometimes only in
- * a nested table row.
- */
 export function findRegistrationNumber(value) {
   if (!value || typeof value !== 'object') return ''
   if (!Array.isArray(value) && value.registration_number) return String(value.registration_number)
@@ -41,11 +33,6 @@ export function normalizeSearch(value) {
     .replace(/[^a-z0-9]/g, '')
 }
 
-/**
- * The line that names a saved document in a list: whatever identifies it to the
- * architect (the plano's name, the matrícula, the receipt number), falling back
- * to the type when the extraction found none of them.
- */
 export function savedDocumentTitle(document) {
   const data = savedData(document)
   const type = DOC_TYPES.find((item) => item.id === document?.doc_type)
@@ -58,14 +45,14 @@ export function savedDocumentTitle(document) {
   if (document?.doc_type === 'tax_receipt' && data.receipt_number) {
     return `Comprobante ${data.receipt_number}`
   }
+  // El avalúo no tiene matrícula: su casilla de información legal dice "No
+  // registra" y lo que identifica al predio es el código catastral, impreso en
+  // la cabecera. Sin esto, cada avalúo guardado se llamaba "Avalúo" a secas.
+  if (data?.values?.cadastral_code) return `Código ${data.values.cadastral_code}`
   return type?.label || document?.doc_type || 'Documento'
 }
 
-/**
- * How long a saved review counts as "recién guardado". A day covers the whole
- * shift: the engineer who scanned carpetas all morning still finds them apart
- * from the pile in the afternoon.
- */
+/** How long a saved review counts as "recién guardado". */
 export const RECENT_SAVE_WINDOW_MS = 24 * 60 * 60 * 1000
 
 /** Milliseconds of `reviewed_at`, or 0 when it is missing or unreadable. */

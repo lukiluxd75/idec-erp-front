@@ -93,9 +93,9 @@ export function SavedDocumentPicker({ documents, selectedIds, onChange, filedEls
             subtitle={
               documents.length
                 ? query
-                  ? 'Prueba con otro texto.'
+                  ? 'Pruebe con otro texto.'
                   : 'Todos los documentos guardados ya están en una carpeta.'
-                : 'Guarda la revisión de un folio, un impuesto o un plano y podrás archivarlo aquí.'
+                : 'Guarde la revisión de un folio, un impuesto o un plano y podrá archivarlo aquí.'
             }
           />
         </div>
