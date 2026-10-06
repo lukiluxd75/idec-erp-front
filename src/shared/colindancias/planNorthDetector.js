@@ -1,5 +1,6 @@
 
 import { buscarSimboloNorteFlecha } from './planNorthArrow'
+import { buscarSimboloNorteCruz } from './planNorthCruz'
 
 let cvPromise = null
 function getCv() {
@@ -54,6 +55,8 @@ const LADO_TRABAJO = 1600
 const UMBRALES_GROSOR = [4, 3, 2.5, 2]
 const PUNTAJE_MINIMO = 1.6
 const PUNTAJE_ALTA = 2.4
+// Flecha + anillo completo que vale más que un "arco" dudoso (ver detectarNorteEnMat).
+const PUNTAJE_FLECHA_FIRME = 1.25
 
 const r1 = (v) => Math.round(v * 10) / 10
 
@@ -402,6 +405,71 @@ export function buscarSimboloNorte(cv, rgba) {
 }
 
 /**
+ * Núcleo puro de detectNorth (sin DOM, se puede probar en Node con planos
+ * reales): prueba los tres estilos de símbolo en orden de especificidad.
+ *
+ *   1. Óvalo de dos lunas + cruz + "N" (formato 3, planNorthCruz.js): casi no
+ *      da falsos positivos, así que va primero.
+ *   2. "C" gruesa + barra (formato 1, buscarSimboloNorte). Si queda con
+ *      puntaje alto se usa tal cual.
+ *   3. Anillo + flecha rellena (formato 2, planNorthArrow.js). Un "arco"
+ *      dudoso (puntaje medio) suele ser un círculo cualquiera del dibujo: si a
+ *      la vez hay una flecha con anillo completo, se prefiere la flecha.
+ *
+ * @param {object} cv      OpenCV ya inicializado
+ * @param {object} mat     imagen del plano (cv.Mat RGBA o RGB)
+ * @param {Array<{x:number,y:number}>} [letrasN]  "N" sueltas que leyó el OCR (solo para el log)
+ */
+export function detectarNorteEnMat(cv, mat, letrasN = []) {
+  const cruz = buscarSimboloNorteCruz(cv, mat)
+  const diagnostico = { metodo: 'simbolo', letrasN, cruz: { simbolo: cruz.mejor, candidatos: cruz.candidatos } }
+  if (cruz.mejor) {
+    const c = cruz.mejor
+    return {
+      angleDeg: c.norteDeg,
+      confidence: c.brazos >= 4 && c.letraNClara ? 'alta' : 'media',
+      origen: `símbolo de norte (óvalo y cruz) en (${c.centro.x}, ${c.centro.y}), radio ${c.radio} px`,
+      diagnostico,
+    }
+  }
+
+  const { escala, mejor, candidatos } = buscarSimboloNorte(cv, mat)
+  diagnostico.escalaTrabajo = r1(escala * 100) / 100
+  diagnostico.simbolo = mejor
+  diagnostico.candidatos = candidatos
+  const arcoSeguro = mejor && mejor.puntaje >= PUNTAJE_ALTA && Math.abs(mejor.coherenciaAberturaDeg) <= 35
+  if (!arcoSeguro) {
+    // Estilo de simbolo "anillo + flecha rellena" ("formato 2").
+    const flecha = buscarSimboloNorteFlecha(cv, mat)
+    diagnostico.flecha = { escalaTrabajo: r1(flecha.escala * 100) / 100, simbolo: flecha.mejor, candidatos: flecha.candidatos }
+    const f = flecha.mejor
+    const flechaFirme = f && f.puntaje >= PUNTAJE_FLECHA_FIRME && f.coberturaAnillo >= 90
+    if (f && (!mejor || flechaFirme)) {
+      return {
+        angleDeg: f.norteDeg,
+        confidence: f.coberturaAnillo >= 90 && f.flecha.baseEnRadios <= 0.8 ? 'alta' : 'media',
+        origen: `símbolo de norte (anillo y flecha) en (${f.centro.x}, ${f.centro.y}), radio ${f.radio} px`,
+        diagnostico,
+      }
+    }
+  }
+  if (!mejor) {
+    return {
+      angleDeg: 0,
+      confidence: 'baja',
+      origen: 'no se encontró el símbolo de norte',
+      diagnostico,
+    }
+  }
+  return {
+    angleDeg: mejor.norteDeg,
+    confidence: arcoSeguro ? 'alta' : 'media',
+    origen: `símbolo de norte en (${mejor.centro.x}, ${mejor.centro.y}), radio ${mejor.radio} px`,
+    diagnostico,
+  }
+}
+
+/**
  * @param {Blob} blob                 imagen de la pagina del plano
  * @param {Array<{points:number[][],text:string}>} bloquesOcr  salida de ocrImage() sobre esa misma imagen
  * @returns {Promise<{angleDeg:number, confidence:'alta'|'media'|'baja', origen:string, diagnostico:object}>}
@@ -425,36 +493,7 @@ export async function detectNorth(blob, bloquesOcr) {
   let mat
   try {
     mat = await matFromBlob(cv, blob)
-    const { escala, mejor, candidatos } = buscarSimboloNorte(cv, mat)
-    const diagnostico = { metodo: 'simbolo', escalaTrabajo: r1(escala * 100) / 100, letrasN, simbolo: mejor, candidatos }
-    if (!mejor) {
-      // Segundo estilo de simbolo (anillo + flecha rellena, "formato 2").
-      const flecha = buscarSimboloNorteFlecha(cv, mat)
-      diagnostico.flecha = { escalaTrabajo: r1(flecha.escala * 100) / 100, simbolo: flecha.mejor, candidatos: flecha.candidatos }
-      if (flecha.mejor) {
-        const f = flecha.mejor
-        return {
-          angleDeg: f.norteDeg,
-          confidence: f.coberturaAnillo >= 90 && f.flecha.baseEnRadios <= 0.8 ? 'alta' : 'media',
-          origen: `símbolo de norte (anillo y flecha) en (${f.centro.x}, ${f.centro.y}), radio ${f.radio} px`,
-          diagnostico,
-        }
-      }
-      return {
-        angleDeg: 0,
-        confidence: 'baja',
-        origen: 'no se encontró el símbolo de norte',
-        diagnostico,
-      }
-    }
-    const confidence =
-      mejor.puntaje >= PUNTAJE_ALTA && Math.abs(mejor.coherenciaAberturaDeg) <= 35 ? 'alta' : 'media'
-    return {
-      angleDeg: mejor.norteDeg,
-      confidence,
-      origen: `símbolo de norte en (${mejor.centro.x}, ${mejor.centro.y}), radio ${mejor.radio} px`,
-      diagnostico,
-    }
+    return detectarNorteEnMat(cv, mat, letrasN)
   } catch (e) {
     console.log('[planNorthDetector] fallo la deteccion, se usa 0°', e)
     return { angleDeg: 0, confidence: 'baja', origen: 'error de detección', diagnostico: { letrasN, error: String(e?.message || e) } }

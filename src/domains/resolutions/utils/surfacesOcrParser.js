@@ -149,7 +149,7 @@ const medianOf = (arr) => {
 // una fila. Lo que no queda cerca de ninguna fila (encabezados, titulos) arma
 // sus propias filas con el gap de siempre. Devuelve null si no hay suficientes
 // filas numericas (la tabla no tiene este formato) para que se use lo clasico.
-function agruparFilasPorNumeros(items, rowGapY) {
+function agruparFilasPorNumeros(items, rowGapY, { etiquetasMultiples = false } = {}) {
   const numericos = items.filter((it) => esTokenNumerico(it.text))
   if (numericos.length < 8) return null
   const numLeft = numericos.reduce((m, it) => Math.min(m, it.xStart), Infinity)
@@ -211,7 +211,10 @@ function agruparFilasPorNumeros(items, rowGapY) {
   // la misma fila (y las filas altas de al lado se las pueden robar): ahi este
   // criterio por cercania no sirve y se usa el agrupamiento clasico, que junta
   // las lineas sin numeros y las pega a la fila con datos.
-  if (filas.some((f) => f.nEtiquetas > 1)) return null
+  // (En el formato con el nivel como titulo sobre la tabla las filas son altas y
+  // la descripcion de 2-3 lineas queda centrada sobre sus numeros: ahi las filas
+  // numericas son el ancla confiable y se aceptan varias lineas por fila.)
+  if (!etiquetasMultiples && filas.some((f) => f.nEtiquetas > 1)) return null
   const filasSueltas = clusterByGap(sueltos.sort((a, b) => a.y - b.y), rowGapY)
   return [...filas, ...filasSueltas].sort((a, b) => a.y - b.y)
 }
@@ -228,7 +231,7 @@ function agruparFilasPorNumeros(items, rowGapY) {
 // preciso porque son las lineas de la tabla en si, no una heuristica ajustada
 // a ojo. Si no hay suficientes lineas (<3, o sea menos de 2 bandas utiles) se
 // sigue usando el gap de siempre, igual que antes de que existiera esto.
-function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineYs = [] } = {}) {
+function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineYs = [], sinNivel = false } = {}) {
   let items = blocks
     .map((b) => ({
       text: (b.text || '').trim(),
@@ -255,7 +258,10 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   mergeGapX *= escala
   columnGapX *= escala
 
-  items = items.flatMap(separarPrefijoNivel)
+  // Sin columna NIVEL (el nivel viene como titulo sobre la tabla) no hay nada
+  // que separar: "(PLANTA 11 PISO + PLANTA TERRAZA)" dentro de una descripcion
+  // no es un nivel.
+  if (!sinNivel) items = items.flatMap(separarPrefijoNivel)
 
   // Corrige la inclinacion residual ANTES de agrupar por fila (ver
   // `estimateRowSlope`) -- afecta solo el Y usado para agrupar, no toca X
@@ -274,6 +280,11 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   itemsClasico.sort((a, b) => a.y - b.y)
   items = itemsClasico
 
+  // Inicio de la zona de cifras (percentil 5 para no depender de un numero
+  // suelto): lo que cae a su izquierda es etiqueta (nivel/descripcion).
+  const numX = items.filter((it) => esTokenNumerico(it.text)).map((it) => it.xStart).sort((p, q) => p - q)
+  const numLeftBandas = numX.length >= 8 ? numX[Math.floor(numX.length * 0.05)] : -Infinity
+
   let rows = []
   if (lineYs.length >= 3) {
     const alturas = []
@@ -288,7 +299,26 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
       while (i < lineYs.length - 2 && y >= lineYs[i + 1]) i++
       return i
     }
-    items.forEach((it) => bandas[bandaDe(it.y)].push(it))
+    // Las etiquetas de la izquierda (nivel/descripcion) se ubican por su Y
+    // ORIGINAL: la pendiente global de arriba se estima con los numeros y, en una
+    // foto con perspectiva, la zona de etiquetas no se inclina igual que la de
+    // los numeros -- corregirla igual las sacaba de su banda (la descripcion de
+    // cada fila caia en la banda de la fila anterior).
+    const esEtiqueta = (it) => (it.xStart + it.xEnd) / 2 < numLeftBandas
+    // Desfase vertical tipico entre la etiqueta y sus numeros (el cuadro del OCR
+    // de la descripcion suele quedar mas arriba o mas abajo que el de las cifras
+    // de su misma fila, y con filas de ~40px eso la pasa a la banda vecina): se
+    // mide en las bandas con UNA sola etiqueta y se compensa en todas.
+    const primera = lineYs.map(() => ({ etiquetas: [], numeros: [] }))
+    items.forEach((it) => {
+      if (esEtiqueta(it)) primera[bandaDe(it.yRaw)].etiquetas.push(it)
+      else if (esTokenNumerico(it.text)) primera[bandaDe(it.y)].numeros.push(it)
+    })
+    const deltas = primera
+      .filter((b) => b.etiquetas.length === 1 && b.numeros.length >= 3)
+      .map((b) => medianOf(b.numeros.map((n) => n.y)) - b.etiquetas[0].yRaw)
+    const desfaseEtiquetas = deltas.length >= 3 ? medianOf(deltas) : 0
+    items.forEach((it) => bandas[bandaDe(esEtiqueta(it) ? it.yRaw + desfaseEtiquetas : it.y)].push(it))
 
     bandas.forEach((bandaItems, i) => {
       if (bandaItems.length === 0) return
@@ -303,12 +333,19 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
     const porNumeros = agruparFilasPorNumeros(
       conPendiente(pendienteClasica).sort((a, b) => a.y - b.y),
       rowGapY,
+      { etiquetasMultiples: sinNivel },
     )
     rows = porNumeros || clusterByGap(items, rowGapY)
   }
 
   rows.forEach((row) => {
     row.items.sort((a, b) => a.xStart - b.xStart)
+    if (sinNivel) {
+      // Descripcion de varias lineas: se lee de arriba hacia abajo, no por el
+      // borde izquierdo de cada linea.
+      const deEtiqueta = row.items.filter((it) => xCenterOf(it) < numLeftBandas).sort((a, b) => a.yRaw - b.yRaw)
+      row.items = [...deEtiqueta, ...row.items.filter((it) => xCenterOf(it) >= numLeftBandas)]
+    }
     const merged = []
     row.items.forEach((it) => {
       const prev = merged[merged.length - 1]
@@ -371,7 +408,7 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   let nivelIdx = -1
   let descIdx = -1
   if (modoEtiquetas) {
-    const hayNivel = rows.some((row) => row.items.some((it) => enZonaEtiquetas(it) && esItemNivel(it)))
+    const hayNivel = !sinNivel && rows.some((row) => row.items.some((it) => enZonaEtiquetas(it) && esItemNivel(it)))
     if (hayNivel) nivelIdx = 0
     descIdx = hayNivel ? 1 : 0
     anchors = [...(hayNivel ? [-2] : []), -1, ...anchors]
@@ -495,11 +532,89 @@ function isRepeatedHeaderRow(row) {
 const PLANTA_RE =
   /^(PLANTA\d*|PISO\d*|NIVEL|SEMI\s?SOTANO|SEMISOTANO|SOTANO|SUBSUELO|SUB\s?SUELO|MEZZANINE|ENTREPISO|CUBIERTA|AZOTEA|TERRAZA|PB)\b/
 
-const TOTAL_RE = /^(SUP\.?\s*TOTAL|SUPERFICIE\s*TOTAL|TOTAL(ES)?|SUBTOTAL)\b/
+const PARENTESIS_PLANTAS_RE = /\(?\s*PLANTA\s*\d*[^A-Za-z0-9)]{0,2}\s*(PISO|TERRAZA|BAJA)[^)]*\)?/gi
+
+const TOTAL_RE = /^(SUP\.?\s*TOTAL|SUPERFICIE\s*TOTAL|TOTAL\s*SUPERFICIE|TOTAL(ES)?|SUBTOTAL)\b/
 
 const RESUMEN_RE = /(RESUMEN\s*GENERAL|CUADRO\s*GENERAL)/
 
 // ---------- 5.
+
+// Formato "titulo sobre la tabla" (sin columna NIVEL): el nivel va como titulo
+// ("PLANTA 11° PISO", "PLANTA TERRAZA") encima de la tabla, la descripcion ocupa
+// 1-3 lineas y debajo de la tabla de la planta viene otra, "RESUMEN GENERAL",
+// con todas las plantas. Antes de armar la grilla se separan esas piezas:
+//   - se corta todo lo que esta desde "RESUMEN GENERAL" hacia abajo;
+//   - se saca el titulo (y se devuelve aparte para fijar la planta);
+//   - se sacan las filas "SUPERFICIE CONTEMPLADA EN LA PLANTA N" (celda combinada
+//     sin numeros: la unidad duplex se cuenta en esa otra planta) junto con las
+//     lineas de descripcion que las rodean.
+const TITULO_NIVEL_RE = /^[PFR]?(LANTA)?(SOTANO|SEMISOTANO|BAJA|TERRAZA|\d{1,2}PIS[O0])$/
+const CONTEMPLADA_RE = /SUPERFICIE\s*CONTEMPLADA/
+
+function prepararBloques(blocks) {
+  const info = blocks
+    .map((b) => ({
+      b,
+      texto: (b.text || '').trim(),
+      clave: normKey(b.text),
+      y: yCenter(b.points),
+      h: Math.abs(b.points[2][1] - b.points[0][1]),
+      xc: (xStartOf(b.points) + xEndOf(b.points)) / 2,
+    }))
+    .filter((i) => i.texto)
+  const sinCambios = { blocks, titulo: '', sinNivel: false }
+  if (info.length === 0) return sinCambios
+
+  // 1. Todo lo que esta desde "RESUMEN GENERAL" hacia abajo se ignora.
+  let util = info
+  const resumen = info.filter((i) => RESUMEN_RE.test(norm(i.texto))).sort((a, b) => a.y - b.y)[0]
+  if (resumen) {
+    const arriba = info.filter((i) => i.y < resumen.y - resumen.h / 2)
+    if (arriba.filter((i) => esTokenNumerico(i.texto)).length >= 8) util = arriba
+  }
+
+  // 2. Titulo de nivel sobre la tabla: solo si la tabla NO trae columna NIVEL.
+  const hayColumnaNivel = util.some((i) => /^NIVEL\b/.test(norm(i.texto)))
+  let titulo = ''
+  if (!hayColumnaNivel) {
+    const yEncabezado = util
+      .filter((i) => /\b(DESCRIP|AMBIENTE)/.test(norm(i.texto)) || /^SUP\b/.test(norm(i.texto)))
+      .reduce((m, i) => Math.min(m, i.y), Infinity)
+    const candidato = util
+      .filter((i) => Number.isFinite(yEncabezado) && i.y < yEncabezado && TITULO_NIVEL_RE.test(i.clave))
+      .sort((a, b) => a.y - b.y)[0]
+    if (candidato) {
+      titulo = candidato.texto
+      util = util.filter((i) => i !== candidato)
+    }
+  }
+  if (!titulo && util === info) return sinCambios
+
+  // 3. Filas "SUPERFICIE CONTEMPLADA...": se sacan junto con las lineas de
+  // descripcion de su misma fila (las que caen a una altura de linea o menos).
+  const alturas = util.map((i) => i.h).sort((a, b) => a - b)
+  const hTipica = alturas[Math.floor(alturas.length / 2)] || 20
+  const marcas = util.filter((i) => CONTEMPLADA_RE.test(norm(i.texto)))
+  if (marcas.length > 0) {
+    const numX = util.filter((i) => esTokenNumerico(i.texto)).map((i) => i.xc)
+    const limiteEtiquetas = numX.length ? Math.min(...numX) : Infinity
+    util = util.filter((i) => {
+      if (marcas.includes(i)) return false
+      return !(i.xc < limiteEtiquetas && marcas.some((m) => Math.abs(i.y - m.y) <= 1.3 * hTipica))
+    })
+  }
+
+  // 4. Numeros sueltos a la izquierda de las columnas de cifras (el OCR a veces
+  // lee un "+" de la descripcion como "14"): no son datos y correrian la zona
+  // de etiquetas.
+  const xIni = util.filter((i) => esTokenNumerico(i.texto)).map((i) => xStartOf(i.b.points)).sort((a, b) => a - b)
+  if (xIni.length >= 8) {
+    const zonaNumeros = xIni[Math.floor(xIni.length * 0.05)]
+    util = util.filter((i) => !(esTokenNumerico(i.texto) && xEndOf(i.b.points) < zonaNumeros - 20))
+  }
+  return { blocks: util.map((i) => i.b), titulo, sinNivel: Boolean(titulo) }
+}
 
 /**
  * @param {Array} blocks  bloques OCR de UNA pagina: { points, text, confidence }
@@ -511,7 +626,9 @@ const RESUMEN_RE = /(RESUMEN\s*GENERAL|CUADRO\s*GENERAL)/
  * }}
  */
 export function parseSuperficiesPage(blocks, opts = {}) {
-  const grid = buildGrid(blocks, { lineYs: opts.lineYs || [] })
+  const preparado = prepararBloques(blocks)
+  const { titulo, sinNivel } = preparado
+  const grid = buildGrid(preparado.blocks, { lineYs: opts.lineYs || [], sinNivel })
   if (grid.columnCount === 0) return { columnCount: 0, columnRoles: [], rows: [], filaTotal: null }
   grid.rows = grid.rows.filter((row) => !isNoiseRow(row))
 
@@ -666,8 +783,8 @@ export function parseSuperficiesPage(blocks, opts = {}) {
   const PLANTA_OMITIDA = '\0omitida'
 
   const rows = []
-  let plantaActual = ''
-  let plantaActualRaw = ''
+  let plantaActual = sinNivel ? (CUBIERTA_RE.test(titulo) ? PLANTA_OMITIDA : guessPlantaCanonica(titulo)) : ''
+  let plantaActualRaw = sinNivel ? titulo : ''
   let filaTotal = null
   let fragmentoPendiente = '' // texto de fila(s) sin numeros, a la espera de la fila con datos
 
@@ -706,7 +823,7 @@ export function parseSuperficiesPage(blocks, opts = {}) {
       continue
     }
 
-    if (plantaColIdx >= 0) {
+    if (plantaColIdx >= 0 && !sinNivel) {
       const v = cells[plantaColIdx]?.text?.trim()
       if (v) {
         plantaActualRaw = v
@@ -721,7 +838,7 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     }
 
     // Layout A: fila que SOLO trae "PLANTA X PISO" (marca de seccion) -> fija la planta y no es una fila de datos.
-    if (soloPrimera && PLANTA_RE.test(primeraTxt)) {
+    if (!sinNivel && soloPrimera && PLANTA_RE.test(primeraTxt)) {
       plantaActualRaw = cells[ambienteIdx >= 0 ? ambienteIdx : 0].text.trim()
       plantaActual = CUBIERTA_RE.test(plantaActualRaw) ? PLANTA_OMITIDA : guessPlantaCanonica(plantaActualRaw) || plantaActual
       continue
@@ -742,7 +859,9 @@ export function parseSuperficiesPage(blocks, opts = {}) {
       continue
     }
 
-    const ambienteFinal = (fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt).trim()
+    let ambienteFinal = (fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt).trim()
+    // El parentesis "(PLANTA 11° PISO + ...)" no es parte del nombre de la unidad.
+    if (sinNivel) ambienteFinal = ambienteFinal.replace(PARENTESIS_PLANTAS_RE, '').replace(/\s+/g, ' ').trim()
     fragmentoPendiente = ''
 
     rows.push({

@@ -10,6 +10,11 @@ export const LEYENDAS_COLINDANCIA = [
   'CALLE',
   'LOTE Nº',
   'R.M.',
+  // Rótulos de avenida/lote de los planos del formato 2 ("AV. CIRCUNVALACION
+  // BEIJING DE 50.00 MTS.", "LOTE B"): igual que "CALLE", la primera palabra
+  // alcanza para reconocerlos.
+  'AV.',
+  'AVENIDA',
 ]
 
 function normTexto(s) {
@@ -22,6 +27,69 @@ function normTexto(s) {
     .replace(/(\d)([A-Z])/g, '$1 $2')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// La tabla de superficies aclara a veces el nombre con un paréntesis que el
+// plano NO escribe junto al rótulo ("DEPARTAMENTO DUPLEX A (PLANTA 11° PISO +
+// PLANTA TERRAZA)" se rotula "DEPARTAMENTO DUPLEX A" y, aparte, en otra línea,
+// "PLANTA 11° PISO + PLANTA TERRAZA"). Para ubicar la unidad se busca solo el
+// nombre, sin el paréntesis (ni su "+", que la mandaría a la búsqueda de
+// nombres compuestos).
+function sinAclaracion(frase) {
+  return (frase || '').replace(/\([^)]*\)?/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+// Alto del texto de un bloque: el lado corto de su caja (sirve también con
+// rótulos girados 90°, donde el alto queda como ancho).
+function altoLetra(b) {
+  const xs = b.points.map((p) => p[0])
+  const ys = b.points.map((p) => p[1])
+  return Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys))
+}
+
+/**
+ * Quita del OCR las LISTAS en columna: al borde de la foto de algunos planos
+ * se cuela un pedazo de la tabla de superficies (una columna de nombres
+ * "DEPARTAMENTO A / DEPARTAMENTO B / ..." con las mismas medidas que el
+ * propio plano), y esos nombres se confundían con los rótulos de las unidades
+ * y las "ubicaban" en el margen. Una lista es una pila de 5 o más bloques con
+ * el borde izquierdo alineado y casi pegados entre sí (separados menos de dos
+ * veces su alto); los rótulos del dibujo, aunque estén alineados, quedan
+ * mucho más separados.
+ */
+export function quitarListasDeTabla(bloques) {
+  const info = bloques.map((b, i) => {
+    const xs = b.points.map((p) => p[0])
+    return { i, x0: Math.min(...xs), cy: blockCenter(b).y, h: altoLetra(b) }
+  })
+  const quitar = new Set()
+  const porX = [...info].sort((a, b) => a.x0 - b.x0)
+  let grupo = []
+  const cerrar = () => {
+    const pila = [...grupo].sort((a, b) => a.cy - b.cy)
+    let racha = [pila[0]]
+    const cierraRacha = () => {
+      if (racha.length >= 5) racha.forEach((r) => quitar.add(r.i))
+    }
+    for (let k = 1; k < pila.length; k++) {
+      const alto = Math.max(pila[k].h, racha[racha.length - 1].h, 1)
+      if (pila[k].cy - racha[racha.length - 1].cy <= 2 * alto) racha.push(pila[k])
+      else {
+        cierraRacha()
+        racha = [pila[k]]
+      }
+    }
+    cierraRacha()
+  }
+  porX.forEach((it) => {
+    if (grupo.length && it.x0 - grupo[0].x0 > Math.max(8, 0.5 * it.h)) {
+      cerrar()
+      grupo = []
+    }
+    grupo.push(it)
+  })
+  if (grupo.length) cerrar()
+  return quitar.size ? bloques.filter((_, i) => !quitar.has(i)) : bloques
 }
 
 function blockCenter(b) {
@@ -104,6 +172,13 @@ function contieneSecuencia(tokens, clave) {
     }
     if (k === clave.length) return true
   }
+  // Rótulos con letra suelta ("DEPARTAMENTO DUPLEX B", "MONOAMBIENTE R"): el OCR
+  // suele pegarla a la palabra anterior ("DUPLEXB", "MONOAMBIENTER"). Se
+  // compara el bloque entero sin espacios, nunca un pedazo: "DEPARTAMENTO D"
+  // no puede calzar con el comienzo de "DEPARTAMENTO DUPLEX".
+  if (clave.some((t) => t.length === 1) && tokens.length > 0) {
+    return tokens.join('') === clave.join('')
+  }
   return false
 }
 
@@ -172,14 +247,15 @@ function buscarCompuestoDetalle(bloques, frase, radio) {
 }
 
 /** Busca dónde está escrita `frase` en el plano, juntando bloques de OCR cercanos entre sí. */
-function buscarFraseDetalle(bloques, frase, radio) {
+function buscarFraseDetalle(bloques, fraseOriginal, radio) {
+  const frase = sinAclaracion(fraseOriginal)
   if (frase.includes('+')) return buscarCompuestoDetalle(bloques, frase, radio)
   const tokens = normTexto(frase).split(' ').filter(Boolean)
   if (tokens.length === 0) return { pos: null, motivo: 'nombre vacío' }
   const { desde, palabras: clave } = claveDe(tokens)
   const resto = tokens.filter((_, i) => i < desde || i >= desde + clave.length)
 
-  const conTokens = bloques.map((b) => ({ b, t: tokensBloque(b), c: blockCenter(b) }))
+  const conTokens = bloques.map((b) => ({ b, t: tokensBloque(b), c: blockCenter(b), letra: altoLetra(b) }))
   const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y)
 
   const inicios = []
@@ -228,9 +304,17 @@ function buscarFraseDetalle(bloques, frase, radio) {
     }
     // Centro de los bloques que forman el nombre (no de todo lo que hay cerca).
     const anexos = usados.filter((u) => u.b.text.trim().startsWith('+')).length
+    // Alto medio del texto (lado corto de su caja): el rótulo del dibujo es
+    // bastante más grande que el mismo nombre repetido en una tabla pequeña
+    // que a veces queda al borde de la foto del plano.
+    const letra = usados.reduce((a, u) => a + u.letra, 0) / usados.length
+    const igual = mejor && usados.length === mejor.usados.length && anexos === mejor.anexos
     const peor =
-      mejor && (usados.length > mejor.usados.length || (usados.length === mejor.usados.length && anexos >= mejor.anexos))
-    if (!peor) mejor = { usados, anexos, pos: centro(usados) }
+      mejor &&
+      (usados.length > mejor.usados.length ||
+        (usados.length === mejor.usados.length && anexos > mejor.anexos) ||
+        (igual && letra < mejor.letra * 1.25))
+    if (!peor) mejor = { usados, anexos, letra, pos: centro(usados) }
   }
   if (mejor) {
     return {
@@ -265,7 +349,7 @@ function esLeyenda(tokens) {
 export function autodetectarUnidades(bloquesOcr) {
   const vistos = new Set()
   const nombres = []
-  bloquesOcr.forEach((b) => {
+  quitarListasDeTabla(bloquesOcr).forEach((b) => {
     if ((b.confidence ?? 1) < UMBRAL_CONFIANZA_ROTULO) return
     const tokens = tokensBloque(b)
     if (tokens.length === 0 || esLeyenda(tokens)) return
@@ -303,7 +387,10 @@ export function detectColindancias(bloquesOcr, nombresUnidadesPlanta, norte, tam
 
 const redondear = (v) => Math.round(v)
 
-export function analizarColindancias(bloquesOcr, nombresUnidadesPlanta, norte, tamañoImagen) {
+const LEYENDAS_DE_TEXTO_COMPLETO = new Set(['AV.', 'AVENIDA'])
+
+export function analizarColindancias(bloquesCrudos, nombresUnidadesPlanta, norte, tamañoImagen) {
+  const bloquesOcr = quitarListasDeTabla(bloquesCrudos)
   const radio = radioAgrupado(tamañoImagen.width, tamañoImagen.height)
   const cx = tamañoImagen.width / 2
   const cy = tamañoImagen.height / 2
@@ -314,11 +401,40 @@ export function analizarColindancias(bloquesOcr, nombresUnidadesPlanta, norte, t
   const etiquetas = []
   const busquedas = []
   const ubicar = (tipo, valor) => {
+    // Avenidas: puede haber varias en el mismo plano (una por cada frente) y lo
+    // útil es su nombre completo, no la palabra "AV.": cada rótulo es una
+    // etiqueta con su propio texto.
+    if (tipo === 'leyenda' && LEYENDAS_DE_TEXTO_COMPLETO.has(valor)) {
+      const clave = normTexto(valor).split(' ').filter(Boolean)
+      // Solo rótulos con nombre ("AV. CIRCUNVALACION ..."): un "AV." suelto es un
+      // pedazo de otra cosa.
+      const hallados = bloquesOcr.filter((b) => {
+        const tokens = tokensBloque(b)
+        return (
+          (b.confidence ?? 1) >= UMBRAL_CONFIANZA_ROTULO &&
+          tokens.length >= 2 &&
+          tokens.some((t) => t.length >= 4 && !esNumero(t)) &&
+          contieneSecuencia(tokens, clave)
+        )
+      })
+      hallados.forEach((b) => {
+        const pos = blockCenter(b)
+        const texto = (b.text || '').replace(/[�]/g, '').replace(/\s+/g, ' ').trim()
+        etiquetas.push({ tipo, valor: texto, mostrar: texto, ...aFrameNorte(pos) })
+      })
+      busquedas.push({
+        tipo,
+        valor,
+        encontrada: hallados.length > 0,
+        ...(hallados.length ? { bloquesUsados: hallados.map((b) => b.text) } : { motivo: `ningún bloque del OCR tiene "${valor}"` }),
+      })
+      return
+    }
     const d = buscarFraseDetalle(bloquesOcr, valor, radio)
     const registro = { tipo, valor, encontrada: Boolean(d.pos) }
     if (d.pos) {
       const enNorte = aFrameNorte(d.pos)
-      etiquetas.push({ tipo, valor, ...enNorte })
+      etiquetas.push({ tipo, valor, mostrar: sinAclaracion(valor) || valor, ...enNorte })
       registro.posicionImagen = { x: redondear(d.pos.x), y: redondear(d.pos.y) }
       registro.posicionNorteArriba = { x: redondear(enNorte.x), y: redondear(enNorte.y) }
       registro.bloquesUsados = d.bloques
@@ -343,7 +459,7 @@ export function analizarColindancias(bloquesOcr, nombresUnidadesPlanta, norte, t
       const dx = destino.x - origen.x
       const dy = destino.y - origen.y
       porSector[sectorDe(dx, dy)].push({
-        valor: destino.valor,
+        valor: destino.mostrar,
         tipo: destino.tipo,
         distancia: redondear(Math.hypot(dx, dy)),
         // Rumbo desde la unidad, con el norte arriba (0 = norte, 90 = este).

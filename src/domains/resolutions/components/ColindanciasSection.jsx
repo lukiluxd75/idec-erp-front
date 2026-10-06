@@ -1,4 +1,4 @@
-import { Bug, Compass, FileDown, RotateCcw, RotateCw, ScanSearch } from 'lucide-react'
+import { Bug, ChevronDown, ChevronRight, Compass, FileDown, RotateCcw, RotateCw, ScanSearch } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
@@ -11,7 +11,7 @@ import {
   autodetectarUnidades,
 } from '@/shared/colindancias/colindanciasDetector'
 import { generarColindanciasPdf } from '@/shared/colindancias/colindanciasPdf'
-import { ocrImage } from '@/shared/colindancias/ocrClient'
+import { ocrImagenEnMosaicos } from '@/shared/colindancias/ocrMosaicos'
 import { detectNorth } from '@/shared/colindancias/planNorthDetector'
 import { Button, Card, SectionHeader } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
@@ -30,7 +30,9 @@ export function ColindanciasSection({
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
   const [logPorPagina, setLogPorPagina] = useState({}) // { ["orden|planta"]: entrada del log de llenado }
 
+  const [abiertas, setAbiertas] = useState(() => new Set()) // pisos desplegados
   const cargadasRef = useRef(new Set())
+  const [yaMostradas, setYaMostradas] = useState(() => new Set()) // pisos que ya aparecieron
   const objectUrlsRef = useRef({})
 
   const plantasConPlano = [...new Set(planPages.map((p) => p.planta))]
@@ -112,7 +114,8 @@ export function ColindanciasSection({
           const bitmap = await createImageBitmap(blobPagina)
           const { width, height } = bitmap
           bitmap.close?.()
-          const bloquesPagina = await ocrImage(blobPagina, `plano_${p.order_index}.jpg`)
+          // Planos grandes/alargados: el OCR solo lee bien por mosaicos (ocrMosaicos.js).
+          const bloquesPagina = await ocrImagenEnMosaicos(blobPagina, `plano_${p.order_index}.jpg`)
           leidas[p.order_index] = {
             blob: blobPagina,
             ancho: width,
@@ -233,14 +236,40 @@ export function ColindanciasSection({
     }))
   }
 
-  if (planPages.length === 0) return null
+  const alternarPiso = (planta) =>
+    setAbiertas((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(planta)) next.add(planta)
+      return next
+    })
+
+  const tieneColindancias = (planta, nombres) =>
+    nombres.some((ambiente) =>
+      Object.values(colindancias[planta]?.[ambiente] || {}).some((v) => String(v || '').trim() !== ''),
+    )
+
+  // Un piso entra a la lista si tiene alguna colindancia; una vez que entra se
+  // queda (yaMostradas) para no desaparecer mientras se edita.
+  const conColindancias = (planta) =>
+    tieneColindancias(planta, unidadesVisibles(unidadesPorPlanta[planta] || [], datosPorPlanta[planta]))
+  const nuevasMostradas = plantasConPlano.filter((p) => !yaMostradas.has(p) && conColindancias(p))
+  if (nuevasMostradas.length > 0) setYaMostradas(new Set([...yaMostradas, ...nuevasMostradas]))
+  const pisoVisible = (planta) => yaMostradas.has(planta) || conColindancias(planta)
+
+  if (planPages.length === 0) {
+    return (
+      <Card className="animate-card-in">
+        <p className="text-sm text-slate-500">Suba las páginas del plano para sacar las colindancias.</p>
+      </Card>
+    )
+  }
 
   return (
     <Card className="animate-card-in">
       <SectionHeader
         icon={Compass}
         eyebrow="Plano de división"
-        title="Colindancias (COLINDANCIAS)"
+        title="Colindancias"
         subtitle="Sugerido a partir del OCR del plano y la orientación detectada — revise cada unidad antes de generar el Excel."
       />
 
@@ -260,7 +289,13 @@ export function ColindanciasSection({
         )}
       </div>
 
-      {plantasConPlano.map((planta) => {
+      {plantasConPlano.every((p) => !pisoVisible(p)) && (
+        <p className="mt-5 text-sm text-slate-400">
+          Todavía no hay pisos con colindancias. Pulse "Detectar colindancias" para sacarlas del plano.
+        </p>
+      )}
+
+      {plantasConPlano.filter(pisoVisible).map((planta) => {
         const datos = datosPorPlanta[planta]
         const autoDetectadas = !unidadesPorPlanta[planta]?.length
         const nombresConocidos = autoDetectadas ? datos?.nombres || [] : unidadesPorPlanta[planta]
@@ -269,21 +304,37 @@ export function ColindanciasSection({
         const imagenUrl = imagenesPorPlanta[planta]
         const opcionesDatalist = [...LEYENDAS_COLINDANCIA, ...nombresConocidos]
         const datalistId = `colindancia-opciones-${planta.replace(/\s+/g, '-')}`
+        const abierta = abiertas.has(planta)
+        const conValores = nombres.filter((a) => tieneColindancias(planta, [a])).length
 
         return (
-          <div key={planta} className="mt-6 border-t border-slate-100 pt-5 first:mt-4 first:border-0 first:pt-0">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-slate-700">
+          <div key={planta} className="mt-3 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50"
+              onClick={() => alternarPiso(planta)}
+              aria-expanded={abierta}
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                {abierta ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 {planta}
                 {autoDetectadas && datos && (
                   <span
-                    className="ml-2 rounded-full bg-accent-50 px-2 py-0.5 text-[10px] font-normal normal-case text-accent-600"
+                    className="rounded-full bg-accent-50 px-2 py-0.5 text-[10px] font-normal normal-case text-accent-600"
                     title="Esta planta todavía no tiene filas en la tabla de superficies (Hoja2): las unidades se leyeron directo del plano, revíselas con más cuidado."
                   >
                     del plano, sin tabla
                   </span>
                 )}
-              </p>
+              </span>
+              <span className="text-xs text-slate-400">
+                {conValores} {conValores === 1 ? 'unidad con colindancias' : 'unidades con colindancias'}
+              </span>
+            </button>
+
+            {abierta && (
+              <div className="border-t border-slate-100 px-4 pb-4 pt-4">
+            <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span>
                   Norte detectado: {Math.round(angleDeg)}°{' '}
@@ -354,6 +405,8 @@ export function ColindanciasSection({
                 />
               ))}
             </div>
+              </div>
+            )}
           </div>
         )
       })}
