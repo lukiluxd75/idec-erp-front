@@ -174,10 +174,7 @@ function exportCampaignReportPdf(campaignId, opts, charts) {
   return downloadCampaignReportFile('pdf', campaignId, opts)
 }
 
-/**
- * Engine image URLs already come rewritten as `/api/detection/engine/...`.
- * Attach the ERP base URL + bearer via fetch blob URL for <img> tags.
- */
+/** Engine image URLs already come rewritten as `/api/detection/engine/...`. */
 async function resolveAssetObjectUrl(proxyPath) {
   if (!proxyPath) return null
   const path = proxyPath.startsWith('http') ? proxyPath : `${ENV.API_BASE_URL}${proxyPath}`

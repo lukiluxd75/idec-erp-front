@@ -7,12 +7,6 @@ const ESTADO_MAP = {
   Pendiente: { variant: 'warning', icon: Clock },
 }
 
-/**
- * Renders the document-audit JSON the assistant answers with when a citizen
- * lists which documents they have for a specific trámite (see the system
- * prompt in the backend's domain/services/prompt_builder.py) instead of
- * showing the raw JSON as text.
- */
 export function AuditResultCard({ result }) {
   const estado = ESTADO_MAP[result.estado] || { variant: 'neutral', icon: Clock }
   const EstadoIcon = estado.icon

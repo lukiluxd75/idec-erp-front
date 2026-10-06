@@ -8,9 +8,7 @@ import { PLANTAS_RESUMEN } from '@/domains/resolutions/utils/plantasCatalog'
 const inputCls =
   'rounded-lg border border-slate-200 bg-white/70 px-2 py-1 text-xs outline-none transition-colors focus:border-accent-500/60 focus:bg-white focus-visible:ring-2 focus-visible:ring-accent-400/30'
 
-// On paper, "Planta" is one vertical label for a stretch of rows, not a
-// per-row value. Count consecutive rows sharing the same value to render one
-// <td rowSpan> per stretch instead of repeating it on every row.
+// On paper, "Planta" is one vertical label for a stretch of rows, not a per-row value.
 function calcularTramosPlanta(rows) {
   const tramos = new Array(rows.length).fill(0)
   let i = 0
@@ -23,13 +21,6 @@ function calcularTramosPlanta(rows) {
   return tramos
 }
 
-// Hide two kinds of detected columns so the on-screen table matches the photo:
-//   - "Omitir" with no data in any row (ghost column from OCR jitter). If it
-//     does have text (misclassified), keep showing it so the role can be fixed.
-//   - "Planta (columna)" (rol `planta_col`): es el texto crudo de OCR que ya
-//     se usa para completar el campo "Planta" editable de mas a la
-//     izquierda (ver `plantaActual` en surfacesOcrParser.js) -- mostrarla
-//     aparte solo duplica el mismo dato dos veces en la fila.
 function calcularColumnasOcultas(pagina) {
   const ocultas = new Array(pagina.columnCount).fill(false)
   for (let i = 0; i < pagina.columnCount; i++) {
@@ -42,31 +33,13 @@ function calcularColumnasOcultas(pagina) {
   return ocultas
 }
 
-/**
- * Tabla editable de la "RELACION DE SUPERFICIE" reconstruida por OCR (por
- * posicion). Los <select> de rol vienen pre-seleccionados por el parser; las
- * celdas de baja confianza salen en rojo. Planta es un <select> de la lista
- * fija PLANTAS_RESUMEN (no texto libre): el texto tal cual lo leyo el OCR se
- * muestra debajo como referencia, pero el valor que se manda al Excel tiene
- * que ser exactamente uno de esos nombres -- son los que busca RESUMEN con
- * VLOOKUP contra la fila de subtotal de cada planta en Hoja2 (ver
- * sheet2Excel.js); cualquier otro texto ahi hace que esa planta desaparezca
- * de RESUMEN y MODEL SISCAT en silencio. Bloque es texto libre (el OCR nunca
- * lo detecta, siempre lo escribe el usuario). Si la
- * pagina trae `filaTotal` (la fila "SUPERFICIE TOTAL" del papel, ver
- * surfacesOcrParser.js), se muestra de solo lectura al final de la tabla
- * -- solo de referencia visual, nunca se manda al Excel (buildRows en
- * sheet2Excel.js no la lee).
- */
+/** Tabla editable de la "RELACION DE SUPERFICIE" reconstruida por OCR (por posicion). */
 export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaChange, onBloqueChange, onDeleteRow }) {
   return (
     <div className="flex flex-col gap-8">
       {paginas.map((pagina, pageIdx) => {
         const tramosPlanta = calcularTramosPlanta(pagina.rows)
         const columnasOcultas = calcularColumnasOcultas(pagina)
-        // "Bloque" nunca lo detecta el OCR (siempre lo escribe el usuario a
-        // mano) -- se oculta mientras ninguna fila de esta pagina tenga un
-        // valor cargado, igual que las demas columnas sin dato.
         const bloqueOculto = pagina.rows.every((row) => !(row.bloque || '').trim())
         return (
           <div key={pagina.pagina}>

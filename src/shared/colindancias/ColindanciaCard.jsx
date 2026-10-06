@@ -1,11 +1,6 @@
 import { useState } from 'react'
 
-/**
- * Imagen del plano en la tarjeta de una unidad, con el norte arriba. Si se
- * ubicó el rótulo de la unidad, muestra el plano AMPLIADO sobre esa zona (no
- * un recorte: es el mismo plano con zoom, marcando el rótulo); un clic
- * alterna con el plano completo.
- */
+/** Imagen del plano en la tarjeta de una unidad, con el norte arriba. */
 function PlanoUnidad({ url, etiqueta, angleDeg, ancho, alto, foco }) {
   const [completo, setCompleto] = useState(false)
   if (!url) return <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
@@ -38,24 +33,17 @@ function PlanoUnidad({ url, etiqueta, angleDeg, ancho, alto, foco }) {
   )
 }
 
-/**
- * Una tarjeta de colindancias: nombre de la unidad, su plano ampliado
- * (PlanoUnidad) y sus 4 valores (norte/este/sud/oeste), cada uno en un
- * <input> editable con lista de opciones -- el usuario siempre tiene la
- * última palabra antes de guardar. Compartida por resolutions
- * (ColindanciasSection) y folder-analysis (PlanColindancias).
- */
 export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, imagenUrl, angleDeg, ancho, alto, foco }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
       <p className="mb-3 truncate text-sm font-semibold text-slate-700" title={ambiente}>
         {ambiente}
       </p>
       <div
-        className="grid items-center justify-items-stretch gap-2"
+        className="grid items-center justify-center justify-items-stretch gap-2"
         style={{
           gridTemplateAreas: '". norte ." "oeste imagen este" ". sud ."',
-          gridTemplateColumns: '8rem 10rem 8rem',
+          gridTemplateColumns: 'minmax(0, 8rem) minmax(0, 10rem) minmax(0, 8rem)',
           gridTemplateRows: 'auto 10rem auto',
         }}
       >

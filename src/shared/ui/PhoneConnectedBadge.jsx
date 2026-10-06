@@ -1,15 +1,6 @@
 import { Smartphone } from 'lucide-react'
 import { Badge } from './Badge'
 
-/**
- * "Phone connected" indicator — always visible (not just when connected), so
- * the user can tell at a glance whether it's live or simply hasn't detected a
- * phone yet. Lit (green, pulsing) when another WebSocket connection of the
- * SAME account is open from a device detected as mobile (see
- * CapturesConnectionManager / ResolutionsConnectionManager on the backend,
- * and useCapturesUpdates / useResolutionsUpdates on the frontend); grey
- * otherwise. Only reflects live presence, not a session history.
- */
 export function PhoneConnectedBadge({ connected }) {
   return (
     <div className="flex items-center gap-2 normal-case">

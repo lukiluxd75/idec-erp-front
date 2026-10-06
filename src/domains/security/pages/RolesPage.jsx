@@ -17,9 +17,7 @@ import { useSecurityData, securityActions } from '../data/securityStore'
 import { permissionLabel, permissionSummary } from '../data/moduleCatalog'
 import { RoleFormModal } from '../components/RoleFormModal'
 
-/**
- * Internal roles catalog and permission matrix. Areas live on /security/areas.
- */
+/** Internal roles catalog and permission matrix. */
 export default function RolesPage() {
   const { roles, loading, error } = useSecurityData()
   const [editingRole, setEditingRole] = useState(undefined)

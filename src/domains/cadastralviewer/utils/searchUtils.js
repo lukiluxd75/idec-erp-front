@@ -24,7 +24,6 @@ export function highlightMatch(text, query) {
 }
 
 // Scores a property against a search term.
-// Exact match > starts-with > contains. The highest weighted field wins.
 export function scoreProperty(property, term) {
   let best = { score: 0, field: null };
   for (const field of SEARCH_FIELDS) {
@@ -38,7 +37,7 @@ export function scoreProperty(property, term) {
   return best;
 }
 
-// Filters and ranks properties by relevance. Returns up to `limit` results.
+// Filters and ranks properties by relevance.
 export function searchProperties(properties, query, limit = 30) {
   const term = query.trim().toLowerCase();
   if (!term) return [];

@@ -7,8 +7,6 @@ import { DOC_TYPES } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import { Alert, Button, Card, SectionHeader, Select, Spinner } from '@/shared/ui'
 
-// El tipo elegido se recuerda en el equipo: quien trabaja poseedores toda la
-// mañana no tiene que volver a elegirlo cada vez que entra a la pantalla.
 const STORAGE_KEY = 'folder-analysis.folder-type'
 
 function remembered() {
@@ -19,28 +17,12 @@ function remembered() {
   }
 }
 
-/**
- * El tablero de clasificación.
- *
- * Arriba se elige de qué tipo de carpeta es lo que se va a analizar, y los
- * carriles son los de ese tipo: en poseedores aparecen avalúo, plano,
- * formulario, declaración jurada y carnets, y ya no folio ni impuesto. Los tipos
- * y sus documentos los da el catálogo del back (domain/folder_types.py), así que
- * un tipo nuevo aparece acá solo.
- *
- * Lo que se clasifica acá no queda dentro de ninguna carpeta: es el tablero
- * suelto, para el documento que se resuelve por su cuenta. El trabajo por
- * trámite -- con la hoja de datos de la carpeta, su dirección, sus colindancias,
- * su notario -- va en Carpetas registradas.
- */
+/** El tablero de clasificación. */
 export default function FolderAnalysisPage() {
   const { catalog, error, loading } = useCatalog()
   const [typeKey, setTypeKey] = useState(remembered)
 
-  // Con el catálogo en mano se resuelve qué tipo mostrar: el recordado, si
-  // todavía existe. Sin nada elegido arranca en "general", que son los carriles
-  // que esta pantalla tuvo siempre -- quien ya trabajaba acá la encuentra igual
-  // y elige otro tipo cuando lo necesita.
+  // Con el catálogo en mano se resuelve qué tipo mostrar: el recordado, si todavía existe.
   const types = catalog?.folder_types || []
   const current = folderTypeOf(catalog, typeKey) || folderTypeOf(catalog, 'general') || types[0] || null
   const lanes = current ? DOC_TYPES.filter((type) => current.document_types.includes(type.id)) : []
@@ -62,8 +44,8 @@ export default function FolderAnalysisPage() {
         title="Analizador y extractor de datos de carpetas"
         subtitle={
           current
-            ? `Tablero de clasificación: bandeja a la izquierda y los carriles de una carpeta de ${current.label.toLowerCase()}.`
-            : 'Tablero de clasificación: bandeja a la izquierda y los carriles del tipo de carpeta elegido.'
+            ? `Escanee una carpeta física completa de ${current.label.toLowerCase()}: bandeja a la izquierda y sus carriles a la derecha.`
+            : 'Escanee una carpeta física completa: bandeja a la izquierda y los carriles del tipo de carpeta elegido.'
         }
         actions={
           <Link to="/folder-analysis/folders">
@@ -103,13 +85,14 @@ export default function FolderAnalysisPage() {
                 {lanes.map((lane) => lane.label).join(' · ')}
               </p>
               <p className="mt-0.5 text-xs text-slate-500">
-                {current?.description} Para cargar además los datos propios de la carpeta (dirección,
-                colindancias, notario), ábrela en <strong>Carpetas registradas</strong>.
+                {current?.description} Cuando termine de escanear, pulse <strong>Guardar en carpeta</strong>{' '}
+                y escriba el número de la carpeta física: quedará en <strong>Carpetas registradas</strong>{' '}
+                con ese número como nombre.
               </p>
             </div>
           </div>
 
-          <ClassificationBoard types={lanes} folderType={current?.key} />
+          <ClassificationBoard types={lanes} folderType={current?.key} folderTypeLabel={current?.label} />
         </div>
       )}
     </Card>

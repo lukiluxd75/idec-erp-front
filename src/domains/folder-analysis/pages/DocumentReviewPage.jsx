@@ -7,8 +7,11 @@ import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.
 import { DocumentStatusBadge } from '@/domains/folder-analysis/components/DocumentStatusBadge'
 import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
 import { PlanColindancias } from '@/domains/folder-analysis/components/PlanColindancias'
+import { PossessorsPlanLookup } from '@/domains/folder-analysis/components/PossessorsPlanLookup'
 import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingProgress'
 import { FolioForm } from '@/domains/folder-analysis/components/forms/FolioForm'
+import { MultiFieldInput } from '@/domains/folder-analysis/components/forms/MultiFieldInput'
+import { PageText } from '@/domains/folder-analysis/components/forms/PageText'
 import { PlanPageInfo } from '@/domains/folder-analysis/components/forms/PlanPageInfo'
 import { TaxReceiptForm } from '@/domains/folder-analysis/components/forms/TaxReceiptForm'
 import { FieldInput } from '@/domains/folder-analysis/components/forms/FieldInput'
@@ -44,8 +47,6 @@ export default function DocumentReviewPage() {
   // Bumped when the data is replaced from the server, to remount the editors.
   const [formVersion, setFormVersion] = useState(0)
 
-  // Last status the form was built from: a background refresh with the same status
-  // must not overwrite what the architect is typing.
   const formStatus = useRef(null)
 
   const load = useCallback(
@@ -71,19 +72,20 @@ export default function DocumentReviewPage() {
     load()
   }, [load])
 
-  // While it is being analyzed the screen asks more often: the bar moves photo by
-  // photo and a five second gap between answers is felt as a stall.
   usePollWhile(Boolean(document && IN_PROGRESS.has(document.status)), load, 3000)
 
-  // Los valores que la carpeta pide de este documento: los declara el catálogo
-  // para el par (tipo de carpeta, tipo de documento), y el análisis los dejó en
-  // `values`. Un documento de un par que no declara nada no muestra este bloque
-  // y se revisa con la vista de siempre.
-  const values =
+  const values = (
     folderTypeOf(catalog, document?.folder_type)?.document_values?.[document?.doc_type] || []
+  ).filter((field) => !field.hidden)
+
+  // Qué se le pide al arquitecto en esta hoja.
+  const pageReading = catalog ? document?.doc_type === 'plan' || values.length === 0 : null
 
   const setValue = (key, value) =>
     setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), [key]: value } }))
+
+  const setValues = (patch) =>
+    setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), ...patch } }))
 
   const save = async () => {
     setSaving(true)
@@ -143,12 +145,8 @@ export default function DocumentReviewPage() {
 
   const type = DOC_TYPE_BY_ID[document.doc_type]
   const hasData = WITH_DATA.has(document.status)
-  // What the OCR + rules reading flagged (only the lanes read on the server
-  // carry it). It is a to-do list: once the architect saved the review, the
-  // values were checked by a person and the marks would only be noise.
+  // What the OCR + rules reading flagged (only the lanes read on the server carry it).
   const reading = document.status === 'extracted' ? document.data?.reading : null
-  // Fields to compare against the photo: the ones the OCR was unsure about, plus
-  // the ones the AI placed from the text instead of a rule.
   const flagged = [...(reading?.low_confidence_fields || []), ...(reading?.fields_filled_by_ai || [])]
 
   return (
@@ -167,7 +165,8 @@ export default function DocumentReviewPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <DocumentStatusBadge status={document.status} />
-            <Link to="/folder-analysis">
+            {/* Back to where the document lives: its carpeta, or the loose board. */}
+            <Link to={document.folder_id ? `/folder-analysis/folders/${document.folder_id}` : '/folder-analysis'}>
               <Button size="sm" variant="secondary" icon={ArrowLeft}>Volver</Button>
             </Link>
           </div>
@@ -190,6 +189,12 @@ export default function DocumentReviewPage() {
           {document.status === 'failed' && <Alert type="error">{document.error}</Alert>}
           {document.status === 'draft' && (
             <Alert type="info">Este documento todavía no fue analizado. Vuelva a la bandeja y presione Analizar.</Alert>
+          )}
+          {document.status === 'filed' && (
+            <Alert type="info">
+              Este documento se guarda con la carpeta y no se lee: acompaña al trámite, no tiene datos
+              que extraer. Sus fotos están arriba.
+            </Alert>
           )}
 
           {hasData && reading?.observations?.length > 0 && (
@@ -234,14 +239,25 @@ export default function DocumentReviewPage() {
                       escríbalo comparando con la foto.
                     </p>
                     <div className="grid gap-x-5 gap-y-3.5 sm:grid-cols-2">
-                      {values.map((field) => (
-                        <FieldInput
-                          key={field.key}
-                          label={field.label}
-                          value={form?.values?.[field.key] ?? null}
-                          onChange={(value) => setValue(field.key, value)}
-                        />
-                      ))}
+                      {values.map((field) =>
+                        field.multiple ? (
+                          <MultiFieldInput
+                            key={field.key}
+                            label={field.label}
+                            itemLabel={field.item_label}
+                            value={form?.values?.[field.key] ?? null}
+                            onChange={(value) => setValue(field.key, value)}
+                            className="sm:col-span-2"
+                          />
+                        ) : (
+                          <FieldInput
+                            key={field.key}
+                            label={field.label}
+                            value={form?.values?.[field.key] ?? null}
+                            onChange={(value) => setValue(field.key, value)}
+                          />
+                        )
+                      )}
                     </div>
                   </div>
                 )}
@@ -260,8 +276,15 @@ export default function DocumentReviewPage() {
                   <FolioForm value={form} onChange={setForm} lowConfidence={flagged} />
                 ) : document.doc_type === 'tax_receipt' ? (
                   <TaxReceiptForm value={form} onChange={setForm} lowConfidence={flagged} />
-                ) : (
+                ) : pageReading === null ? null : pageReading ? (
                   <PlanPageInfo key={pageIndex} value={form} onChange={setForm} pageIndex={pageIndex} />
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Página {pageIndex + 1} de {form?.pages?.length || 1}
+                    </p>
+                    <PageText text={form?.pages?.[pageIndex]?.full_text} />
+                  </div>
                 )}
               </div>
             </>
@@ -272,7 +295,18 @@ export default function DocumentReviewPage() {
         </div>
       </div>
 
-      {document.doc_type === 'plan' && document.pages.length > 0 && (
+      {/* El plano de poseedores no se lee por sus colindancias dibujadas: trae un código catastral y de ahí se saca todo del IDE. */}
+      {document.doc_type === 'plan' && document.folder_type === 'possessors' && hasData && (
+        <div className="mt-5">
+          <PossessorsPlanLookup
+            documentId={document.id}
+            code={form?.values?.cadastral_code || null}
+            onCodeChange={(code) => setValue('cadastral_code', code)}
+            onApply={setValues}
+          />
+        </div>
+      )}
+      {document.doc_type === 'plan' && document.folder_type !== 'possessors' && document.pages.length > 0 && (
         <div className="mt-5">
           <PlanColindancias documentId={document.id} pages={document.pages} />
         </div>

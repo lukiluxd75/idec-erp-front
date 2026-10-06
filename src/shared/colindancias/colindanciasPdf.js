@@ -1,10 +1,3 @@
-/**
- * PDF con TODAS las colindancias detectadas, agrupadas por planta: para cada
- * unidad, la misma imagen que ya se ve en pantalla (el plano rotado con el
- * norte arriba, ampliado sobre el rótulo de la unidad) más sus 4 valores --
- * para repasar o compartir de un vistazo, sin abrir la pantalla con decenas
- * de tarjetas (ColindanciasSection.jsx).
- */
 import { jsPDF } from 'jspdf'
 
 const MARGEN = 12 // mm
@@ -23,17 +16,6 @@ function cargarImagen(url) {
   })
 }
 
-// Misma vista que PlanoUnidad en pantalla: el plano rotado con el norte
-// arriba, centrado y ampliado sobre el foco de la unidad, con un círculo
-// marcando el rótulo -- pero rasterizada para poder meterla en el PDF. Mismo
-// cálculo que su <svg> (viewBox centrado en el foco + transform
-// "rotate(-angleDeg) translate(-foco.x,-foco.y)"): un punto (x,y) de la
-// imagen original sale en pantalla en centro + escala·R(-angleDeg)·(x-foco.x,
-// y-foco.y), con escala = ladoPx/foco.ventana -- por eso el orden de las
-// llamadas de acá abajo es translate(centro) → rotate → scale →
-// translate(-foco) → drawImage: la escala es uniforme (misma en x e y), así
-// que conmuta con la rotación y el orden entre esas dos no cambia el
-// resultado, pero translate(-foco) SIEMPRE tiene que ir pegado al drawImage.
 function rasterizarFoco(img, angleDeg, foco, ladoPx) {
   const canvas = document.createElement('canvas')
   canvas.width = ladoPx
@@ -79,8 +61,6 @@ export async function generarColindanciasPdf(titulo, secciones) {
   doc.setFont('helvetica', 'normal')
   y += 10
 
-  // Una imagen del plano se reutiliza en todas las unidades de la misma
-  // planta (y una hoja tipo, en varias plantas): se carga una sola vez.
   const imagenesCargadas = new Map()
   const obtenerImagen = async (url) => {
     if (!imagenesCargadas.has(url)) imagenesCargadas.set(url, cargarImagen(url))

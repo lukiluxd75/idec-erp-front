@@ -16,52 +16,6 @@ import { detectNorth } from '@/shared/colindancias/planNorthDetector'
 import { Button, Card, SectionHeader } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
 
-/**
- * Revisión/confirmación de colindancias (columna E de COLINDANCIAS, ver
- * sheet2Excel.js) a partir de las páginas del plano de división ya subidas
- * (PlanPagesSection). Por cada planta con plano:
- *
- *   1. Corre el mismo servicio de OCR que ya usa la tabla de superficies.
- *   2. Detecta hacia dónde apunta el norte dibujado (planNorthDetector.js).
- *   3. Sugiere, para cada unidad de esa planta, su vecino en cada dirección
- *      (colindanciasDetector.js).
- *
- * Una tarjeta por unidad (no una fila de tabla): la MISMA imagen del plano
- * de la planta, rotada visualmente para que el norte quede arriba, con los
- * 4 valores de esa unidad alrededor -- la plantilla real de COLINDANCIAS
- * solo pide esos 4 datos por unidad, nada más.
- *
- * Es "asistido": las sugerencias se guardan en `colindancias` (estado de
- * ResolutionPage.jsx, mismo JSON opaco que datosGenerales/paginasTabla) pero
- * SIEMPRE quedan en un <input> editable con lista de opciones -- el usuario
- * tiene la última palabra antes de generar el Excel. Si el norte detectado
- * quedó mal, los botones de rotación lo corrigen sin volver a llamar al OCR
- * (se guarda el resultado crudo del OCR por planta para recalcular local).
- *
- * "Descargar log de llenado" baja un JSON con TODO lo que llevó a cada
- * sugerencia (norte detectado y por qué, bloques del OCR, dónde se ubicó cada
- * unidad o por qué no, candidatos por lado) más lo que quedó en pantalla,
- * para depurar con resoluciones reales sin tener que reproducirlas.
- *
- * No hace falta la tabla de superficies (Hoja2) para detectar: cada planta
- * se detecta por su cuenta, sin depender de la otra. Con filas ya cargadas en
- * Hoja2 para esa planta, busca esos nombres de "Ambiente"; sin ellas, saca
- * los nombres de unidad directo del plano (autodetectarUnidades en
- * colindanciasDetector.js) -- la tarjeta lo marca ("del plano, sin tabla")
- * porque, al no venir de una lista conocida, conviene revisarla con más
- * cuidado.
- *
- * Después de detectar, cada planta muestra SOLO las unidades que el OCR
- * ubicó en SU plano: un nombre de Hoja2 que no aparece ahí no es de esa
- * planta (pertenece a otra, o la tabla lo trajo mal) y no gana tarjeta --
- * sigue ofrecido igual en el <input> de "vecino" de las que sí aparecen.
- *
- * "Generar PDF" (colindanciasPdf.js) vuelca TODO lo detectado -- todas las
- * plantas, cada unidad con la misma imagen ampliada/rotada de su tarjeta y
- * sus 4 valores -- en un único documento para repasar o compartir sin abrir
- * la pantalla con decenas de tarjetas. Usa lo que quedó en `colindancias`
- * (con las correcciones a mano ya aplicadas), no la sugerencia cruda.
- */
 export function ColindanciasSection({
   resolutionId,
   resolutionNumber,
@@ -79,14 +33,8 @@ export function ColindanciasSection({
   const cargadasRef = useRef(new Set())
   const objectUrlsRef = useRef({})
 
-  // Toda planta con página de plano entra, tenga o no filas ya cargadas en
-  // Hoja2: sin tabla, "Detectar colindancias" saca los nombres de unidad del
-  // propio plano (autodetectarUnidades) en vez de saltarse la planta.
   const plantasConPlano = [...new Set(planPages.map((p) => p.planta))]
 
-  // Precarga la foto de cada planta apenas hay página de plano, sin esperar
-  // a "Detectar colindancias" -- así el usuario ya ve el plano (sin rotar)
-  // mientras revisa/edita a mano si quiere.
   useEffect(() => {
     const plantas = [...new Set(planPages.map((p) => p.planta))]
     plantas.forEach((planta) => {
@@ -118,8 +66,6 @@ export function ColindanciasSection({
     const datos = datosPorPlanta[planta]
     setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg } }))
     if (!datos?.ancho || !datos?.alto) return // aun no corrio el OCR -- solo gira la vista previa
-    // Igual que en detectar(): con tabla, sus nombres; sin tabla, los que ya
-    // se autodetectaron del plano (guardados en datos.nombres).
     const nombres = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos.nombres || []
     const analisis = analizarColindancias(datos.bloques, nombres, { angleDeg }, {
       width: datos.ancho,
@@ -159,8 +105,6 @@ export function ColindanciasSection({
       const nuevosDatos = {}
       const nuevasColindancias = {}
       const nuevoLog = {}
-      // Una hoja tipo llega una vez por cada piso (ver ResolutionPage): el
-      // OCR y el norte de esa imagen se calculan una sola vez.
       const leidas = {}
       for (const p of planPages) {
         if (!leidas[p.order_index]) {
@@ -178,10 +122,6 @@ export function ColindanciasSection({
           }
         }
         const { blob, ancho, alto, bloques, norte } = leidas[p.order_index]
-        // Con tabla, sus nombres de "Ambiente"; sin tabla (todavía no se
-        // cargó Hoja2 para esta planta), los rótulos que el propio plano deja
-        // leer -- cada planta se detecta por su cuenta, sin depender de la
-        // otra.
         const deTabla = unidadesPorPlanta[p.planta] || []
         const nombres = deTabla.length > 0 ? deTabla : autodetectarUnidades(bloques)
         const claveLog = `${p.order_index}|${p.planta}`
@@ -201,9 +141,6 @@ export function ColindanciasSection({
           focos: focosDe(analisis.detalle, ancho, alto),
           motivos: motivosDe(analisis.detalle),
         }
-        // El zoom usa posiciones de ESTA página: la tarjeta tiene que mostrar
-        // la misma imagen (si la planta tiene varias páginas, la precarga
-        // mostraba la primera).
         const url = URL.createObjectURL(blob)
         if (objectUrlsRef.current[p.planta]) URL.revokeObjectURL(objectUrlsRef.current[p.planta])
         objectUrlsRef.current[p.planta] = url
@@ -255,8 +192,6 @@ export function ColindanciasSection({
       generado: new Date().toISOString(),
       resolucion: { id: resolutionId, numero: resolutionNumber || null },
       paginas: Object.values(logPorPagina).sort((a, b) => a.pagina - b.pagina || a.planta.localeCompare(b.planta)),
-      // Lo que quedó en los campos al descargar (incluye lo corregido a mano):
-      // comparándolo con `sugerencias` de cada página se ve qué falló.
       valoresEnPantalla: colindancias,
     }
     const nombre = String(resolutionNumber || resolutionId).replace(/\W+/g, '_')
@@ -264,10 +199,6 @@ export function ColindanciasSection({
   }
 
   const generarPdf = async () => {
-    // Mismas plantas y las mismas unidades que se ven en pantalla ahora
-    // mismo (unidadesVisibles), con los valores YA corregidos a mano si los
-    // hubo -- es un reporte de lo que el usuario dejó, no de la sugerencia
-    // cruda.
     const secciones = plantasConPlano.map((planta) => {
       const datos = datosPorPlanta[planta]
       const nombres = unidadesVisibles(unidadesPorPlanta[planta] || [], datos)
@@ -336,9 +267,6 @@ export function ColindanciasSection({
         const nombres = unidadesVisibles(unidadesPorPlanta[planta] || [], datos)
         const angleDeg = datos?.angleDeg ?? 0
         const imagenUrl = imagenesPorPlanta[planta]
-        // El <input list> de "vecino" sigue ofreciendo TODOS los nombres
-        // conocidos (aunque no tengan tarjeta propia): puede ser el vecino de
-        // una unidad de esta planta sin serlo ella misma.
         const opcionesDatalist = [...LEYENDAS_COLINDANCIA, ...nombresConocidos]
         const datalistId = `colindancia-opciones-${planta.replace(/\s+/g, '-')}`
 
@@ -382,9 +310,6 @@ export function ColindanciasSection({
                 >
                   <RotateCw className="h-3.5 w-3.5" />
                 </button>
-                {/* Ajuste fino: el símbolo de norte (arco + barra) lo busca
-                    planNorthDetector.js con OpenCV; si no lo encontró o el
-                    plano tiene otro símbolo, el ángulo se corrige acá a mano. */}
                 <input
                   type="number"
                   step="1"

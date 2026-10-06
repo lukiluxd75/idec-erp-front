@@ -1,13 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { securityApi } from '../api/security.api'
 
-/**
- * Security-domain store — module singleton outside the React tree so UsersPage and
- * RolesPage share the same state (roles/areas/users) even when the router unmounts one
- * page while navigating to the other. Reloaded from the real backend
- * (backend/app/domains/security, see security.api.js) on first mount; lost on tab reload,
- * which is correct: the backend is the source of truth.
- */
 let state = { roles: [], areas: [], users: [], loading: true, error: null }
 let loadStarted = false
 const listeners = new Set()
@@ -54,9 +47,7 @@ export function useSecurityData() {
 }
 
 export const securityActions = {
-  // Re-fetches roles/areas/users from the backend. Needed because `load()` only runs once
-  // per tab (see comment above): if a new user logs into the ERP while this screen is
-  // already open, they will not appear until refresh.
+  // Re-fetches roles/areas/users from the backend.
   reload,
 
   async createRole(name, permissions = []) {
@@ -75,8 +66,6 @@ export const securityActions = {
     await securityApi.deleteRole(roleId)
     setState((s) => ({
       roles: s.roles.filter((r) => r.id !== roleId),
-      // Clear the role from any user that had it assigned to avoid dangling references
-      // (UsersPage would otherwise still list it among their roles).
       users: s.users.map((u) => ({ ...u, rolIds: u.rolIds.filter((id) => id !== roleId) })),
     }))
   },
@@ -97,8 +86,6 @@ export const securityActions = {
     await securityApi.deleteArea(areaId)
     setState((s) => ({
       areas: s.areas.filter((a) => a.id !== areaId),
-      // Clear the area from any user that had it assigned to avoid dangling references
-      // (UsersPage would otherwise show it as "Sin área").
       users: s.users.map((u) => (u.areaId === areaId ? { ...u, areaId: '' } : u)),
     }))
   },

@@ -5,6 +5,7 @@ import { ProtectedRoute, PublicRoute } from '@/auth/guards'
 import { useAuth } from '@/auth/hooks/useAuth'
 import { PLACEHOLDER_ROUTES, DOMAIN_SECTIONS, getCurrentDomain, canViewModule } from '@/shared/nav'
 import { DOMAIN_ROUTES } from '@/domains'
+import { Spinner } from '@/shared/ui/Spinner'
 import { AppShell } from './layout'
 import { DashboardPage, DomainHome, ModulePlaceholder } from './pages'
 
@@ -20,6 +21,14 @@ const cadastralViewerRoutes =
 console.log('[AppRoutes] cadastralViewerRoutes =', cadastralViewerRoutes)
 
 const IMPLEMENTED_PATHS = new Set(DOMAIN_ROUTES.map((route) => route.path))
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[60dvh] items-center justify-center">
+      <Spinner className="h-8 w-8 text-accent-400" />
+    </div>
+  )
+}
 
 function ModuleGuard({ section, children }) {
   const { user } = useAuth()
@@ -92,7 +101,11 @@ export function AppRoutes() {
             <Route
               key={route.path}
               path={route.path.slice(1)}
-              element={<ModuleGuard section={getCurrentDomain(route.path)}>{route.element}</ModuleGuard>}
+              element={
+                <ModuleGuard section={getCurrentDomain(route.path)}>
+                  <Suspense fallback={<RouteFallback />}>{route.element}</Suspense>
+                </ModuleGuard>
+              }
             />
           ))}
 

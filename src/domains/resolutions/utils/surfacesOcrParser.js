@@ -1,25 +1,11 @@
-/**
- * Rebuilds the "RELACION DE SUPERFICIE" table for a page from raw OCR blocks, and:
- *   - detects each column ROLE from header text (tolerant to typical OCR distortion),
- *   - detects FLOOR (section row "PLANTA X PISO" or "NIVEL" column),
- *   - drops total rows ("SUP. TOTAL") and the "RESUMEN GENERAL" block.
- *
- * Position clustering is a port of `server/src/tableFromOcr.js` (itself adapted from
- * `processAndFilterOCRData` in the geoextraction domain). Header/floor detection is new.
- *
- * The user can always correct mistakes by hand (role <select>s are preselected, not locked).
- */
 
-// ---------- 1. agrupamiento por posicion (port de tableFromOcr.js) ----------
+// ---------- 1.
 
 const yCenter = (p) => (p[0][1] + p[2][1]) / 2
 const xStartOf = (p) => Math.min(p[0][0], p[3][0])
 const xEndOf = (p) => Math.max(p[1][0], p[2][0])
 
-// Agrupa items (ya ordenados por y) en filas por gap fijo: arranca fila nueva
-// cuando el salto en Y supera rowGapY. Es el heuristico de siempre, factorizado
-// para reusarlo tambien como red de seguridad dentro de una banda de linea
-// anormalmente alta (ver mas abajo).
+// Agrupa items (ya ordenados por y) en filas por gap fijo: arranca fila nueva cuando el salto en Y supera rowGapY.
 function clusterByGap(items, rowGapY) {
   const rows = []
   items.forEach((it) => {
@@ -35,29 +21,6 @@ function clusterByGap(items, rowGapY) {
   return rows
 }
 
-// `tableLineDetector.js` SOLO corrige rotacion, no perspectiva (ver su
-// docstring: buscar las 4 esquinas reales es fragil y puede perder columnas).
-// Una foto real con el celular apenas inclinado respecto a la hoja deja un
-// corrimiento vertical residual que CRECE con X dentro de cada fila -- no es
-// ruido chico: probado contra una foto real de GAMC, la celda mas a la
-// derecha de una fila cae hasta ~30-60px mas abajo que su propia celda de
-// Ambiente, una diferencia comparable a la separacion ENTRE filas (~35-40px).
-// Sin corregir esto, el agrupamiento por Y (banda de linea o gap, da igual)
-// arranca sistematicamente desfasado una fila entera: el Ambiente de la fila
-// N queda pegado a los numeros de la fila N-1 en TODA la tabla, no solo en
-// alguna fila suelta.
-//
-// Se estima una unica pendiente global (px de Y por px de X) comparando el
-// Y del i-esimo item de columnas NUMERICAS bien pobladas (incluye solo
-// columnas con parecida cantidad de items, para no mezclar encabezado/totales
-// con filas de datos) -- el orden DENTRO de una misma columna nunca se
-// confunde por la inclinacion (siempre se compara al mismo X), asi que
-// comparar la posicion del mismo indice entre dos columnas distintas da la
-// pendiente real sin depender de que las filas ya esten bien armadas. La
-// mediana de esas pendientes tolera el ruido de celdas sueltas del OCR.
-// Se descarta (pendiente 0, sin corregir nada) si no hay muestras
-// suficientes o si da una pendiente inverosimil (>11 grados aprox.: mas que
-// eso ya es sospecha de columnas mal agrupadas, no inclinacion real).
 function estimateRowSlope(items, columnGapX) {
   const xCenterOf = (it) => (it.xStart + it.xEnd) / 2
   const sorted = [...items].sort((a, b) => xCenterOf(a) - xCenterOf(b))
@@ -99,32 +62,6 @@ function estimateRowSlope(items, columnGapX) {
   return Math.abs(slope) <= 0.2 ? slope : 0
 }
 
-// El comentario de mas abajo (donde se usan los anchors) explica por que se
-// ancla por CENTRO del texto y no por borde izquierdo: encabezado corto vs
-// dato largo. Pero el centro tampoco es perfecto -- probado contra una foto
-// real de GAMC, el encabezado corto de una columna ("Construlda", ~90px de
-// ancho) y sus propios numeros de dato ("17,21", ~55px de ancho) cayeron a
-// solo ~45px de distancia en X, el mismo orden de magnitud que columnGapX
-// -- alcanza para que el agrupador (que compara cada item SOLO contra el
-// ULTIMO anchor aceptado, no contra el mas cercano) los separe en dos
-// columnas. El resultado real fue mucho peor que una columna de mas: la
-// columna con los NUMEROS quedaba sin encabezado propio (el texto "PRIV" +
-// "CONSTR" cayo en la otra), asi que la deteccion de rol por texto nunca la
-// reconocia como "Priv. Construida" y le asignaba cualquier otra cosa (se
-// vio "Ideal" repetido en 3 columnas de la tabla real, cada una arrastrando
-// el rol de la anterior por el fallback de texto/posicion) -- y la columna
-// que SI tenia el encabezado quedaba vacia de datos. Mismo patron con la
-// columna de "Ambiente" (nombre corto "Baulera1" vs largo "Parqueo
-// Doble5+Baulera9").
-//
-// Fusiona anchors consecutivos cuyo hueco es chico COMPARADO CON LOS DEMAS
-// huecos de columna de esta misma foto (no un pixel fijo -- el ancho de
-// columna cambia mucho segun que tan cerca este el celular de la hoja). Se
-// usa la mediana de los huecos reales como vara: un hueco de menos de la
-// mitad de la mediana es "ruido de ancho de texto dentro de la misma
-// columna", no una columna nueva. Sin lineas de columna reales para
-// comparar (como si hay con `lineYs` para filas), es la mejor señal
-// disponible.
 function fusionarAnchorsFragmentados(anchors) {
   if (anchors.length < 3) return anchors
   const huecos = []
@@ -142,6 +79,143 @@ function fusionarAnchorsFragmentados(anchors) {
   return merged
 }
 
+
+// ---------- formato "NIVEL | DESCRIPCION | numeros" (columna de descripcion ancha) ----------
+//
+// En tablas con una columna de DESCRIPCION muy ancha y alineada a la izquierda
+// ("LOCAL 1" vs "INGRESO PRINCIPAL + PASILLO DE CIRCULACION+..."), el centro del
+// texto varia cientos de px entre filas y el agrupador por centro la parte en
+// varias columnas falsas. Ademas el OCR a veces lee la celda NIVEL y la
+// descripcion de al lado como UN solo bloque ("PLANTA2PISODEPARTAMENTOD").
+// Solucion: (1) separar ese prefijo de nivel, (2) armar las columnas numericas
+// SOLO con filas de datos (los encabezados no crean columnas), y (3) la zona de
+// etiquetas a la izquierda de los numeros se clasifica por TIPO de texto
+// (nivel / descripcion), no por distancia.
+const normKey = (s) =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+
+// El OCR lee a veces la P de PLANTA como F/R y la O de PISO como 0.
+const NIVEL_PREFIX_RE = /^[PFR]LANTA(BAJA|SOTANO|SEMISOTANO|\d{1,2}PIS[O0])$/
+const NIVEL_ITEM_RE = /^(NIVEL|[PFR]LANTA(BAJA|SOTANO|SEMISOTANO|\d{1,2}PIS[O0])|SEMISOTANO|SOTANO|\d{1,2}PIS[O0]|CUBIERTA|AZOTEA|MEZZANINE|ENTREPISO)$/
+
+const esItemNivel = (it) => NIVEL_ITEM_RE.test(normKey(it.text))
+
+function esTokenNumerico(text) {
+  const t = (text || '').replace(/\s+/g, '')
+  if (!t || t.length > 10 || !/\d/.test(t)) return false
+  return (t.match(/[0-9.,:;]/g) || []).length / t.length >= 0.7
+}
+
+// Si el bloque EMPIEZA con un nombre de nivel y le sigue mas texto, lo parte en
+// dos items (el ancho se reparte por cantidad de letras).
+function separarPrefijoNivel(it) {
+  const total = normKey(it.text).length
+  for (let i = 1; i < it.text.length; i++) {
+    const k = normKey(it.text.slice(0, i))
+    if (k.length > 16) return [it]
+    if (!NIVEL_PREFIX_RE.test(k)) continue
+    const resto = it.text.slice(i).trim()
+    if (normKey(resto).length < 3) return [it]
+    const frac = k.length / total
+    const xCorte = it.xStart + (it.xEnd - it.xStart) * frac
+    // Cada parte toma el Y del tramo del bloque que le toca (el bloque suele
+    // venir inclinado: su centro no es el de ninguna de las dos mitades).
+    const yEn = (f) => it.yIzq + (it.yDer - it.yIzq) * f
+    return [
+      { ...it, text: it.text.slice(0, i).trim(), xEnd: xCorte, y: yEn(frac / 2), yRaw: yEn(frac / 2) },
+      { ...it, text: resto, xStart: xCorte, y: yEn((1 + frac) / 2), yRaw: yEn((1 + frac) / 2) },
+    ]
+  }
+  return [it]
+}
+
+const medianOf = (arr) => {
+  const a = [...arr].sort((x, y) => x - y)
+  const mid = Math.floor(a.length / 2)
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2
+}
+
+
+// Arma las filas a partir de los NUMEROS (que si estan alineados fila a fila) y
+// despues cuelga el resto del texto de la fila numerica mas cercana. Las
+// etiquetas de la izquierda (descripcion/nivel) se comparan por su Y ORIGINAL
+// contra el Y original del primer numero de cada fila: una foto con
+// perspectiva no se inclina igual a la izquierda que a la derecha, y la
+// pendiente global que se le resta a los numeros desfasaba toda la descripcion
+// una fila. Lo que no queda cerca de ninguna fila (encabezados, titulos) arma
+// sus propias filas con el gap de siempre. Devuelve null si no hay suficientes
+// filas numericas (la tabla no tiene este formato) para que se use lo clasico.
+function agruparFilasPorNumeros(items, rowGapY) {
+  const numericos = items.filter((it) => esTokenNumerico(it.text))
+  if (numericos.length < 8) return null
+  const numLeft = numericos.reduce((m, it) => Math.min(m, it.xStart), Infinity)
+  const centro = (it) => (it.xStart + it.xEnd) / 2
+  const enEtiquetas = (it) => centro(it) < numLeft
+
+  const enNumeros = numericos.filter((it) => !enEtiquetas(it)).sort((a, b) => a.y - b.y)
+  // Con el gap fijo una fila de numeros cuyos valores quedaron algo desparejos
+  // (pendiente mal estimada en una tabla larga) se parte en pedazos de menos de
+  // 3 items y se pierde. Se mide el espaciado real entre filas y se vuelve a
+  // agrupar con un gap proporcional a el.
+  const previas = clusterByGap(enNumeros, rowGapY).filter((f) => f.items.length >= 3)
+  if (previas.length < 2) return null
+  const difs = []
+  for (let i = 1; i < previas.length; i++) difs.push(previas[i].y - previas[i - 1].y)
+  const gap = Math.max(rowGapY, 0.4 * medianOf(difs))
+  const filas = clusterByGap(enNumeros, gap).filter((f) => f.items.length >= 3)
+  if (filas.length < 2) return null
+  // Control de cordura: todas las filas deben tener ~la misma cantidad de
+  // numeros (una por columna) y no debe quedar ninguno suelto. Si dos filas se
+  // pegaron (tabla larga e inclinada) o se partieron, este criterio no sirve y
+  // se usa el agrupamiento clasico.
+  const cuentas = filas.map((f) => f.items.length)
+  const moda = cuentas.sort((a, b) => a - b)[Math.floor(cuentas.length / 2)]
+  if (filas.some((f) => f.items.length > moda * 1.3)) return null
+  if (filas.reduce((n, f) => n + f.items.length, 0) < enNumeros.length * 0.97) return null
+  filas.forEach((f) => {
+    const primero = f.items.reduce((m, it) => (it.xStart < m.xStart ? it : m), f.items[0])
+    f.refY = primero.yRaw
+  })
+  const refs = filas.map((f) => f.refY).sort((a, b) => a - b)
+  const sep = []
+  for (let i = 1; i < refs.length; i++) sep.push(refs[i] - refs[i - 1])
+  const espaciado = medianOf(sep)
+
+  const sueltos = []
+  const usados = new Set(filas.flatMap((f) => f.items))
+  items.forEach((it) => {
+    if (usados.has(it)) return
+    const etiqueta = enEtiquetas(it)
+    const y = etiqueta ? it.yRaw : it.y
+    let mejor = null
+    let dMin = Infinity
+    filas.forEach((f) => {
+      const d = Math.abs(y - (etiqueta ? f.refY : f.y))
+      if (d < dMin) {
+        dMin = d
+        mejor = f
+      }
+    })
+    if (mejor && dMin <= espaciado * (etiqueta ? 0.6 : 0.5)) {
+      mejor.items.push(it)
+      if (etiqueta && !esItemNivel(it)) mejor.nEtiquetas = (mejor.nEtiquetas || 0) + 1
+    } else {
+      sueltos.push({ ...it, y: etiqueta ? it.yRaw : it.y })
+    }
+  })
+  // Una celda de descripcion escrita en VARIAS lineas deja 2+ lineas "cerca" de
+  // la misma fila (y las filas altas de al lado se las pueden robar): ahi este
+  // criterio por cercania no sirve y se usa el agrupamiento clasico, que junta
+  // las lineas sin numeros y las pega a la fila con datos.
+  if (filas.some((f) => f.nEtiquetas > 1)) return null
+  const filasSueltas = clusterByGap(sueltos.sort((a, b) => a.y - b.y), rowGapY)
+  return [...filas, ...filasSueltas].sort((a, b) => a.y - b.y)
+}
+
 // rowGapY=3.5 (el valor original) parte una sola fila visual en varias
 // "micro-filas": en fotos reales los numeros de una misma fila no caen
 // exactamente a la misma altura (inclinacion/ruido del OCR, mas notorio
@@ -155,38 +229,55 @@ function fusionarAnchorsFragmentados(anchors) {
 // a ojo. Si no hay suficientes lineas (<3, o sea menos de 2 bandas utiles) se
 // sigue usando el gap de siempre, igual que antes de que existiera esto.
 function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineYs = [] } = {}) {
-  const items = blocks
+  let items = blocks
     .map((b) => ({
       text: (b.text || '').trim(),
       confidence: b.confidence ?? 1,
       y: yCenter(b.points),
       xStart: xStartOf(b.points),
       xEnd: xEndOf(b.points),
+      h: Math.abs(b.points[2][1] - b.points[0][1]),
+      yRaw: yCenter(b.points),
+      // Y del borde izquierdo/derecho del bloque (el OCR lo devuelve inclinado).
+      yIzq: (b.points[0][1] + b.points[3][1]) / 2,
+      yDer: (b.points[1][1] + b.points[2][1]) / 2,
     }))
     .filter((b) => b.text)
+  if (items.length === 0) return { columnCount: 0, rows: [] }
+
+  // Los umbrales en px de abajo estan calibrados a fotos con texto de ~24px de
+  // alto. Con imagenes bastante mas grandes o chicas (un PDF escaneado a 4000px,
+  // por ej.) se escalan; dentro de 0.75x-1.5x se dejan tal cual.
+  let escala = medianOf(items.map((it) => it.h).filter((h) => h > 0)) / 24 || 1
+  if (escala >= 0.75 && escala <= 1.5) escala = 1
+  escala = Math.min(3, Math.max(0.5, escala))
+  rowGapY *= escala
+  mergeGapX *= escala
+  columnGapX *= escala
+
+  items = items.flatMap(separarPrefijoNivel)
 
   // Corrige la inclinacion residual ANTES de agrupar por fila (ver
   // `estimateRowSlope`) -- afecta solo el Y usado para agrupar, no toca X
   // (la deteccion de columnas, mas abajo, sigue igual).
-  const slope = estimateRowSlope(items, columnGapX)
-  if (slope) {
-    const xCenterOf = (it) => (it.xStart + it.xEnd) / 2
+  // Ojo: probar una pendiente calculada solo con numeros empeoro tablas largas
+  // (ESTA_SIII): se mantiene la de todos los items; las etiquetas, en cambio, se
+  // cuelgan por su Y ORIGINAL en `agruparFilasPorNumeros`.
+  const xCenterOf = (it) => (it.xStart + it.xEnd) / 2
+  const conPendiente = (slope) => {
+    if (!slope) return items.map((it) => ({ ...it }))
     const xRef = items.reduce((sum, it) => sum + xCenterOf(it), 0) / items.length
-    items.forEach((it) => {
-      it.y -= slope * (xCenterOf(it) - xRef)
-    })
+    return items.map((it) => ({ ...it, y: it.y - slope * (xCenterOf(it) - xRef) }))
   }
-  items.sort((a, b) => a.y - b.y)
+  const pendienteClasica = estimateRowSlope(items, columnGapX)
+  const itemsClasico = conPendiente(pendienteClasica)
+  itemsClasico.sort((a, b) => a.y - b.y)
+  items = itemsClasico
 
   let rows = []
   if (lineYs.length >= 3) {
     const alturas = []
     for (let i = 0; i < lineYs.length - 1; i++) alturas.push(lineYs[i + 1] - lineYs[i])
-    // Mediana real (promedia las 2 del medio si `alturas.length` es par) --
-    // con `ordenadas[Math.floor(length/2)]` a secas, un caso comun de solo 2
-    // bandas (una pagina de un piso con pocas filas reales) siempre devolvia
-    // la banda MAS GRANDE como "tipica", volviendo imposible que superase su
-    // propio umbral (1.6x) y dejando pasar bandas gigantes sin re-partir.
     const ordenadas = [...alturas].sort((a, b) => a - b)
     const mid = Math.floor(ordenadas.length / 2)
     const alturaTipica = ordenadas.length % 2 ? ordenadas[mid] : (ordenadas[mid - 1] + ordenadas[mid]) / 2
@@ -199,11 +290,6 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
     }
     items.forEach((it) => bandas[bandaDe(it.y)].push(it))
 
-    // Una banda mucho mas alta que lo tipico (foto real con brillo/sombra que
-    // borra 2-3 lineas seguidas -- visto probando contra fotos reales) puede
-    // esconder VARIAS filas de datos, no una: en vez de confiar ciegamente en
-    // que ahi "no hay mas lineas", se vuelve a partir esa banda con el gap
-    // heuristico de siempre (red de seguridad).
     bandas.forEach((bandaItems, i) => {
       if (bandaItems.length === 0) return
       if (alturas[i] > alturaTipica * 1.6) {
@@ -214,7 +300,11 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
       }
     })
   } else {
-    rows = clusterByGap(items, rowGapY)
+    const porNumeros = agruparFilasPorNumeros(
+      conPendiente(pendienteClasica).sort((a, b) => a.y - b.y),
+      rowGapY,
+    )
+    rows = porNumeros || clusterByGap(items, rowGapY)
   }
 
   rows.forEach((row) => {
@@ -222,7 +312,7 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
     const merged = []
     row.items.forEach((it) => {
       const prev = merged[merged.length - 1]
-      if (prev && it.xStart - prev.xEnd < mergeGapX) {
+      if (prev && it.xStart - prev.xEnd < mergeGapX && !esItemNivel(prev) && !esItemNivel(it)) {
         prev.text = `${prev.text} ${it.text}`.trim()
         prev.xEnd = Math.max(prev.xEnd, it.xEnd)
         prev.confidence = Math.min(prev.confidence, it.confidence)
@@ -242,10 +332,33 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   // es estable entre encabezado y dato (verificado contra OCR real: ~372px
   // en las 8 celdas de una columna "ambiente", con el borde izquierdo
   // variando entre 120 y 315).
-  const xCenterOf = (it) => (it.xStart + it.xEnd) / 2
+
+  // Filas de DATOS = las que traen varios numeros (los encabezados y titulos
+  // no). Solo ellas arman las columnas: un encabezado centrado sobre dos
+  // columnas ("SUPERFICIE PRIVADA (m2)") crearia una columna falsa en medio.
+  // Con menos de 2 filas de datos se usa todo, como siempre.
+  const filasDatos = rows.filter((row) => row.items.filter((it) => esTokenNumerico(it.text)).length >= 3)
+  const filasAncla = filasDatos.length >= 2 ? filasDatos : rows
+
+  // Modo "etiquetas | numeros": se activa si hay filas de datos con numeros. La
+  // zona a la izquierda del primer numero (borde izquierdo) es de etiquetas.
+  let numLeft = Infinity
+  if (filasDatos.length >= 2) {
+    filasDatos.forEach((row) =>
+      row.items.forEach((it) => {
+        if (esTokenNumerico(it.text)) numLeft = Math.min(numLeft, it.xStart)
+      }),
+    )
+  }
+  const modoEtiquetas = Number.isFinite(numLeft)
+  const enZonaEtiquetas = (it) => modoEtiquetas && xCenterOf(it) < numLeft
 
   const allX = []
-  rows.forEach((row) => row.items.forEach((it) => allX.push(xCenterOf(it))))
+  filasAncla.forEach((row) =>
+    row.items.forEach((it) => {
+      if (!enZonaEtiquetas(it)) allX.push(xCenterOf(it))
+    }),
+  )
   allX.sort((a, b) => a - b)
   let anchors = []
   allX.forEach((x) => {
@@ -253,17 +366,34 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   })
   anchors = fusionarAnchorsFragmentados(anchors)
 
+  // Columnas de etiquetas: [nivel?, descripcion] -- la de nivel solo si algun
+  // texto de la zona parece un nivel ("NIVEL", "PLANTA BAJA", "PLANTA 2 PISO"...).
+  let nivelIdx = -1
+  let descIdx = -1
+  if (modoEtiquetas) {
+    const hayNivel = rows.some((row) => row.items.some((it) => enZonaEtiquetas(it) && esItemNivel(it)))
+    if (hayNivel) nivelIdx = 0
+    descIdx = hayNivel ? 1 : 0
+    anchors = [...(hayNivel ? [-2] : []), -1, ...anchors]
+  }
+
   rows.forEach((row) => {
     const aligned = anchors.map(() => ({ text: '', confidence: 1 }))
     row.items.forEach((it) => {
       const xCenter = xCenterOf(it)
-      let closest = 0
-      let min = Math.abs(xCenter - anchors[0])
-      for (let i = 1; i < anchors.length; i++) {
-        const d = Math.abs(xCenter - anchors[i])
-        if (d < min) {
-          min = d
-          closest = i
+      let closest
+      if (enZonaEtiquetas(it)) {
+        closest = nivelIdx >= 0 && esItemNivel(it) ? nivelIdx : descIdx
+      } else {
+        const primeraNum = modoEtiquetas ? descIdx + 1 : 0
+        closest = Math.min(primeraNum, anchors.length - 1)
+        let min = Math.abs(xCenter - anchors[closest])
+        for (let i = closest + 1; i < anchors.length; i++) {
+          const d = Math.abs(xCenter - anchors[i])
+          if (d < min) {
+            min = d
+            closest = i
+          }
         }
       }
       if (aligned[closest].text) {
@@ -277,13 +407,12 @@ function buildGrid(blocks, { rowGapY = 8, mergeGapX = 18, columnGapX = 45, lineY
   })
 
   rows.sort((a, b) => a.y - b.y)
-  return { columnCount: anchors.length, rows: rows.map((r) => ({ cells: r.cells })) }
+  return { columnCount: anchors.length, nivelIdx, rows: rows.map((r) => ({ cells: r.cells })) }
 }
 
-// ---------- 2. normalizacion de texto para matchear ----------
+// ---------- 2.
 
-// Quita acentos, pasa a mayusculas y colapsa a letras/numeros/espacios. El OCR
-// deforma bastante ("SUPEFICPANADA", "Coratruids") -> matcheamos por trozos.
+// Quita acentos, pasa a mayusculas y colapsa a letras/numeros/espacios.
 function norm(s) {
   return (s || '')
     .normalize('NFD')
@@ -294,7 +423,7 @@ function norm(s) {
     .trim()
 }
 
-// Reglas de rol. Se prueban en orden; la primera que matchea gana.
+// Reglas de rol.
 const ROLE_RULES = [
   { role: 'planta_col', test: (s) => s.includes('NIVEL') || (s.includes('PLANTA') && !s.includes('SUP')) },
   { role: 'ambiente', test: (s) => s.includes('AMBIENTE') || s.includes('DESCRIP') },
@@ -306,8 +435,6 @@ const ROLE_RULES = [
   { role: 'sup_ideal', test: (s) => s.includes('IDEAL') },
   { role: 'sup_comun_construida', test: (s) => s.includes('COMUN') && s.includes('CONSTR') },
   { role: 'sup_comun_libre', test: (s) => s.includes('COMUN') && s.includes('LIBRE') },
-  // Fallback: si solo dice "CONSTRUIDA" / "LIBRE" (sub-encabezado suelto) no se
-  // puede saber si es privada o comun -> queda "omitir" y lo asigna el usuario.
 ]
 
 function roleForHeaderText(text) {
@@ -317,13 +444,11 @@ function roleForHeaderText(text) {
   return 'omitir'
 }
 
-// ---------- 3. deteccion de filas de encabezado ----------
+// ---------- 3.
 
 const hasLetters = (s) => /[A-Za-z]/.test(s || '')
 const hasDigits = (s) => /\d/.test(s || '')
 
-// Una fila es "de encabezado" si sus celdas con texto son mayormente palabras
-// sin numeros (las filas de datos traen numeros de superficie).
 function isHeaderRow(row) {
   const filled = row.cells.filter((c) => c.text.trim())
   if (filled.length === 0) return false
@@ -331,13 +456,9 @@ function isHeaderRow(row) {
   return wordy.length / filled.length >= 0.6
 }
 
-// Ignora el digito de la unidad ("m2", "m²") -- si no, un encabezado como
-// "SUPERFICIE PRIVADA (m2)" cuenta como si ya tuviera un numero de dato.
 const rowTieneDigitos = (row) => row.cells.some((c) => hasDigits(c.text.replace(/m2|m²/gi, '')))
 
-// "Ruido" institucional: sello/membrete de la Alcaldia superpuesto sobre la
-// hoja (membrete, direccion, telefonos). El OCR lo lee como si fueran filas
-// mas de la tabla; se descartan por patron antes de armar las filas de datos.
+// "Ruido" institucional: sello/membrete de la Alcaldia superpuesto sobre la hoja (membrete, direccion, telefonos).
 import { guessPlantaCanonica } from './plantasCatalog'
 
 const NOISE_RE = [
@@ -358,19 +479,6 @@ function isNoiseRow(row) {
   return NOISE_RE.some((re) => re.test(text))
 }
 
-// Paginas reales de GAMC traen VARIAS tablitas "RELACION DE SUPERFICIE"
-// apiladas en una misma foto (una por NIVEL/PLANTA), cada una con su propio
-// encabezado repetido ("NIVEL | AMBIENTES | SUPERFICIE PRIVADA | ..."). El
-// encabezado de la PRIMERA tabla ya lo saca `headerEnd` mas abajo; esto
-// detecta esos MISMOS encabezados cuando se repiten mas adelante en la
-// pagina (2da, 3ra tabla...) para descartarlos -- si no, se leen como filas
-// sin numeros y el merge de celdas partidas (mas abajo) los pega sobre la
-// fila de datos siguiente, arruinando todo lo que viene despues.
-//
-// A proposito NO se reusa `isHeaderRow` (esa es "la mayoria de celdas son
-// palabras sin numero", que TAMBIEN es cierto para un ambiente partido en
-// varias lineas como "HALL + ASCENSOR + GRADA" -- hay que ser mas estricto
-// y pedir vocabulario de encabezado real, no cualquier fila de puro texto.
 const HEADER_KEYWORDS_RE = /\bAMBIENTES?\b|\bNIVEL\b|\bSUPERFICIE\b[\s\S]*\b(PRIVADA|COMUN|IDEAL|CONSTRUIDA|LIBRE|TOTAL)\b/
 
 function isRepeatedHeaderRow(row) {
@@ -378,17 +486,12 @@ function isRepeatedHeaderRow(row) {
   if (filled.length === 0) return false
   const texto = norm(filled.map((c) => c.text).join(' '))
   if (HEADER_KEYWORDS_RE.test(texto)) return true
-  // sub-encabezado "Construida | Libre | Construida | Libre": ninguna fila de
-  // ambiente real repite esas dos palabras sueltas en mas de una celda.
   const subHeader = filled.filter((c) => /^(CONSTRUIDA|LIBRE)$/.test(norm(c.text))).length
   return subHeader >= 2
 }
 
-// ---------- 4. deteccion de plantas / totales ----------
+// ---------- 4.
 
-// "PLANTA\d*"/"PISO\d*" (en vez de una palabra suelta): el OCR a veces pega el
-// numero de piso sin espacio ("PLANTA5° PISO"), y un \b comun despues de
-// "PLANTA" nunca matchea ahi (no hay limite de palabra entre letra y digito).
 const PLANTA_RE =
   /^(PLANTA\d*|PISO\d*|NIVEL|SEMI\s?SOTANO|SEMISOTANO|SOTANO|SUBSUELO|SUB\s?SUELO|MEZZANINE|ENTREPISO|CUBIERTA|AZOTEA|TERRAZA|PB)\b/
 
@@ -396,7 +499,7 @@ const TOTAL_RE = /^(SUP\.?\s*TOTAL|SUPERFICIE\s*TOTAL|TOTAL(ES)?|SUBTOTAL)\b/
 
 const RESUMEN_RE = /(RESUMEN\s*GENERAL|CUADRO\s*GENERAL)/
 
-// ---------- 5. parser publico ----------
+// ---------- 5.
 
 /**
  * @param {Array} blocks  bloques OCR de UNA pagina: { points, text, confidence }
@@ -417,20 +520,11 @@ export function parseSuperficiesPage(blocks, opts = {}) {
   while (headerEnd < grid.rows.length && headerEnd < 4 && isHeaderRow(grid.rows[headerEnd])) {
     headerEnd++
   }
-  // El encabezado real de GAMC suele venir partido en MUCHAS filas sueltas
-  // (cada palabra/sub-titulo del grupo "SUPERFICIE PRIVADA / CONSTRUIDA /
-  // LIBRE" cae en su propia banda de Y) -- si supera el limite de 4 de
-  // arriba, el resto se leeria como filas de datos. Se mira hacia adelante
-  // hasta la primera fila con un numero (ahi sí empieza a haber datos) y, si
-  // en el medio aparece vocabulario real de encabezado en cualquier fila (no
-  // hace falta que este en TODAS, porque el OCR las corta demasiado chico),
-  // se da por hecho que todo ese tramo sigue siendo encabezado.
   let candidato = headerEnd
   while (candidato < grid.rows.length && candidato < 20 && !rowTieneDigitos(grid.rows[candidato])) candidato++
   if (grid.rows.slice(headerEnd, candidato).some(isRepeatedHeaderRow)) headerEnd = candidato
 
-  // Texto de encabezado combinado por columna (junta el titulo de grupo
-  // "SUPERFICIE PRIVADA" con el sub "CONSTRUIDA/LIBRE").
+  // Texto de encabezado combinado por columna (junta el titulo de grupo "SUPERFICIE PRIVADA" con el sub "CONSTRUIDA/LIBRE").
   const headerText = Array.from({ length: grid.columnCount }, () => [])
   for (let r = 0; r < headerEnd; r++) {
     grid.rows[r].cells.forEach((c, i) => {
@@ -438,11 +532,12 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     })
   }
   let columnRoles = headerText.map((parts) => roleForHeaderText(parts.join(' ')))
+  // Columna de nivel detectada por el contenido (ver buildGrid), aunque el
+  // encabezado no diga "NIVEL".
+  if (grid.nivelIdx >= 0 && columnRoles[grid.nivelIdx] !== 'planta_col') {
+    if (columnRoles[grid.nivelIdx] === 'omitir') columnRoles[grid.nivelIdx] = 'planta_col'
+  }
 
-  // Segunda pasada: columnas que quedaron "omitir" pero cuyo encabezado dice
-  // "CONSTRUIDA" o "LIBRE" a secas (el titulo de grupo "SUPERFICIE PRIVADA /
-  // COMUN" cae en la columna de al lado). Se deduce el grupo del vecino de la
-  // izquierda ya clasificado, o del propio texto si menciona PRIV/COMUN.
   columnRoles = columnRoles.map((role, i) => {
     if (role !== 'omitir') return role
     const h = norm(headerText[i].join(' '))
@@ -465,8 +560,6 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     return `sup_${grupo}_${sub}`
   })
 
-  // Si no se detecto ninguna columna "ambiente", asumimos que es la 1a que no
-  // es planta_col (siempre hay una columna de descripcion).
   if (!columnRoles.includes('ambiente')) {
     const idx = columnRoles.findIndex((r) => r !== 'planta_col')
     if (idx >= 0) columnRoles[idx] = 'ambiente'
@@ -474,12 +567,7 @@ export function parseSuperficiesPage(blocks, opts = {}) {
 
   const ambienteIdx = columnRoles.indexOf('ambiente')
 
-  // Tercera pasada: FALLBACK POR POSICION. En fotos reales el encabezado sale
-  // demasiado deformado y quedan casi todas las columnas en "omitir". Como en
-  // estas tablas de GAMC el ORDEN de columnas es fijo, se asignan por posicion:
-  //   [priv.construida, priv.libre, (total), ideal, comun.construida, comun.libre, (total)]
-  // Solo se hace si la deteccion por texto encontro POCOS roles (<3), y siempre
-  // se puede corregir a mano en la tabla.
+  // Tercera pasada: FALLBACK POR POSICION.
   const SURFACE = new Set([
     'sup_privada_construida',
     'sup_privada_libre',
@@ -498,7 +586,18 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     if (vals.length >= 2 && nums / vals.length >= 0.5) numericCols.push(i)
   }
 
-  if (detectados < 3 && numericCols.length >= 3) {
+  const rolesDeSuperficie = columnRoles.filter((r) => SURFACE.has(r))
+  const hayRolRepetido = new Set(rolesDeSuperficie).size < rolesDeSuperficie.length
+  // El orden de las columnas de superficie en estas tablas es siempre
+  // privada (constr., libre), ideal, comun (constr., libre): si lo detectado por
+  // texto no respeta ese orden, el encabezado se leyo mal.
+  const ORDEN = ['sup_privada_construida', 'sup_privada_libre', 'sup_ideal', 'sup_comun_construida', 'sup_comun_libre']
+  const ordenDetectado = columnRoles.filter((r) => SURFACE.has(r)).map((r) => ORDEN.indexOf(r))
+  const ordenIncoherente = ordenDetectado.some((v, i) => i > 0 && v < ordenDetectado[i - 1])
+  const deteccionIncoherente =
+    hayRolRepetido || ordenIncoherente || (numericCols.length >= 7 && detectados < 5)
+
+  if ((detectados < 3 || deteccionIncoherente) && numericCols.length >= 3) {
     const O = 'omitir'
     const [PC, PL, ID, CC, CL] = [
       'sup_privada_construida',
@@ -527,66 +626,51 @@ export function parseSuperficiesPage(blocks, opts = {}) {
 
   const plantaColIdx = columnRoles.indexOf('planta_col')
 
-  // Columnas de superficie (para detectar filas-fragmento: una celda de
-  // ambiente escrita en varias lineas se agrupa por posicion en varias filas
-  // "fantasma" que no traen ningun numero al lado).
   const surfaceIdxs = columnRoles
     .map((role, i) => (SURFACE.has(role) ? i : -1))
     .filter((i) => i >= 0)
   const rowTieneNumero = (cells) => surfaceIdxs.some((i) => hasDigits(cells[i]?.text || ''))
 
-  // A veces "SUPERFICIE TOTAL"/"RESUMEN GENERAL" queda en su PROPIA fila, sin
-  // sus numeros: por deriva del OCR el texto cae en una columna vecina (no la
-  // de ambiente) y por eso el agrupamiento por Y la separa de la fila que
-  // trae los valores. Sin fusionarlas antes de clasificar, el TOTAL_RE de mas
-  // abajo nunca ve la fila de numeros (esta en la fila de al lado) y esos
-  // numeros se cuelan como si fueran una fila de datos real.
-  //
-  // Se fusiona SOLO cuando la fila anterior no tiene su propio texto de
-  // ambiente (ya es una fila "huerfana" de solo-numeros, el mismo patron que
-  // arma `fragmentoPendiente` mas abajo) -- si la anterior es una fila real
-  // con su ambiente propio (p.ej. "Departamento C"), no se toca: la marca de
-  // TOTAL aislada simplemente se descarta sola, sin numeros, mas abajo.
   for (let i = 1; i < grid.rows.length; i++) {
     const fila = grid.rows[i]
     const anterior = grid.rows[i - 1]
-    // No exige que `fila` este sin numeros propios: a veces el reparto de
-    // linea corta la fila de TOTAL justo por el medio y cada mitad se queda
-    // con ALGUNOS de sus valores (ni la de arriba ni la de abajo quedan en
-    // cero) -- alcanza con que sea reconocible como marca de TOTAL/RESUMEN.
     const filaEsMarca = fila.cells.some((c) => TOTAL_RE.test(norm(c.text)) || RESUMEN_RE.test(norm(c.text)))
     const anteriorSinAmbientePropio = !(anterior.cells[ambienteIdx]?.text || '').trim()
-    if (!filaEsMarca || !anteriorSinAmbientePropio) continue
+    // Caso inverso: la etiqueta cae un poco MAS ARRIBA que sus numeros (fila de
+    // totales de la tabla de GAMC con letra grande) -> los numeros quedan en la
+    // fila de abajo, sin ambiente propio.
+    // Solo es una fila PARTIDA si las dos mitades se complementan: si ambas traen
+    // un valor en la misma columna son filas distintas (una fila de datos a la
+    // que el OCR no le leyo el nombre no debe tragarse por la de TOTAL).
+    const seSolapan = (a, b) =>
+      a.cells.some((c, idx) => surfaceIdxs.includes(idx) && c.text.trim() && b.cells[idx]?.text.trim())
+    const siguiente = grid.rows[i + 1]
+    if (
+      filaEsMarca &&
+      !rowTieneNumero(fila.cells) &&
+      siguiente &&
+      rowTieneNumero(siguiente.cells) &&
+      !(siguiente.cells[ambienteIdx]?.text || '').trim() &&
+      !seSolapan(fila, siguiente)
+    ) {
+      fila.cells = fila.cells.map((c, idx) => (c.text ? c : siguiente.cells[idx] || c))
+      siguiente.cells = siguiente.cells.map((c) => ({ ...c, text: '' }))
+      continue
+    }
+    if (!filaEsMarca || !anteriorSinAmbientePropio || seSolapan(fila, anterior)) continue
     fila.cells = fila.cells.map((c, idx) => (c.text ? c : anterior.cells[idx] || c))
     anterior.cells = anterior.cells.map((c) => ({ ...c, text: '' }))
   }
 
-  // "CUBIERTA" (terraza/techo con áreas comunes) existe en tablas reales pero
-  // la plantilla plantilla-ph.xlsm NO la tiene entre sus 35 plantas fijas
-  // (SOTANO/SEMISOTANO/BAJA/1º-32º PISO): RESUMEN busca esos nombres exactos
-  // con VLOOKUP y MODEL SISCAT arma una columna aparte por cada uno a mano,
-  // así que agregarla ahí significaría tocar fórmulas del .xlsm oficial a
-  // ciegas. Mientras eso no se resuelva en la plantilla, sus filas se omiten
-  // enteras (no entran a la tabla ni al Excel) en vez de quedar en rojo
-  // pidiendo una planta que no existe.
   const CUBIERTA_RE = /\bCUBIERTA\b/i
   const PLANTA_OMITIDA = '\0omitida'
 
   const rows = []
   let plantaActual = ''
-  // Texto crudo leido por el OCR para la planta actual, para mostrarlo de
-  // referencia junto al <select> de planta canonica en la tabla web -- ver
-  // `guessPlantaCanonica` en plantasCatalog.js.
   let plantaActualRaw = ''
-  // Fila "SUPERFICIE TOTAL" de la tabla: no se manda al Excel (son formulas
-  // que la plantilla ya calcula solas), pero se guarda aparte para mostrarla
-  // de referencia en la web (comparar a ojo contra el papel).
   let filaTotal = null
   let fragmentoPendiente = '' // texto de fila(s) sin numeros, a la espera de la fila con datos
 
-  // Pega el fragmento pendiente (si hay) al ambiente de la ultima fila ya
-  // agregada, para no perderlo cuando no aparece ninguna fila de datos
-  // despues (p.ej. si el fragmento es lo ultimo antes de un corte de seccion).
   const flushFragmentoAFilaAnterior = () => {
     if (!fragmentoPendiente || rows.length === 0) {
       fragmentoPendiente = ''
@@ -605,12 +689,6 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     const soloPrimera =
       cells.filter((c, i) => i !== ambienteIdx && c.text.trim()).length === 0
 
-    // Se revisan TODAS las celdas de la fila (no solo la de "ambiente"): la
-    // etiqueta "SUPERFICIE TOTAL"/"RESUMEN GENERAL" a veces cae, por deriva
-    // del OCR, en una columna vecina (p.ej. la de Planta) en vez de la de
-    // ambiente -- si solo se mirara esa columna, la fila de totales se
-    // colaria como si fuera una fila de datos real (visto con una foto real:
-    // "SHAFT+GRADA" en Ambiente + los numeros de la fila de TOTAL del piso).
     if (cells.some((c) => RESUMEN_RE.test(norm(c.text)))) {
       // Bloque "RESUMEN GENERAL": se ignora el resto de la tabla.
       flushFragmentoAFilaAnterior()
@@ -622,33 +700,27 @@ export function parseSuperficiesPage(blocks, opts = {}) {
       continue // fila de totales -> no se manda al Excel (ver `filaTotal`)
     }
 
-    // Encabezado de una tabla siguiente (2da, 3ra... NIVEL/PLANTA en la misma
-    // pagina): se descarta ANTES de tocar planta_col/fragmentos, porque si no
-    // la palabra "NIVEL" del propio encabezado pisaria `plantaActual` via
-    // Layout B de abajo.
+    // Encabezado de una tabla siguiente (2da, 3ra...
     if (isRepeatedHeaderRow(grid.rows[r])) {
       flushFragmentoAFilaAnterior()
       continue
     }
 
-    // Layout B: columna "NIVEL" con el nombre de la planta (celda fusionada ->
-    // viene solo en la 1a fila del bloque; se arrastra hacia abajo).
     if (plantaColIdx >= 0) {
       const v = cells[plantaColIdx]?.text?.trim()
       if (v) {
         plantaActualRaw = v
         plantaActual = CUBIERTA_RE.test(v) ? PLANTA_OMITIDA : guessPlantaCanonica(v) || plantaActual
+        // Celda fusionada con el nombre centrado (ver el relleno hacia atras
+        // mas abajo): las filas anteriores sin planta son del mismo tramo, asi
+        // que si es una planta omitida se van con ella.
+        if (plantaActual === PLANTA_OMITIDA) {
+          while (rows.length && !rows[rows.length - 1].planta) rows.pop()
+        }
       }
     }
 
-    // Layout A: fila que SOLO trae "PLANTA X PISO" (marca de seccion) -> fija la
-    // planta y no es una fila de datos. A proposito NO se vacia el fragmento
-    // pendiente acá: esta marca suele quedar centrada verticalmente en su
-    // celda fusionada y caer POSICIONALMENTE en el medio de un ambiente
-    // partido en varias lineas (ej. "HALL+ASCENSOR+" / "PLANTA BAJA" /
-    // "+SALA COPROPIETARIOS") -- si se vaciara acá se cortaria ese ambiente a
-    // la mitad y el resto se pegaria sobre el ambiente siguiente, que no
-    // tiene nada que ver.
+    // Layout A: fila que SOLO trae "PLANTA X PISO" (marca de seccion) -> fija la planta y no es una fila de datos.
     if (soloPrimera && PLANTA_RE.test(primeraTxt)) {
       plantaActualRaw = cells[ambienteIdx >= 0 ? ambienteIdx : 0].text.trim()
       plantaActual = CUBIERTA_RE.test(plantaActualRaw) ? PLANTA_OMITIDA : guessPlantaCanonica(plantaActualRaw) || plantaActual
@@ -659,32 +731,17 @@ export function parseSuperficiesPage(blocks, opts = {}) {
     const tieneNumero = rowTieneNumero(cells)
     if (!ambienteTxt && !tieneNumero) continue // fila realmente vacia (sin texto ni numeros)
 
-    // Tramo de una planta omitida (CUBIERTA, ver arriba): ni sus filas-fragmento
-    // ni su fila de datos entran a la tabla -- se descarta también lo que
-    // hubiera quedado pendiente, para que no se le pegue a la siguiente fila
-    // real cuando el tramo omitido termine.
     if (plantaActual === PLANTA_OMITIDA) {
       fragmentoPendiente = ''
       continue
     }
 
     // Fila-fragmento: una celda de ambiente escrita en varias lineas (p.ej.
-    // "HALL + ASCENSOR + GRADA + SHAFT + BAÑOS H y M") se corta en varias filas
-    // por posicion vertical. Si esta fila no trae NINGUN numero de superficie,
-    // no es una fila de datos propia: se guarda su texto y se pega a la
-    // proxima fila que si traiga numeros.
     if (!tieneNumero) {
       fragmentoPendiente = fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt
       continue
     }
 
-    // Esta fila SI trae numeros de superficie -- siempre se conserva como fila
-    // de datos, aun si su propia celda de ambiente vino vacia (pasa cuando el
-    // texto de una celda fusionada partida en varias lineas cae en una banda
-    // distinta a la de sus propios numeros: sin este caso, la fila entera se
-    // descartaba mas arriba por "fila vacia" y sus numeros se perdian sin
-    // dejar rastro -- visto con una foto real, la superficie comun de un
-    // "GRADA+ASCENSOR+..." desaparecia del todo).
     const ambienteFinal = (fragmentoPendiente ? `${fragmentoPendiente} ${ambienteTxt}` : ambienteTxt).trim()
     fragmentoPendiente = ''
 
@@ -692,26 +749,12 @@ export function parseSuperficiesPage(blocks, opts = {}) {
       id: `f-${r}`,
       planta: plantaActual,
       plantaOcr: plantaActualRaw,
-      // "Bloque"/torre (columna B de Hoja2): la tabla de "RELACION DE
-      // SUPERFICIE" no trae una marca propia para esto (a diferencia de
-      // "PLANTA X PISO"), asi que arranca vacio y lo completa el usuario a
-      // mano en la tabla, igual que corrige la Planta cuando hace falta.
       bloque: '',
       cells: cells.map((c, i) => (i === ambienteIdx ? { ...c, text: ambienteFinal } : c)),
     })
   }
   flushFragmentoAFilaAnterior()
 
-  // La celda de Planta fusionada (Layout B) no siempre trae su texto en la
-  // PRIMERA fila del tramo que abarca: en una union alta, el OCR suele leerlo
-  // centrado verticalmente -- visto con una foto real, una union de 18 filas
-  // (parqueos + bauleras de una semisótano) mostró "SEMISOTANO" recién en la
-  // fila 11, dejando las 10 de arriba sin planta aunque son del mismo tramo.
-  // El arrastre de arriba solo alcanza hacia ABAJO desde donde se encontró el
-  // texto; acá se completa hacia ATRÁS: de atrás para adelante, una fila sin
-  // planta toma la de la fila siguiente si esa sí la tiene -- así el relleno
-  // se detiene solo en el borde real de cada tramo (la fila siguiente sigue
-  // vacía) y nunca cruza hacia el tramo de otra planta.
   for (let i = rows.length - 2; i >= 0; i--) {
     if (!rows[i].planta && rows[i + 1].planta) {
       rows[i].planta = rows[i + 1].planta

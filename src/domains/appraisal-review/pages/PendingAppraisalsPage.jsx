@@ -8,12 +8,7 @@ import { Alert, Card, EmptyState, Input, SectionHeader, Spinner } from '@/shared
 const MIN_SEARCH_LENGTH = 2
 const DEBOUNCE_MS = 400
 
-/**
- * Entry screen: by default shows the queue of appraisals sent for review (status
- * 'submitted'). Avalúos has its own separate login, so there is no automatic
- * notification when a form is created there — the search box looks up ANY appraisal by
- * form_number regardless of status, so the reviewer can pull one up directly.
- */
+/** Entry screen: by default shows the queue of appraisals sent for review (status 'submitted'). */
 export default function PendingAppraisalsPage() {
   const [pending, setPending] = useState([])
   const [loadingPending, setLoadingPending] = useState(true)

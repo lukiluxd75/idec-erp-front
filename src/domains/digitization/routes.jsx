@@ -1,7 +1,10 @@
-import WorkersPage from './pages/WorkersPage'
+/* eslint-disable react-refresh/only-export-components -- este archivo
+   exporta metadatos de rutas, no componentes: las paginas lazy de abajo no
+   son fronteras de Fast Refresh. Misma excusa que en
+   domains/cadastralviewer/routes.jsx. */
+import { lazy } from 'react'
 
-/**
- * Routes for the digitization domain ("Digitalización IA"). Registered in
- * src/domains/index.js.
- */
+const WorkersPage = lazy(() => import('./pages/WorkersPage'))
+
+/** Routes for the digitization domain ("Digitalización IA"). */
 export const digitizationRoutes = [{ path: '/digitization', element: <WorkersPage /> }]

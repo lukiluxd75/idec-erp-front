@@ -25,17 +25,11 @@ import {
   FileOutput,
   MonitorCog,
   BarChart3,
+  Gauge,
+  GitBranch,
+  Route,
 } from 'lucide-react'
 
-/**
- * ERP navigation tree — single source of truth for the home module grid
- * (app/pages/DashboardPage), the contextual sidebar (app/layout/Sidebar) and the
- * domain entry redirect (app/pages/DomainHome). Lives in shared/ so those consumers
- * do not depend on each other directly.
- */
-// Orden alfabético por `label` (afecta la grilla de módulos del Dashboard y,
-// de paso, el Sidebar -- este último ubica "Inicio" con `.find()`, no por
-// posición, así que reordenar aquí no le afecta).
 export const NAV_SECTIONS = [
   {
     label: 'Asistente de Trámites',
@@ -76,11 +70,12 @@ export const NAV_SECTIONS = [
         label: 'Analizador y extractor de datos de carpetas',
         path: '/folder-analysis',
         icon: FolderSearch,
+        overviewLabel: 'Extractor de datos',
         permissionModule: 'folder-analysis',
         accessPrefix: 'folder-analysis',
+        actions: [{ id: 'admin', label: 'Administrar' }],
         children: [
           { label: 'Carpetas registradas', path: '/folder-analysis/folders', icon: FolderTree },
-          { label: 'Datos guardados', path: '/folder-analysis/saved', icon: FileSpreadsheet },
         ],
       },
       {
@@ -124,6 +119,38 @@ export const NAV_SECTIONS = [
     label: 'Reportes',
     icon: BarChart3,
     path: '/procedurereports',
+    permissionModule: 'procedurereports',
+    description: 'Indicadores de trámites en bandeja del Área Técnica Cartografía (SLA y productividad).',
+    children: [
+      {
+        label: 'Panel de indicadores',
+        path: '/procedurereports/panel',
+        icon: Gauge,
+        navOrder: 1,
+        blurb: 'Resumen del módulo y accesos rápidos',
+      },
+      {
+        label: 'Reporte gerencial',
+        path: '/procedurereports/gerencial',
+        icon: BarChart3,
+        navOrder: 2,
+        blurb: 'Salidas de bandeja, SLA y pendientes',
+      },
+      {
+        label: 'Derivación masiva',
+        path: '/procedurereports/derivacion-masiva',
+        icon: GitBranch,
+        navOrder: 3,
+        blurb: 'Recepción/despacho rápido y posibles adelantos',
+      },
+      {
+        label: 'Traza del trámite',
+        path: '/procedurereports/traza-tramite',
+        icon: Route,
+        navOrder: 4,
+        blurb: 'Recorrido completo con tiempos por etapa',
+      },
+    ],
   },
   {
     label: 'Revisión Avalúos',
@@ -165,9 +192,17 @@ export function compareNavLabels(a, b) {
   return (a?.label || '').localeCompare(b?.label || '', 'es', { sensitivity: 'base' })
 }
 
-/**
- * Visible sidebar / domain children, A→Z at each nesting level (Spanish locale).
- */
+/** Respeta `navOrder` cuando está definido; si no, orden alfabético en español. */
+export function compareNavItems(a, b) {
+  const ao = a?.navOrder
+  const bo = b?.navOrder
+  if (ao != null && bo != null) return ao - bo
+  if (ao != null) return -1
+  if (bo != null) return 1
+  return compareNavLabels(a, b)
+}
+
+/** Visible sidebar / domain children, A→Z at each nesting level (Spanish locale). */
 export function getVisibleNavChildren(permissions, nodes) {
   return (nodes || [])
     .filter((child) => canViewChild(permissions, child))
@@ -175,13 +210,10 @@ export function getVisibleNavChildren(permissions, nodes) {
       ...child,
       children: child.children?.length ? getVisibleNavChildren(permissions, child.children) : child.children,
     }))
-    .sort(compareNavLabels)
+    .sort(compareNavItems)
 }
 
-/**
- * Entry path into a module from the catalog.
- * Opens the first function the user can open. DomainHome does not render a picker.
- */
+/** Entry path into a module from the catalog. */
 export function getModuleEntryPath(section, permissions) {
   if (!section) return '/dashboard'
   const kids = getVisibleNavChildren(permissions, section.children)
@@ -202,21 +234,13 @@ function flattenNavNodes(nodes, sectionLabel) {
   return routes
 }
 
-/**
- * Flattened routes that may still lack a real screen, used to generate <Route>s and
- * so ModulePlaceholder knows which title to show.
- */
 export const PLACEHOLDER_ROUTES = NAV_SECTIONS.flatMap((section) => {
   if (section.path === '/dashboard') return []
   if (section.children) return flattenNavNodes(section.children, section.label)
   return [{ label: section.label, path: section.path, icon: section.icon, section: section.label }]
 })
 
-/**
- * Given a pathname, returns the NAV_SECTIONS domain it belongs to, or null if outside
- * any domain (e.g. /dashboard). Matches nested tool paths, including routes that keep
- * their original URL (for example /resolutions inside Herramientas OCR+IA).
- */
+/** Given a pathname, returns the NAV_SECTIONS domain it belongs to, or null if outside any domain (e.g. */
 export function getCurrentDomain(pathname) {
   return (
     NAV_SECTIONS.find((section) => {
@@ -226,11 +250,7 @@ export function getCurrentDomain(pathname) {
   )
 }
 
-/**
- * True if `permissions` (codes 'module.action' from the authenticated user) enable the
- * module in `section`. A visual group is visible when the user can open at least one
- * of its permission-gated tools. Standalone modules use their path id.
- */
+/** True if `permissions` (codes 'module.action' from the authenticated user) enable the module in `section`. */
 export function canViewModule(permissions, section) {
   if (!section) return false
   const codes = permissions || []
@@ -243,12 +263,7 @@ export function canViewModule(permissions, section) {
   return codes.some((code) => code.startsWith(`${moduleId}.`))
 }
 
-/**
- * True if `permissions` allow one specific child screen. Most children have no
- * `permission` (any user who can see the module can see them). `accessPrefix`
- * accepts any action of that module (resolutions.view or resolutions.edit).
- * A child that sets `permission` is hidden unless the user holds that exact code.
- */
+/** True if `permissions` allow one specific child screen. */
 export function canViewChild(permissions, child) {
   const codes = permissions || []
   if (child?.accessPrefix) return codes.some((code) => code.startsWith(`${child.accessPrefix}.`))

@@ -3,10 +3,6 @@ import { httpClient } from '@/core/http/httpClient'
 import { storageService } from '@/core/storage/storageService'
 import { extractUserFromToken, isTokenExpired } from '@/shared/utils/jwt.util'
 
-/**
- * Authentication service (Auth Domain Service)
- * Encapsulates business logic for authentication, login, and OIDC/Keycloak session management
- */
 export const authService = {
   /**
    * Authenticates the user against the backend and Keycloak
@@ -86,9 +82,7 @@ export const authService = {
     }
   },
 
-  /**
-   * Closes the active session and clears local credentials
-   */
+  /** Closes the active session and clears local credentials / */
   logout() {
     storageService.clearAuth()
   },
@@ -102,9 +96,6 @@ export const authService = {
     const savedUsername = storageService.getUsername()
 
     if (!token || isTokenExpired(token)) {
-      // Do not clear refresh_token here: if access_token expired while the tab was
-      // closed/inactive, AuthProvider tries to restore the session with it before
-      // forcing login (see AuthProvider.initAuth).
       return { token: null, user: null, isValid: false }
     }
 

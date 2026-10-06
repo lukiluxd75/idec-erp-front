@@ -1,6 +1,4 @@
-/**
- * API endpoint catalog (service-oriented architecture).
- */
+/** API endpoint catalog (service-oriented architecture). */
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/login',
@@ -91,25 +89,36 @@ export const API_ENDPOINTS = {
   },
   FOLDER_ANALYSIS: {
     CATALOG: '/api/folder-analysis/catalog',
+    CADASTRAL_PARCEL: '/api/folder-analysis/cadastral/parcel',
+    CADASTRAL_CROQUIS: '/api/folder-analysis/cadastral/croquis',
     CAPTURES: '/api/folder-analysis/captures',
     CAPTURE: (id) => `/api/folder-analysis/captures/${id}`,
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
     CAPTURE_PREVIEW: (id) => `/api/folder-analysis/captures/${id}/preview`,
     CAPTURE_THUMBNAIL: (id) => `/api/folder-analysis/captures/${id}/thumbnail`,
+    // Indicador "Celular conectado".
+    CAPTURES_PRESENCE: '/api/folder-analysis/captures/presence',
     DOCUMENTS: '/api/folder-analysis/documents',
     REVIEWED_DOCUMENTS: '/api/folder-analysis/documents/reviewed',
+    CONSOLIDATE_DOCUMENTS: '/api/folder-analysis/documents/consolidate',
     DOCUMENT: (id) => `/api/folder-analysis/documents/${id}`,
     DOCUMENT_PAGES: (id) => `/api/folder-analysis/documents/${id}/pages`,
     DOCUMENT_ANALYZE: (id) => `/api/folder-analysis/documents/${id}/analyze`,
     DOCUMENT_REVIEW: (id) => `/api/folder-analysis/documents/${id}/review`,
     DOCUMENT_EXPORT: (id) => `/api/folder-analysis/documents/${id}/export`,
     FOLDERS: '/api/folder-analysis/folders',
+    FOLDERS_FROM_BOARD: '/api/folder-analysis/folders/from-board',
     FOLDER: (id) => `/api/folder-analysis/folders/${id}`,
     FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
+    FOLDER_PHOTO: (folderId, captureId) =>
+      `/api/folder-analysis/folders/${folderId}/photos/${captureId}`,
     FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,
   },
   REPORTS: {
     FILTERS: '/api/procedurereports/filters',
+    PANEL: '/api/procedurereports/panel',
+    MASS_FORWARDING: '/api/procedurereports/mass-forwarding',
+    TRACE: '/api/procedurereports/trace',
     REPORT: '/api/procedurereports/reports',
     EXPORT_EXCEL: '/api/procedurereports/reports/export/excel',
     EXPORT_PDF: '/api/procedurereports/reports/export/pdf',

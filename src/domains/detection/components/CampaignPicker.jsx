@@ -7,17 +7,6 @@ import { detectionApi } from '../api/detection.api'
 
 const NEW_CAMPAIGN_VALUE = '__new__'
 
-/**
- * Campaign (quarter) picker for the detection start screen: a dropdown of
- * active campaigns plus a "+ Nueva campaña" quick-create modal. Selecting a
- * campaign sets `campaignId`, which the caller sends as `campaign_id` in the
- * detect-wms payload (see DetectChangesRequest.campaign_id on the backend).
- *
- * A campaign fixes its year_a/year_b for its whole life (engineer's call,
- * reverting an earlier decision) -- set once here at creation, `onChange`
- * fires with the full campaign object (not just its id) so the caller can
- * lock its own year selectors to it.
- */
 export default function CampaignPicker({ campaignId, onChange, yearOptions = [] }) {
   const { user } = useAuth()
   // "+ Nueva campaña" is admin-only (detection.manage_campaigns) -- everyone

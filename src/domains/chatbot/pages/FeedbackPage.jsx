@@ -122,7 +122,7 @@ export default function FeedbackPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Input 
-                    placeholder="Ej. 'Si el usuario pregunta X, debes responder Y'"
+                    placeholder="Ej. 'Si el usuario pregunta X, responder Y'"
                     value={ruleTexts[m.id] || ''}
                     onChange={(e) => setRuleTexts(prev => ({ ...prev, [m.id]: e.target.value }))}
                     containerClassName="min-w-0 flex-1"

@@ -44,8 +44,39 @@ export function avg(n, d) {
   return (n / d).toFixed(1)
 }
 
+function fetchPanel(startDate, endDate, districtId, procedureTypeIds, signal) {
+  const query = reportParams(startDate, endDate, districtId, procedureTypeIds).toString()
+  return httpClient.get(`${API_ENDPOINTS.REPORTS.PANEL}?${query}`, { signal })
+}
+
+function fetchMassForwarding(startDate, endDate, options = {}, signal) {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+    max_minutes: String(options.maxMinutes ?? 3),
+    min_dispatches: String(options.minDispatches ?? 50),
+  })
+  if (options.staffName) params.set('staff_name', options.staffName)
+  if (options.staffNameExact) params.set('staff_name_exact', 'true')
+  return httpClient.get(`${API_ENDPOINTS.REPORTS.MASS_FORWARDING}?${params}`, { signal })
+}
+
+function fetchTrace(options = {}, signal) {
+  const params = new URLSearchParams()
+  if (options.procedureNumber != null) {
+    params.set('procedure_number', String(options.procedureNumber))
+  }
+  if (options.stallThresholdDays != null) {
+    params.set('stall_threshold_days', String(options.stallThresholdDays))
+  }
+  return httpClient.get(`${API_ENDPOINTS.REPORTS.TRACE}?${params}`, { signal })
+}
+
 export const reportsApi = {
   fetchFilters,
+  fetchPanel,
+  fetchMassForwarding,
+  fetchTrace,
   fetchReport,
   downloadExport,
 }

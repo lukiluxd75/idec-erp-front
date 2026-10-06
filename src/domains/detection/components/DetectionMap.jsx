@@ -198,10 +198,6 @@ function DetectionMapInner({
       onClearHighlightRef.current?.()
       const { lat, lng } = event.latlng
       const newPoint = [lng, lat]
-      // Engineer's rule: a new area can never touch an already-processed
-      // sector of the active campaign -- interrupt immediately and force a
-      // clean restart instead of letting the architect finish a polygon that
-      // would duplicate/collide with work already done.
       const hit = findOverlappingSector(newPoint, pointsRef.current, processedSectorsRef.current)
       if (hit) {
         pointsRef.current = []
@@ -250,25 +246,17 @@ function DetectionMapInner({
     renderProcessedSectors(mapInstance.current, processedLayer.current, processedSectors, onViewSectorDetail)
   }, [ready, processedSectors, onViewSectorDetail])
 
-  // "Ver predio en el mapa" from ProcessedSectorDetailModal -- draws the
-  // parcel's real cadastral polygon and zooms to it (see
-  // parcelHighlightLayer.js).
   useEffect(() => {
     if (!ready || !mapInstance.current || !highlightLayer.current) return
     renderParcelHighlight(mapInstance.current, highlightLayer.current, highlightParcelGeom)
   }, [ready, highlightParcelGeom])
 
-  // "Reprocesar": pre-fills the drawn area from an already-processed sector's
-  // saved polygon, same as if the architect had clicked those points by hand.
   useEffect(() => {
     if (!ready || !presetPolygon) return
     pointsRef.current = presetPolygon
     redrawPolygonRef.current(true)
   }, [ready, presetPolygon])
 
-  // Bumped by DetectionPage once a detection run finishes -- otherwise the
-  // just-processed polygon stays drawn, and its stray points get dragged
-  // into whatever the architect draws next for a different block.
   useEffect(() => {
     if (!ready || resetSignal == null) return
     pointsRef.current = []

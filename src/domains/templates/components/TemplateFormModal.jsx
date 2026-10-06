@@ -13,14 +13,7 @@ const EMPTY_FORM = {
   contenido_html: '',
 }
 
-/**
- * Creates a new template or edits an existing one. Parent must mount this with
- * a `key` that changes on each open (see TemplatesCatalogPage) so the form
- * starts fresh each time instead of carrying over the previous edit's state.
- *
- * `templateId` (not the row's list item) because the catalog list omits
- * `contenido_html`/`descripcion` — editing fetches the full detail on open.
- */
+/** Creates a new template or edits an existing one. */
 export function TemplateFormModal({ open, onClose, templateId, onSaved }) {
   const isEditing = Boolean(templateId)
   const [form, setForm] = useState(EMPTY_FORM)

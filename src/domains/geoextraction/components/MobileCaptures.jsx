@@ -9,11 +9,6 @@ function formatTime(isoDate) {
   }
 }
 
-/**
- * Photos sent from the mobile app (geoextract mobile: take photo and upload here)
- * that have not yet been loaded into the viewer. They live in backend memory —
- * there is no history; they leave the list as soon as they are loaded or discarded.
- */
 export function MobileCaptures({ captures, loadingId, onLoad, onDiscard }) {
   if (captures.length === 0) return null
 

@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { FolderInput, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 
@@ -6,8 +6,10 @@ import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.
 import { AnalyzingDialog } from '@/domains/folder-analysis/components/AnalyzingDialog'
 import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSection'
 import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
+import { SaveToFolderModal } from '@/domains/folder-analysis/components/SaveToFolderModal'
 import { chunkForUpload, splitValidCaptures } from '@/domains/folder-analysis/utils/captureUpload'
 import { DOC_TYPE_BY_ID, IN_PROGRESS } from '@/domains/folder-analysis/utils/documentMeta'
+import { usePhonePresence } from '@/domains/folder-analysis/utils/usePhonePresence'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
 import { Alert, Button, ConfirmDialog, Spinner } from '@/shared/ui'
 
@@ -32,23 +34,8 @@ function withPages(document, ids) {
   }
 }
 
-/**
- * Tablero de clasificación: la bandeja de fotos a un lado y los carriles al
- * otro. Es el mismo tablero dentro de una carpeta y fuera de ella.
- *
- * `folderId` es la carpeta en la que se está trabajando: los documentos que se
- * abren acá nacen dentro de ella y el tablero solo muestra los suyos. Sin él es
- * el tablero suelto, con todos los documentos del usuario.
- *
- * `types` son los carriles a mostrar -- los que el tipo de carpeta lleva, según
- * el catálogo. La bandeja, en cambio, es siempre la misma: las fotos llegan del
- * celular sin saber a qué carpeta van, y es al soltarlas en un carril cuando se
- * decide.
- *
- * `folderType` viaja con cada documento que se abre: es lo que le dice al
- * servidor qué datos sacarle al analizarlo. Dentro de una carpeta manda la suya.
- */
-export function ClassificationBoard({ types, folderId = null, folderType = null, onDocumentsChange }) {
+/** Tablero de clasificación: la bandeja de fotos a un lado y los carriles al otro. */
+export function ClassificationBoard({ types, folderId = null, folderType = null, folderTypeLabel = null, onDocumentsChange }) {
   const [captures, setCaptures] = useState([])
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,12 +43,14 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [confirm, setConfirm] = useState(null)
+  const [savingToFolder, setSavingToFolder] = useState(false)
   // Document being analyzed right now, followed in a dialog until it ends.
   const [watchedId, setWatchedId] = useState(null)
 
-  // Moves being saved right now. A poll that started before one of them would
-  // answer with a board from before the move and put the photo back in the
-  // bandeja for a moment, so while a move is in flight its own answer wins.
+  // "Celular conectado" para la cabecera de la bandeja.
+  const { connected: phoneConnected } = usePhonePresence()
+
+  // Moves being saved right now.
   const movesInFlight = useRef(0)
 
   // `loading` only covers the first load; the polling refreshes are silent.
@@ -83,10 +72,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
     refresh()
   }, [refresh])
 
-  // Always on while the screen is open: new photos from the phone and the analysis
-  // progress both arrive by polling. While something is being analyzed it asks
-  // more often, so the bar of that document advances photo by photo instead of in
-  // five second steps.
+  // Always on while the screen is open: new photos from the phone and the analysis progress both arrive by polling.
   const analyzing = documents.some((d) => IN_PROGRESS.has(d.status))
   usePollWhile(true, refresh, analyzing ? 3000 : 6000)
 
@@ -104,10 +90,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
     }
   }
 
-  // Files picked in the computer's file explorer (or dropped on the inbox) go to
-  // the same endpoint the mobile app uses, in batches of MAX_FILES_PER_UPLOAD.
-  // A PDF comes back as one photo per page, so what arrived is counted from the
-  // server's answer and not from what was sent.
+  // Files picked in the computer's file explorer (or dropped on the inbox) go to the same endpoint the mobile app uses.
   const uploadCaptures = async (picked) => {
     const { files, rejected } = splitValidCaptures(picked)
     rejected.forEach((reason) => toast.warn(reason))
@@ -130,18 +113,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
     }
   }
 
-  /**
-   * Moving a photo out of the bandeja into a lane. The board is updated from what
-   * the drop already implies and the request is sent afterwards, so the photo
-   * arrives where it was dropped at once instead of after three round trips; the
-   * server's own document then replaces the provisional one.
-   *
-   * `targetId` is the document the answer belongs to -- for a new one, the
-   * provisional id it was given until the server named it -- and `undo` puts that
-   * one document back. Undoing this move only, instead of restoring the whole
-   * board, is what lets photos be dropped one after another without waiting: a
-   * failed move must not drag the ones already on their way back with it.
-   */
+  /** Moving a photo out of the bandeja into a lane. */
   const move = async (moved, change, request, targetId, undo) => {
     const ids = new Set(moved.map((c) => c.id))
     movesInFlight.current += 1
@@ -194,8 +166,6 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
       )
     },
     onSetPages: (document, captureIds) => {
-      // A page taken off the document goes back to the bandeja, and its row there
-      // is the server's to give: that one case is followed by a refresh.
       const removed = captureIds.length < document.pages.length
       const done = move(
         [],
@@ -206,10 +176,13 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
       )
       return removed ? done.then(refresh) : done
     },
+    // Todo lo del carril que no se lee en un solo documento: sus tarjetas y lo que siga en la bandeja.
+    onConsolidate: (docType) =>
+      run(
+        () => folderAnalysisApi.consolidate(docType, folderId, folderType),
+        'Quedó todo en un solo documento.'
+      ),
     onAnalyze: (document) => {
-      // Every lane is followed in the dialog: it is the only place that says
-      // whether the document is still waiting its turn or already being read, and
-      // how long it still needs -- a toast is gone before the answer is.
       setWatchedId(document.id)
       return run(() => folderAnalysisApi.analyze(document.id))
     },
@@ -226,43 +199,39 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
 
   // Read from the polled list, so the dialog follows the document as it advances.
   const watched = watchedId ? documents.find((d) => d.id === watchedId) : null
-  // Confirmed reviews belong in "Datos guardados"; keep them in the API state
-  // for polling/actions, but remove them from the active workbench lanes.
-  const activeDocuments = documents.filter((document) => document.status !== 'reviewed')
-  // Documentos que no entran en ningún carril de los que se están mostrando:
-  // quedaron clasificados con los de otro tipo de carpeta. No se perdieron, pero
-  // desde acá no se ven, así que la pantalla lo dice en vez de tragárselo.
+  // Todo lo de la carpeta se ve en sus carriles, revisado o no.
+  const activeDocuments = folderId ? documents : documents.filter((document) => !document.folder_id)
   const outsideLanes = activeDocuments.filter(
     (document) => !types.some((type) => type.id === document.doc_type)
   )
   const outsideLabels = [...new Set(outsideLanes.map((d) => DOC_TYPE_BY_ID[d.doc_type]?.label || d.doc_type))]
-  // Lo que se está viendo: los documentos de estos carriles. Es lo que se
-  // descarta cuando se pide empezar de nuevo.
+  // Lo que se está viendo: los documentos de estos carriles.
   const onBoard = activeDocuments.filter((document) => !outsideLanes.includes(document))
+  const toSave = onBoard.filter((document) => !document.pending)
+  // Lo que "Descartar todo" borra: lo revisado es trabajo terminado y no se toca.
+  const discardable = onBoard.filter((document) => document.status !== 'reviewed')
 
-  /**
-   * Dejar el tablero limpio para empezar con otro juego de fotos: se eliminan los
-   * documentos que se ven y las fotos de la bandeja.
-   *
-   * Primero los documentos y después la bandeja, porque borrar un documento
-   * devuelve sus fotos a "Fotos recibidas": al revés quedarían ahí las que se
-   * querían tirar. Los documentos con la revisión ya guardada no se tocan --
-   * esos son trabajo terminado y viven en "Datos guardados".
-   */
+  const savedToFolder = (folder) => {
+    setSavingToFolder(false)
+    toast.success(`Carpeta "${folder.name}" guardada en Carpetas registradas con ${folder.document_count} documento(s).`)
+    refresh()
+    onDocumentsChange?.()
+  }
+
   const discardAll = () =>
     setConfirm({
       title: '¿Descartar todo?',
       message:
-        `Se eliminan definitivamente ${onBoard.length} documento(s) del tablero con sus fotos` +
+        `Se eliminan definitivamente ${discardable.length} documento(s) del tablero con sus fotos` +
         (captures.length ? ` y las ${captures.length} foto(s) de la bandeja` : '') +
-        '. Los documentos con la revisión ya guardada no se tocan: siguen en "Datos guardados".' +
+        '. Los documentos con la revisión ya guardada no se tocan.' +
         (outsideLanes.length
           ? ' Los de carriles de otro tipo de carpeta tampoco.'
           : ''),
       onConfirm: () =>
         run(async () => {
           let removed = 0
-          for (const document of onBoard) {
+          for (const document of discardable) {
             await folderAnalysisApi.deleteDocument(document.id)
             removed += 1
           }
@@ -311,16 +280,43 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
           ({outsideLabels.join(', ')}). Siguen guardados: cambie el tipo de carpeta para verlos.
         </Alert>
       )}
+      <div className="grid gap-2 rounded-xl border border-sky-200/80 bg-sky-50/70 p-3 text-xs sm:grid-cols-3 sm:gap-3">
+        <div className="flex items-center gap-2 text-slate-700">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-600 text-[11px] font-bold text-white">1</span>
+          <span><strong>Suba las fotos</strong> desde el celular o su equipo.</span>
+        </div>
+        <div className="flex items-center gap-2 text-slate-700">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-600 text-[11px] font-bold text-white">2</span>
+          <span><strong>Clasifíquelas</strong> en el apartado que corresponda.</span>
+        </div>
+        <div className="flex items-center gap-2 text-slate-700">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-600 text-[11px] font-bold text-white">3</span>
+          <span><strong>Revise los datos</strong> extraídos antes de guardar.</span>
+        </div>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
           {captures.length} {captures.length === 1 ? 'foto en la bandeja' : 'fotos en la bandeja'} ·{' '}
           {onBoard.length} {onBoard.length === 1 ? 'documento en el tablero' : 'documentos en el tablero'}
         </p>
-        {(captures.length > 0 || onBoard.length > 0) && (
-          <Button size="sm" variant="ghost" icon={Trash2} disabled={busy} onClick={discardAll}>
-            Descartar todo
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {(captures.length > 0 || discardable.length > 0) && (
+            <Button size="sm" variant="ghost" icon={Trash2} disabled={busy} onClick={discardAll}>
+              Descartar todo
+            </Button>
+          )}
+          {!folderId && (
+            <Button
+              size="sm"
+              icon={FolderInput}
+              disabled={busy || toSave.length === 0}
+              title={toSave.length === 0 ? 'Clasifique primero las fotos en los carriles.' : undefined}
+              onClick={() => setSavingToFolder(true)}
+            >
+              Guardar en carpeta
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="workbench-shell">
@@ -334,6 +330,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
             onDelete={deleteCapture}
             onClearAll={clearInbox}
             types={types}
+            phoneConnected={phoneConnected}
           />
           <div className="workbench-lanes">
             {types.map((type) => (
@@ -342,6 +339,7 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
                 type={type}
                 documents={activeDocuments.filter((d) => d.doc_type === type.id)}
                 busy={busy}
+                loose={captures.length}
                 {...handlers}
               />
             ))}
@@ -350,6 +348,17 @@ export function ClassificationBoard({ types, folderId = null, folderType = null,
       </div>
 
       <AnalyzingDialog document={watched} onClose={() => setWatchedId(null)} />
+
+      {savingToFolder && (
+        <SaveToFolderModal
+          documents={toSave}
+          folderType={folderType}
+          folderTypeLabel={folderTypeLabel}
+          looseCaptures={captures.length}
+          onClose={() => setSavingToFolder(false)}
+          onSaved={savedToFolder}
+        />
+      )}
 
       <ConfirmDialog
         open={Boolean(confirm)}

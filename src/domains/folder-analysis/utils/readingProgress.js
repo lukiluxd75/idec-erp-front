@@ -1,20 +1,20 @@
-import { ASSEMBLE_SECONDS } from '@/domains/folder-analysis/utils/readingStats'
+import {
+  ASSEMBLE_SECONDS,
+  SEALS_SECONDS,
+  VISION_SECONDS,
+} from '@/domains/folder-analysis/utils/readingStats'
 
-/**
- * How far along a document's analysis is. The server only reports which photo it
- * already finished, so a bar moved by that alone would sit still for twenty
- * seconds and then jump half the way. Each stage instead owns a band of the bar:
- * what the server confirms moves the bar to the start of the next band, and
- * inside the band it creeps with the clock towards -- never past -- the next
- * confirmed point, so it always advances and never has to go backwards.
- */
+/** How far along a document's analysis is. */
 const QUEUE_BAND = 8 // 0 -> 8   waiting for its turn
 const READ_BAND = 84 // 8 -> 92  one slice per photo
 const ASSEMBLE_BAND = 6 // 92 -> 98  putting the data together
 const READING_TOP = QUEUE_BAND + READ_BAND
 
-// The creep covers its band in about this many time constants, so a photo that
-// takes longer than the average slows down instead of stalling at the ceiling.
+const SEALS_START = READING_TOP // 92 -> 95  buscando y leyendo los sellos
+const SEALS_BAND = 3
+const VISION_START = SEALS_START + SEALS_BAND // 95 -> 99  qwen3-vl mirando la foto
+const VISION_BAND = 4
+
 const CREEP_TAU = 0.6
 
 /** Approaches `band` as `elapsed` grows, without ever reaching it. */
@@ -29,25 +29,26 @@ export function readingPhase(document) {
   if (status === 'failed') return 'failed'
   if (status === 'extracted' || status === 'reviewed') return 'done'
   if (status !== 'queued' && status !== 'processing') return 'draft'
+  if (document.stage === 'vision') return 'vision'
+  if (document.stage === 'seals') return 'seals'
   const pages = document?.pages || []
   const done = pages.filter((p) => p.status === 'done').length
   if (pages.length > 0 && done === pages.length) return 'assembling'
-  // "queued" until a photo actually starts: the architect should be able to tell
-  // "nobody has picked it up yet" from "it is being read right now".
   const started = pages.some((p) => p.status === 'processing' || p.status === 'done')
   return status === 'queued' && !started ? 'queued' : 'reading'
+}
+
+// Las etapas en las que todavía está trabajando.
+const LIVE_PHASES = new Set(['queued', 'reading', 'seals', 'vision', 'assembling'])
+
+export function isLive(phase) {
+  return LIVE_PHASES.has(phase)
 }
 
 export function pagesDone(document) {
   return (document?.pages || []).filter((p) => p.status === 'done').length
 }
 
-/**
- * How long a run that already ended took, from the server's own two marks: the
- * start of the analysis and the last thing written about it. The screen's clock
- * would keep counting while the finished document is polled, and "tardó 40 s" is
- * the number worth keeping.
- */
 export function finishedDuration(document) {
   if (!document || document.reviewed_at) return null
   if (document.status !== 'extracted' && document.status !== 'failed') return null
@@ -83,6 +84,13 @@ export function readingProgress(document, timing = {}) {
   } else if (phase === 'assembling') {
     percent = READING_TOP + creep(ASSEMBLE_BAND, stepElapsedSec, ASSEMBLE_SECONDS)
     etaSec = Math.max(ASSEMBLE_SECONDS - stepElapsedSec, 1)
+  } else if (phase === 'seals') {
+    percent = SEALS_START + creep(SEALS_BAND, stepElapsedSec, SEALS_SECONDS)
+    etaSec = Math.max(SEALS_SECONDS - stepElapsedSec, 1) + VISION_SECONDS
+  } else if (phase === 'vision') {
+    // La pasada más larga de todas: el modelo mira cada foto entre veinte y treinta segundos.
+    percent = VISION_START + creep(VISION_BAND, stepElapsedSec, VISION_SECONDS)
+    etaSec = Math.max(VISION_SECONDS - stepElapsedSec, 5)
   } else if (phase === 'done') {
     percent = 100
   }
@@ -95,7 +103,7 @@ export function readingProgress(document, timing = {}) {
     etaSec,
     elapsedSec,
     perPageSec,
-    live: phase === 'queued' || phase === 'reading' || phase === 'assembling',
+    live: isLive(phase),
     // The photo being read now, 1-based, for "Leyendo la foto 2 de 3".
     currentPage: Math.min(done + 1, Math.max(total, 1)),
   }
@@ -109,10 +117,6 @@ export function formatDuration(seconds) {
   return r ? `${m} min ${r} s` : `${m} min`
 }
 
-/**
- * An estimate read as an estimate: rounded to the precision it deserves, so it
- * does not tick down second by second as if it were a countdown.
- */
 export function formatEta(seconds) {
   if (seconds == null || !Number.isFinite(seconds)) return 'Calculando…'
   if (seconds <= 12) return 'unos segundos'
@@ -124,18 +128,16 @@ export function formatEta(seconds) {
 export const PHASE_META = {
   queued: { label: 'En cola', variant: 'warning' },
   reading: { label: 'Analizando', variant: 'accent' },
+  seals: { label: 'Leyendo sellos', variant: 'accent' },
+  vision: { label: 'Modelo de visión · qwen3-vl', variant: 'accent' },
   assembling: { label: 'Interpretando', variant: 'accent' },
   done: { label: 'Listo', variant: 'success' },
   failed: { label: 'Falló', variant: 'danger' },
-  // The dialog opens the moment "Analizar" is pressed, before the server has
-  // answered that the document is in the queue.
+  // The dialog opens the moment "Analizar" is pressed, before the server has answered that the document is in the queue.
   draft: { label: 'Enviando', variant: 'warning' },
 }
 
-/**
- * What the document is doing, in one line. The three lanes are read on the
- * server now (OCR + OpenCV), so the wait is always the server's own queue.
- */
+/** What the document is doing, in one line. */
 export function readingHeadline({ phase, currentPage, total }) {
   if (phase === 'draft') return 'Enviando el documento a la cola…'
   if (phase === 'queued') return 'En cola: esperando su turno en el servidor…'
@@ -143,6 +145,10 @@ export function readingHeadline({ phase, currentPage, total }) {
     return total > 1
       ? `Analizando la foto ${currentPage} de ${total} con OCR en el servidor…`
       : 'Analizando la foto con OCR en el servidor…'
+  }
+  if (phase === 'seals') return 'Buscando los sellos en las fotos y leyéndolos…'
+  if (phase === 'vision') {
+    return 'Mirando las fotos con qwen3-vl:4b en las computadoras de los arquitectos (20 a 30 s por foto)…'
   }
   if (phase === 'assembling') return 'Interpretando los datos leídos…'
   return ''

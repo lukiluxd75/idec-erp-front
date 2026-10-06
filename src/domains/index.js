@@ -1,8 +1,4 @@
-/**
- * Single place that knows every ERP domain with real screens — frontend equivalent of
- * backend/app/registry.py. To add a domain: create its folder here (with its own
- * routes.jsx) and add its import to DOMAIN_ROUTES.
- */
+/** Single place that knows every ERP domain with real screens — frontend equivalent of backend/app/registry.py. */
 import { matchPath } from 'react-router-dom'
 
 import { geoextractionRoutes } from './geoextraction/routes'
@@ -15,6 +11,7 @@ import { templatesRoutes } from './templates/routes'
 import { digitizationRoutes } from './digitization/routes'
 import { folderAnalysisRoutes } from './folder-analysis/routes'
 import { alignmentRoutes } from './alignment/routes'
+import { foliosRoutes } from './folios/routes'
 import { procedureReportsRoutes } from './procedurereports/routes'
 
 export const DOMAIN_ROUTES = [
@@ -28,6 +25,7 @@ export const DOMAIN_ROUTES = [
   ...digitizationRoutes,
   ...folderAnalysisRoutes,
   ...alignmentRoutes,
+  ...foliosRoutes,
   ...procedureReportsRoutes,
 ]
 

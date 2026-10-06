@@ -41,9 +41,7 @@ function pixelToLatLng(x, y, bbox, width, height) {
   return L.latLng(lat, lng)
 }
 
-/**
- * Manual alignment with Leaflet zoom, numbered points, and A↔B sync.
- */
+/** Manual alignment with Leaflet zoom, numbered points, and A↔B sync. */
 export default function ManualAlignPanel({
   open,
   jobId,

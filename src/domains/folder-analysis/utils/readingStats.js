@@ -1,10 +1,4 @@
-/**
- * How long a reading usually takes, learned on this computer. The server gives no
- * estimate -- it only says which photo it already read -- so the average per photo
- * is measured here from the readings the architect has already seen finish, and
- * seeded with the observed times of each lane so the very first document already
- * shows a believable "falta ~X".
- */
+/** How long a reading usually takes, learned on this computer. */
 
 const STORAGE_KEY = 'idec.folder-analysis.reading-stats.v1'
 
@@ -12,23 +6,22 @@ const STORAGE_KEY = 'idec.folder-analysis.reading-stats.v1'
 const SEED_PER_PAGE = { folio: 22, tax_receipt: 14, plan: 35 }
 const SEED_PER_PAGE_FALLBACK = 25
 
-/**
- * How long the document usually waits before its first photo starts. Every lane
- * is read on the server now, so nothing waits for a free PC.
- */
+/** How long the document usually waits before its first photo starts. */
 const QUEUE_WAIT = { folio: 3, tax_receipt: 3, plan: 4 }
 const QUEUE_WAIT_FALLBACK = 10
 
-/** Putting the data together after the last photo (page order, header, AI pass). */
+/** Putting the data together after the last photo (page order, header). */
 export const ASSEMBLE_SECONDS = 6
 
-// A reading far outside this is a clock change or a document left open for hours,
-// not a measurement: it would poison the average for every document after it.
+/** Buscar los sellos en las fotos y leerlos: OpenCV más un par de llamadas al OCR. */
+export const SEALS_SECONDS = 8
+
+/** La pasada del modelo de visión sobre las fotos. */
+export const VISION_SECONDS = 30
+
 const MIN_SAMPLE = 1
 const MAX_SAMPLE = 20 * 60
 
-// The average follows the last readings instead of the whole history: the times
-// change when the lane's pipeline or the PCs do.
 const MAX_WEIGHT = 8
 const MAX_RECORDED_IDS = 60
 
@@ -64,12 +57,7 @@ export function queueWaitEstimate(docType) {
   return QUEUE_WAIT[docType] ?? QUEUE_WAIT_FALLBACK
 }
 
-/**
- * Takes the time of a reading that just finished, from the two timestamps the
- * server already sends. Documents are counted once: `analyzed_at` and
- * `updated_at` stay the same while the finished document is polled, and a
- * re-analysis moves `analyzed_at`, so its id is keyed by both.
- */
+/** Takes the time of a reading that just finished, from the two timestamps the server already sends. */
 export function recordReading(document) {
   if (!document || document.status !== 'extracted' || document.reviewed_at) return
   const pages = document.pages?.length || 0

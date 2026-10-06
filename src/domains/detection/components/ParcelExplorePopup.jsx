@@ -13,14 +13,6 @@ const VALIDATION_BADGE = {
   rejected: { variant: 'danger', label: 'Rechazado' },
 }
 
-/**
- * Read-only browser over a sector's already-validated parcels (confirmed or
- * rejected -- never pending, see DetectionPage's onExploreParcel) -- floats
- * over the map, which stays sharp/interactive on purpose (no backdrop here)
- * so the prev/next camera movement is actually visible. Closing it returns
- * to ProcessedSectorDetailModal exactly as the architect left it; it does
- * not validate or change anything itself.
- */
 export default function ParcelExplorePopup({ parcels, index, onNavigate, onClose }) {
   if (!parcels?.length) return null
   const parcel = parcels[index]

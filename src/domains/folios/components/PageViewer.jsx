@@ -5,22 +5,13 @@ import { foliosApi } from '@/domains/folios/api/folios.api'
 import { Spinner } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 
-/**
- * Folio pages as the pipeline left them (rotated upright + deskewed), ordered
- * by the printed 'Pag X de N' when it was read. `version` changes when the
- * folio is reprocessed so the images are fetched again.
- */
 export function PageViewer({ folioId, pages, version }) {
-  // Result of the last download, tagged with what it was for: while the tag
-  // does not match the current request the viewer is loading (derived, so the
-  // effect never has to reset state synchronously).
   const [result, setResult] = useState({ key: null, images: [], error: null })
   const [current, setCurrent] = useState(0)
   const [zoom, setZoom] = useState(false)
   const [original, setOriginal] = useState(false)
 
-  // A refresh of the folio hands a new (equal) array: key on content so the
-  // images are not downloaded again for nothing.
+  // A refresh of the folio hands a new (equal) array: key on content so the images are not downloaded again for nothing.
   const pagesKey = JSON.stringify(pages)
   const requestKey = `${folioId}|${pagesKey}|${version}|${original}`
 

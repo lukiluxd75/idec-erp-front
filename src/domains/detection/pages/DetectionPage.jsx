@@ -78,9 +78,7 @@ function tipoBadgeVariant(tipo) {
   return 'warning'
 }
 
-/**
- * Fiscal intelligence workbench: configure → detect → validate (image vs SISCAT).
- */
+/** Fiscal intelligence workbench: configure → detect → validate (image vs SISCAT). */
 export default function DetectionPage() {
   const [health, setHealth] = useState(null)
   const [wmsMeta, setWmsMeta] = useState({ layers: [], hosts: [], years: [] })
@@ -92,19 +90,10 @@ export default function DetectionPage() {
   const [prediosBuffer, setPrediosBuffer] = useState('10')
   const [gpu, setGpu] = useState(0)
   const [polygon, setPolygon] = useState(null)
-  // Bumped once a run finishes so DetectionMap clears the just-processed
-  // polygon -- left drawn, its points get dragged into the next one.
   const [drawResetSignal, setDrawResetSignal] = useState(0)
   const [campaignId, setCampaignId] = useState(null)
-  // Fixed for the campaign's whole life (engineer's call) -- while set, Año
-  // A/Año B below are shown but locked to these values, not freely editable.
   const [campaignYears, setCampaignYears] = useState(null)
 
-  /** Everything on screen revolves around the campaign (engineer's rule): any
-   * campaign switch destroys -- not hides -- the module's whole visual/data
-   * context, so nothing "ghost" reappears if the architect comes back to the
-   * same campaign later. The sector's real validation state in the database
-   * is untouched; only this page's local UI state resets. */
   function handleCampaignChange(id, campaign) {
     setCampaignId(id)
     if (campaign?.year_a != null && campaign?.year_b != null) {
@@ -202,10 +191,6 @@ export default function DetectionPage() {
   const [presetPolygon, setPresetPolygon] = useState(null)
   const [validationTarget, setValidationTarget] = useState(null)
   const [highlightParcelGeom, setHighlightParcelGeom] = useState(null)
-  // "Explorar predio": browsing already-validated parcels of the sector
-  // currently open in ProcessedSectorDetailModal (see onExploreParcel below)
-  // -- { parcels, index } while active, null otherwise. Hides (not closes)
-  // the modal, see its `open` prop further down.
   const [exploring, setExploring] = useState(null)
 
   const pollRef = useRef(null)
@@ -213,13 +198,7 @@ export default function DetectionPage() {
   const resultsRef = useRef(null)
   /** After applying manual alignment, do not reopen the modal automatically when re-detection finishes. */
   const skipAutoAlignOpenRef = useRef(false)
-  /** setInterval fires every POLL_MS regardless of whether the previous
-   * pollJob() call (an HTTP round-trip) already returned. If the engine
-   * reports "done" while a prior overlapping call is still in flight, both
-   * can reach the done-branch and both call finishWithResult() concurrently
-   * -- each hydrateAssets() revokes the other's still-in-use blob URLs
-   * (ERR_FILE_NOT_FOUND, random depending on network timing). This guard
-   * makes only the first overlapping call actually finish the job. */
+  /** setInterval fires every POLL_MS regardless of whether the previous pollJob() call (an HTTP round-trip) already returned. */
   const finishingRef = useRef(false)
 
   const yearOptions = useMemo(() => {
@@ -280,18 +259,11 @@ export default function DetectionPage() {
     }
   }, [])
 
-  // Scoped to the selected campaign: a polygon drawn under one campaign
-  // belongs to it, so switching campaigns must make the map overlay show
-  // only that campaign's sectors. campaignId === null is "Sin campaña" --
-  // sectors with no campaign at all, not "no filter" (Historial is the one
-  // screen that still wants everything, via its own unscoped call).
   const loadProcessedSectors = useCallback(async () => {
     try {
       const data = await detectionApi.listProcessedSectors(campaignId, { unassignedOnly: !campaignId })
       setProcessedSectors(Array.isArray(data) ? data : [])
     } catch (err) {
-      // Non-blocking: the map overlay is a convenience, not required to run
-      // a new detection -- a failed refresh here should not interrupt the page.
       console.warn('No se pudieron cargar los sectores procesados', err)
     }
   }, [campaignId])
@@ -340,12 +312,7 @@ export default function DetectionPage() {
   async function finishWithResult(id) {
     const res = await detectionApi.getResult(id)
     setResult(res)
-    // By the time GET .../result returns, the backend has already persisted
-    // the sector (see job_result's ingestion) — refresh the map overlay so
-    // it shows up without the architect having to reload the page.
     loadProcessedSectors()
-    // The area just got processed -- clear it so it doesn't linger and
-    // interfere with the next polygon drawn for a different block.
     setDrawResetSignal((n) => n + 1)
     await hydrateAssets(res)
     const level = String(
@@ -526,13 +493,6 @@ export default function DetectionPage() {
     setSelectedRow({ ...row, bbox_px: bbox || row.bbox_px || row.bbox })
   }
 
-  /** Reflects a review/feedback verdict locally (both raw arrays + the
-   * selected row) without re-polling the job, matching by affected_parcel_id
-   * (present on every row once the backend has persisted the result — see
-   * job_result's response enrichment). `sectorId` defaults to the live job's
-   * own sector, but ProcessedSectorDetailModal's "Continuar validación"
-   * (an older/different sector than whatever job is live here) passes its
-   * own sector id explicitly. */
   function handleParcelReviewed(affectedParcelId, validationStatus, sectorId) {
     setResult((prev) => {
       if (!prev) return prev
@@ -542,8 +502,6 @@ export default function DetectionPage() {
         )
       const cambios = patchArray(prev.cambios)
       // Mirrors the backend's own rule (SqlAffectedParcelReviewRepository.
-      // _maybe_complete_sector): completed once every row with an
-      // affected_parcel_id stopped being 'pending', regardless of verdict.
       const allReviewed =
         cambios.length > 0 &&
         cambios.every((r) => !r.affected_parcel_id || r.validation_status !== 'pending')
@@ -564,10 +522,6 @@ export default function DetectionPage() {
         : prev
     )
 
-    // Also patch processedSectors -- the map polygon's color is computed
-    // from n_confirmed/n_rejected/n_pending on THAT array (see
-    // processedSectorsLayer.js), not from `result` above, so without this
-    // the color only updated after a full page reload.
     const targetSectorId = sectorId ?? result?.processed_sector_id
     if (targetSectorId != null) {
       setProcessedSectors((prev) => applyParcelReviewToSectors(prev, targetSectorId, validationStatus))
@@ -918,10 +872,6 @@ export default function DetectionPage() {
         </Card>
       </section>
 
-      {/* `open` also checks !exploring: ParcelExplorePopup hides this modal
-          without closing it (same sectorId, so it just refetches once shown
-          again) -- closing the explore tool returns here exactly where the
-          architect left it, per the engineer's spec. */}
       <ProcessedSectorDetailModal
         open={!!selectedSectorId && !exploring}
         sectorId={selectedSectorId}
@@ -953,9 +903,6 @@ export default function DetectionPage() {
           requestAnimationFrame(() => {
             resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
           })
-          // Same as finishWithResult -- `result.urls` alone doesn't render
-          // anything, hydrateAssets resolves it into the object URLs the
-          // gallery/A|B check actually read from `assetUrls`.
           await hydrateAssets(payload)
         }}
       />

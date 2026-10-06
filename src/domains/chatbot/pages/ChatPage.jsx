@@ -12,7 +12,7 @@ const GREETING = {
     '¡Buenos días! Bienvenido al servicio de atención virtual de la Dirección de Administración Geográfica y Catastro.',
 }
 
-const SUGGESTIONS = ['¿Qué puedes hacer?', '¿Qué áreas abarcas?', 'Contacto']
+const SUGGESTIONS = ['¿Qué puede hacer?', '¿Qué áreas abarca?', 'Contacto']
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([GREETING])

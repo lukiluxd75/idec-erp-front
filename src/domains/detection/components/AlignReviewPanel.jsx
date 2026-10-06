@@ -29,9 +29,7 @@ const MODES = [
   },
 ]
 
-/**
- * Graphical review of alignment and detections (prototype style).
- */
+/** Graphical review of alignment and detections (prototype style). */
 export default function AlignReviewPanel({
   yearA,
   yearB,

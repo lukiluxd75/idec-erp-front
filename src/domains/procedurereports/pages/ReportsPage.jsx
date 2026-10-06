@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { BarChart3, FileDown, FileSpreadsheet } from 'lucide-react'
+import { Alert, Button, Card, SectionHeader, Spinner } from '@/shared/ui'
 import './ReportsPage.css'
 import { reportsApi, fmt, avg } from '../api/reports.api'
 import { RankingChart } from '../components/RankingChart'
@@ -6,6 +8,12 @@ import { DailyChart } from '../components/DailyChart'
 import { TypePieChart } from '../components/TypePieChart'
 import { TypeStaffMatrix } from '../components/TypeStaffMatrix'
 import { Collapse } from '../components/Collapse'
+import { ExecutivePanel } from '../components/ExecutivePanel'
+import { SlaPanel, SlaByTypeTable, SlaByStaffTable } from '../components/SlaPanel'
+import { BacklogAgingChart } from '../components/BacklogAgingChart'
+import { DistrictComparisonTable } from '../components/DistrictComparisonTable'
+import { ProcedureGroupStrip } from '../components/ProcedureGroupStrip'
+import { ReportHelpHint, ReportPanelHeading, ReportsGuidePanel } from '../components/ReportHelp'
 
 const DEFAULT_PROCEDURE_TYPES = [2009, 2010, 2012, 3002, 3003, 3004, 3005, 3006]
 
@@ -17,20 +25,14 @@ function rowClass(r, threshold) {
   return ''
 }
 
-/**
- * Reporte gerencial de trámites -- exact interface port of the standalone
- * "reporte-gerencial" project (see doc's Reportes folder): same layout, same
- * CSS (ReportsPage.css), same charts/tables. Only the plumbing was adapted
- * to run inside the ERP -- httpClient (auth), and the backend's English
- * field names (meta/kpis/ranking/teamDaily/... -- see generate_report.py)
- * instead of the standalone frontend's Spanish ones, which no longer apply.
- */
+/** Reporte gerencial de trámites en bandeja (unidad cartografía en SISCAT). */
 export default function ReportsPage() {
   const [startDate, setStartDate] = useState('2026-08-01')
   const [endDate, setEndDate] = useState('2026-08-31')
   const [districtId, setDistrictId] = useState('7')
   const [procedureTypeIds, setProcedureTypeIds] = useState(DEFAULT_PROCEDURE_TYPES)
   const [districts, setDistricts] = useState([])
+  const [unitLabel, setUnitLabel] = useState('')
   const [procedureTypesCatalog, setProcedureTypesCatalog] = useState([])
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -44,6 +46,7 @@ export default function ReportsPage() {
       .fetchFilters()
       .then((f) => {
         setDistricts(f.districts || [])
+        setUnitLabel(f.unit || '')
         setProcedureTypesCatalog(f.procedureTypes || [])
       })
       .catch(() => undefined)
@@ -121,93 +124,111 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="procedure-reports app">
-      <div className={`sheet ${loading ? 'is-loading' : ''}`}>
-        <header className="brand">
-          <div className="pill">Reporte gerencial</div>
-          <h1>Dirección de Administración Geográfica y Catastro</h1>
-          <h2>Área Técnica Cartografía · salidas de bandeja y pendientes</h2>
-          <div className="controls">
-            <label className="field">
-              <span>Desde</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Hasta</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </label>
-            <label className="field">
-              <span>Comuna</span>
-              <select value={districtId} onChange={(e) => setDistrictId(e.target.value)}>
-                <option value="0">Todas las comunas</option>
-                {districts.length === 0 && <option value="7">CATASTRO CENTRAL</option>}
-                {districts.map((d) => (
-                  <option key={d.districtId} value={String(d.districtId)}>
-                    {d.description} ({d.count})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="btn cyan"
-              type="button"
-              disabled={!!exporting || !data || loading}
-              onClick={() => onExport('excel')}
-            >
-              {exporting === 'excel' ? 'Excel…' : 'Excel'}
-            </button>
-            <button
-              className="btn ghost"
-              type="button"
-              disabled={!!exporting || !data || loading}
-              onClick={() => onExport('pdf')}
-            >
-              {exporting === 'pdf' ? 'PDF…' : 'PDF'}
-            </button>
-          </div>
-          <div className="tipos">
-            <span>Tipos de trámite · {districtLabel}</span>
-            <label className={allTypes ? 'chip on' : 'chip'}>
-              <input
-                type="checkbox"
-                checked={allTypes}
-                onChange={(e) => setProcedureTypeIds(e.target.checked ? [] : DEFAULT_PROCEDURE_TYPES)}
-              />
-              Todos los tipos
-            </label>
-            {groups.map(([group, items]) => (
-              <div key={group} className="tipo-grupo">
-                <b>{group}</b>
-                <div className="tipo-grupo-chips">
-                  {items.map((t) => {
-                    const on = procedureTypeIds.includes(t.procedureTypeId)
-                    return (
-                      <label key={t.procedureTypeId} className={on && !allTypes ? 'chip on' : 'chip'}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          onChange={() => {
-                            if (allTypes) setProcedureTypeIds([t.procedureTypeId])
-                            else toggleType(t.procedureTypeId)
-                          }}
-                        />
-                        <i className="swatch" style={{ background: t.color }} />
-                        {t.label}
-                      </label>
-                    )
-                  })}
-                </div>
+    <div className="procedure-reports animate-card-in space-y-6">
+      <Card className={`report-shell ${loading ? 'is-loading' : ''}`}>
+        <SectionHeader
+          icon={BarChart3}
+          eyebrow="Reportes"
+          title="Reporte gerencial de trámites"
+          subtitle={
+            data?.meta?.unit || unitLabel
+              ? `${data?.meta?.unit || unitLabel} · salidas de bandeja, tiempos de atención y pendientes (certificaciones y registros catastrales).`
+              : 'Salidas de bandeja, tiempos de atención y pendientes de la unidad cartografía.'
+          }
+          actions={
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FileSpreadsheet}
+                disabled={!!exporting || !data || loading}
+                loading={exporting === 'excel'}
+                onClick={() => onExport('excel')}
+              >
+                Excel
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={FileDown}
+                disabled={!!exporting || !data || loading}
+                loading={exporting === 'pdf'}
+                onClick={() => onExport('pdf')}
+              >
+                PDF
+              </Button>
+            </>
+          }
+        />
+
+        <div className="filters-bar">
+          <label className="field">
+            <span>Desde</span>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </label>
+          <label className="field">
+            <span>Hasta</span>
+            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </label>
+          <label className="field field-grow">
+            <span>Comuna</span>
+            <select value={districtId} onChange={(e) => setDistrictId(e.target.value)}>
+              <option value="0">Todas las comunas</option>
+              {districts.length === 0 && <option value="7">CATASTRO CENTRAL</option>}
+              {districts.map((d) => (
+                <option key={d.districtId} value={String(d.districtId)}>
+                  {d.description} ({d.count})
+                </option>
+              ))}
+            </select>
+          </label>
+          <ReportHelpHint helpId="filters" label="Ayuda de filtros" />
+        </div>
+
+        <div className="tipos">
+          <span>Tipos de trámite · {districtLabel}</span>
+          <label className={allTypes ? 'chip on' : 'chip'}>
+            <input
+              type="checkbox"
+              checked={allTypes}
+              onChange={(e) => setProcedureTypeIds(e.target.checked ? [] : DEFAULT_PROCEDURE_TYPES)}
+            />
+            Todos los tipos
+          </label>
+          {groups.map(([group, items]) => (
+            <div key={group} className="tipo-grupo">
+              <b>{group}</b>
+              <div className="tipo-grupo-chips">
+                {items.map((t) => {
+                  const on = procedureTypeIds.includes(t.procedureTypeId)
+                  return (
+                    <label key={t.procedureTypeId} className={on && !allTypes ? 'chip on' : 'chip'}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => {
+                          if (allTypes) setProcedureTypeIds([t.procedureTypeId])
+                          else toggleType(t.procedureTypeId)
+                        }}
+                      />
+                      <i className="swatch" style={{ background: t.color }} />
+                      {t.label}
+                    </label>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        </header>
+            </div>
+          ))}
+        </div>
 
-        {error && <div className="error">{error}</div>}
+        <ReportsGuidePanel />
 
-        <div className="sheet-body">
+        {error && <Alert type="error" className="mt-4" message={error} />}
+
+        <div className="report-body">
           {loading && (
             <div className="loader-overlay" role="status" aria-live="polite">
-              <div className="spinner" />
+              <Spinner className="h-10 w-10 text-brand-800" />
               <strong>Cargando {districtLabel}</strong>
               <span>Actualizando tablas y gráficos…</span>
             </div>
@@ -215,30 +236,132 @@ export default function ReportsPage() {
 
           {data && (
             <>
-              <section className="kpis">
+              <ExecutivePanel analysis={data.analysis} />
+
+              <div className="section-help-row">
+                <ReportHelpHint helpId="kpis" label="¿Qué miden estos indicadores?" />
+              </div>
+              <section className="kpis kpis-extended">
                 <div className="kpi">
                   <b>{fmt(data.kpis.dispatches)}</b>
                   <span>Salidas de bandeja</span>
                 </div>
                 <div className="kpi">
-                  <b>{fmt(data.kpis.avgTeamPerDay, 1)}</b>
-                  <span>Estimado equipo / día hábil</span>
+                  <b>{fmt(data.kpis.procedures)}</b>
+                  <span>Trámites distintos</span>
                 </div>
                 <div className="kpi">
+                  <b>{fmt(data.kpis.avgTeamPerDay, 1)}</b>
+                  <span>Equipo / día hábil</span>
+                </div>
+                <div className="kpi">
+                  <b>
+                    {data.sla?.summary?.avgDays != null ? fmt(data.sla.summary.avgDays, 1) : '—'}
+                  </b>
+                  <span>SLA prom. (días)</span>
+                </div>
+                <div className="kpi warn">
                   <b>{fmt(data.kpis.pendingCount)}</b>
                   <span>Pendientes actuales</span>
                 </div>
-                <div className="kpi warn">
+                <div className="kpi">
                   <b>{fmt(data.kpis.staffCount)}</b>
-                  <span>Funcionarios en {data.meta.district}</span>
+                  <span>Funcionarios · {data.meta.district}</span>
                 </div>
               </section>
 
-              {data.analysis?.backlog && <div className="banner">{data.analysis.backlog}</div>}
+              <SlaPanel sla={data.sla} periodComparison={data.periodComparison} kpis={data.kpis} />
+
+              <div className="section-help-row">
+                <ReportHelpHint helpId="procedureGroups" label="¿Cómo leer el mix de trámites?" />
+              </div>
+              <ProcedureGroupStrip groups={data.procedureGroups} totalDispatches={data.kpis.dispatches} />
+
+              {data.analysis?.backlog && (
+                <>
+                  <div className="section-help-row">
+                    <ReportHelpHint helpId="backlog" label="¿Qué dice el mensaje de pendientes?" />
+                  </div>
+                  <div className="banner">{data.analysis.backlog}</div>
+                </>
+              )}
+
+              <section className="grid-2">
+                <div className="panel">
+                  <ReportPanelHeading
+                    title="Antigüedad de pendientes en bandeja"
+                    caption="Trámites sin salida, por días desde el ingreso (al día de hoy)."
+                    helpId="backlogAging"
+                  />
+                  <BacklogAgingChart backlogAging={data.backlogAging} />
+                </div>
+                <div className="panel">
+                  <ReportPanelHeading
+                    title="Comparativa por comuna"
+                    caption="Visible al filtrar todas las comunas o varias áreas."
+                    helpId="districtComparison"
+                  />
+                  <DistrictComparisonTable
+                    rows={data.districtComparison}
+                    show={districtId === '0' || (data.districtComparison?.length ?? 0) > 1}
+                  />
+                  {districtId !== '0' && (data.districtComparison?.length ?? 0) <= 1 && (
+                    <p className="caption">Seleccione «Todas las comunas» para ver el cuadro comparativo.</p>
+                  )}
+                </div>
+              </section>
+
+              <Collapse
+                title="SLA por tipo de trámite"
+                caption="Promedio de días ingreso → salida en el período"
+                helpId="slaByType"
+              >
+                <SlaByTypeTable rows={data.sla?.byType} />
+              </Collapse>
+
+              <Collapse title="SLA por funcionario" caption="Mínimo 3 salidas en el período" helpId="slaByStaff">
+                <SlaByStaffTable rows={data.sla?.byStaff} />
+              </Collapse>
+
+              <Collapse
+                title="Pendientes críticos (más antiguos)"
+                caption={`${fmt(data.criticalPending?.length ?? 0)} trámites`}
+                helpId="criticalPending"
+              >
+                <div className="table-wrap tall">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Trámite</th>
+                        <th>Tipo</th>
+                        <th>Funcionario</th>
+                        <th className="num">Días</th>
+                        <th>Ingreso</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(data.criticalPending || []).map((p) => (
+                        <tr key={p.procedureId} className={p.ageDays >= 60 ? 'warn' : ''}>
+                          <td>
+                            {p.procedureNumber != null ? `${p.procedureNumber}/${p.year ?? ''}` : p.procedureId}
+                          </td>
+                          <td>{p.type}</td>
+                          <td>{p.name}</td>
+                          <td className="num">{fmt(p.ageDays)}</td>
+                          <td>{p.receivedAt || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Collapse>
 
               <section className="block">
-                <h2>Colores por funcionario</h2>
-                <p className="caption">Misma paleta en ranking, ritmo diario y torta por tipo.</p>
+                <ReportPanelHeading
+                  title="Colores por funcionario"
+                  caption="Misma paleta en ranking, ritmo diario y torta por tipo."
+                  helpId="colorsLegend"
+                />
                 <div className="color-legend">
                   {data.ranking.map((r) => (
                     <div key={r.name} className="legend-item">
@@ -251,17 +374,19 @@ export default function ReportsPage() {
 
               <section className="grid-2">
                 <div className="panel">
-                  <h2>Ranking de despachos</h2>
-                  <p className="caption">
-                    {data.meta.startDate} a {data.meta.endDate} · {data.meta.district}
-                  </p>
+                  <ReportPanelHeading
+                    title="Ranking de despachos"
+                    caption={`${data.meta.startDate} a ${data.meta.endDate} · ${data.meta.district}`}
+                    helpId="ranking"
+                  />
                   <RankingChart ranking={data.ranking} />
                 </div>
                 <div className="panel">
-                  <h2>Ritmo del equipo por día</h2>
-                  <p className="caption">
-                    Cada color es un funcionario. Línea = promedio hábil ({fmt(data.kpis.avgTeamPerDay, 1)})
-                  </p>
+                  <ReportPanelHeading
+                    title="Ritmo del equipo por día"
+                    caption={`Cada color es un funcionario. Línea = promedio hábil (${fmt(data.kpis.avgTeamPerDay, 1)})`}
+                    helpId="dailyChart"
+                  />
                   <DailyChart
                     days={data.teamDaily}
                     ranking={data.ranking}
@@ -273,8 +398,11 @@ export default function ReportsPage() {
 
               <section className="block">
                 <div className="panel pie-panel">
-                  <h2>Trámites por tipo</h2>
-                  <p className="caption">El tamaño es la cantidad de salidas del período.</p>
+                  <ReportPanelHeading
+                    title="Trámites por tipo"
+                    caption="El tamaño es la cantidad de salidas del período."
+                    helpId="byType"
+                  />
                   <div className="pie-layout">
                     <TypePieChart byType={data.byType} />
                     <ul className="pie-list">
@@ -293,11 +421,16 @@ export default function ReportsPage() {
               <Collapse
                 title="Despachos por tipo y funcionario"
                 caption={`${fmt(data.typeStaffMatrix.rows.length)} funcionarios`}
+                helpId="typeStaffMatrix"
               >
                 <TypeStaffMatrix matrix={data.typeStaffMatrix} />
               </Collapse>
 
-              <Collapse title="Estimado por persona" caption="Ritmo real sobre los días con salida">
+              <Collapse
+                title="Estimado por persona"
+                caption="Ritmo real sobre los días con salida"
+                helpId="estimateByPerson"
+              >
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -326,7 +459,11 @@ export default function ReportsPage() {
                 </div>
               </Collapse>
 
-              <Collapse title="Tabla de pendientes" caption="Bandeja al momento de generar el reporte">
+              <Collapse
+                title="Tabla de pendientes"
+                caption="Bandeja al momento de generar el reporte"
+                helpId="pendingTable"
+              >
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -347,7 +484,7 @@ export default function ReportsPage() {
                 </div>
               </Collapse>
 
-              <Collapse title="Detalle día por persona · primera quincena">
+              <Collapse title="Detalle día por persona · primera quincena" helpId="dailyDetail">
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -376,7 +513,7 @@ export default function ReportsPage() {
                 </div>
               </Collapse>
 
-              <Collapse title="Detalle día por persona · segunda quincena">
+              <Collapse title="Detalle día por persona · segunda quincena" helpId="dailyDetail">
                 <div className="table-wrap">
                   <table>
                     <thead>
@@ -412,7 +549,7 @@ export default function ReportsPage() {
             </>
           )}
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

@@ -76,9 +76,7 @@ function ModuleCard({ label, icon: Icon, menuChildren, entryPath }) {
   )
 }
 
-/**
- * ERP home: welcome and module catalog in square cards.
- */
+/** ERP home: welcome and module catalog in square cards. */
 export function DashboardPage() {
   const { user } = useAuth()
   const [query, setQuery] = useState('')

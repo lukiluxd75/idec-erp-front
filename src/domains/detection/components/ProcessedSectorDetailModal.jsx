@@ -26,8 +26,7 @@ const CHANGE_TYPE_LABEL = {
   unchanged: 'Sin cambio',
 }
 
-// Kept in sync with ParcelValidationModal's CONSTRUCTION_TYPES / the
-// backend's ALLOWED_CONSTRUCTION_TYPES.
+// Kept in sync with ParcelValidationModal's CONSTRUCTION_TYPES / the backend's ALLOWED_CONSTRUCTION_TYPES.
 const CONSTRUCTION_TYPE_LABEL = {
   nueva_construccion: 'Construcción nueva',
   ampliacion: 'Ampliación',
@@ -46,23 +45,6 @@ function fmtDate(value) {
   }
 }
 
-/**
- * Shared detail view for a processed sector — used both by the map popup's
- * "Ver detalle" (Mapa y detección + Historial) and, with allowReprocess,
- * backs the "Reprocesar" action. Historial never passes allowReprocess (see
- * HistorialPage): that tab is read-only, only "Mapa y detección" can start a
- * new run over an already-processed area. `onResumeValidation` backs
- * "Continuar validación" (also Mapa y detección only, see its own docstring
- * on that button below) -- Historial doesn't pass it either, so the button
- * never renders there.
- *
- * `onExploreParcel(explorableParcels, startIndex)` backs clicking an
- * already-validated parcel: DetectionPage hides this modal (not closes --
- * same sectorId, so it just refetches when shown again) and shows
- * ParcelExplorePopup instead, which calls back into here on close. Pending
- * parcels are never clickable -- only confirmed/rejected ones belong in the
- * explore list (see explorableParcels below).
- */
 export default function ProcessedSectorDetailModal({
   open,
   sectorId,
@@ -104,17 +86,10 @@ export default function ProcessedSectorDetailModal({
   const statusBadge = detail ? STATUS_BADGE[detail.status] || { variant: 'neutral', label: detail.status } : null
   const hasPending = !!detail?.runs?.some((run) => run.parcels.some((p) => p.validation_status === 'pending'))
 
-  // Only already-validated parcels are explorable -- a pending finding
-  // hasn't been confirmed/rejected yet and shouldn't be inspectable as if it
-  // were. Flattened across every run, in the same order they're listed.
   const explorableParcels = (detail?.runs || [])
     .flatMap((run) => run.parcels)
     .filter((p) => p.parcel_geom_geojson && p.validation_status !== 'pending')
 
-  /** Closes this modal and hands the sector's persisted result (same shape
-   * as a live job_result) up to DetectionPage, which loads it into the same
-   * Hallazgos table/photos a fresh detection uses and scrolls to it -- no
-   * validation UI lives in this modal itself. */
   async function handleContinueValidation() {
     setResuming(true)
     try {
@@ -196,8 +171,7 @@ export default function ProcessedSectorDetailModal({
                           variant: 'neutral',
                           label: p.validation_status,
                         }
-                        // Pending findings aren't explorable -- only
-                        // confirmed/rejected ones (see explorableParcels).
+                        // Pending findings aren't explorable -- only confirmed/rejected ones (see explorableParcels).
                         const clickable =
                           !!(p.parcel_geom_geojson && onExploreParcel) && p.validation_status !== 'pending'
                         return (

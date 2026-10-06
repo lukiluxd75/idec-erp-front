@@ -1,14 +1,5 @@
 import { CheckCircle2, XCircle } from 'lucide-react'
 
-/**
- * The only two validation actions the architect has (see conversation with
- * the user: "solo esas dos opciones" — confirm the detection, classifying
- * the real change, or reject it with an optional audit comment). Rendered
- * inline in each row of the hallazgos table instead of a separate side
- * panel, so no row needs to be selected first to validate it. Both open
- * ParcelValidationModal in the matching mode; neither commits instantly,
- * since confirming requires picking a construction_type first.
- */
 export default function ParcelValidationButtons({ row, onOpenValidation }) {
   if (!row?.affected_parcel_id) return null
   if (row.validation_status && row.validation_status !== 'pending') return null

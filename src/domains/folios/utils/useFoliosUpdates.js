@@ -13,11 +13,6 @@ function wsUrl() {
   return `${base}${API_ENDPOINTS.FOLIOS.BASE}/ws?token=${encodeURIComponent(token)}`
 }
 
-/**
- * Calls `onUpdate` whenever the backend reports a change on folios (new scan
- * from the phone, extraction finished, review saved) -- same pattern as
- * useResolutionsUpdates. Reconnects with a fixed delay on any drop.
- */
 export function useFoliosUpdates(onUpdate) {
   const onUpdateRef = useRef(onUpdate)
   useEffect(() => {
@@ -51,11 +46,6 @@ export function useFoliosUpdates(onUpdate) {
   }, [])
 }
 
-/**
- * Backup for the websocket while something is still being extracted: with
- * several backend workers the "done" ping may go out on another worker's socket
- * (see FoliosConnectionManager), so poll every few seconds until it settles.
- */
 export function usePollWhile(active, onTick, intervalMs = 5000) {
   const onTickRef = useRef(onTick)
   useEffect(() => {

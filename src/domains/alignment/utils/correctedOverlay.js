@@ -1,8 +1,5 @@
 import { alignmentApi } from '../api/alignment.api'
 
-// How far past the block's bounding box to fetch source pixels, so a
-// rotated/skewed transform doesn't leave a blank sliver at a corner of the
-// destination canvas.
 const PADDING_RATIO = 0.15
 
 function bboxFromRing(ring) {
@@ -11,9 +8,6 @@ function bboxFromRing(ring) {
   return [Math.min(...lons), Math.min(...lats), Math.max(...lons), Math.max(...lats)]
 }
 
-/** Inverse of a block's fitted mov->ref affine transform, used only to find
- * which patch of the un-corrected imagery to fetch (the actual per-pixel
- * warp is done by the canvas transform below, not by this). */
 function invertAffine(t) {
   const det = t.lon.a * t.lat.b - t.lon.b * t.lat.a
   if (!det) throw new Error('La transformación no es invertible.')
@@ -30,8 +24,6 @@ function applyAffine(t, lon, lat) {
   return [t.lon.a * lon + t.lon.b * lat + t.lon.c, t.lat.a * lon + t.lat.b * lat + t.lat.c]
 }
 
-/** Composes two canvas-style 2D affine matrices ({a,b,c,d,e,f}, matching
- * CanvasRenderingContext2D.setTransform): applies `first`, then `second`. */
 function composeAffine(first, second) {
   return {
     a: second.a * first.a + second.c * first.b,
@@ -52,18 +44,6 @@ function loadImage(src) {
   })
 }
 
-/**
- * Fetches the target year's un-corrected imagery around a block and warps it
- * onto the block's saved affine transform using a canvas -- see AlignmentPage's
- * design discussion with the user: the correction itself stays a browser-side
- * operation (no server-stored mosaic), computed fresh from transform_params.
- *
- * `block` needs `geom_geojson` (the drawn polygon, in ref/2015 space) and
- * `transform_params` (mov->ref, from AlignmentBlockDetailSchema). Returns
- * `{ imageUrl, bounds }` ready for Leaflet's imageOverlay -- `imageUrl` is an
- * object URL the caller should revoke (URL.revokeObjectURL) once the overlay
- * is no longer shown.
- */
 export async function buildCorrectedOverlay({ block, wmsLayer, gisHost, destSize = 1024 }) {
   const ring = block.geom_geojson?.coordinates?.[0]
   if (!ring) throw new Error('La manzana no tiene geometría.')

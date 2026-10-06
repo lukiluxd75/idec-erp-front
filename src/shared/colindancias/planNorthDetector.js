@@ -1,47 +1,10 @@
-/**
- * Detecta hacia dónde apunta el norte en una página del plano de división,
- * a partir del símbolo de norte que dibujan los planos del GAMC -- así el
- * cálculo de colindancias (colindanciasDetector.js) puede razonar en
- * "arriba = norte" sin importar cómo haya quedado rotada la foto/el PDF.
- *
- * El símbolo (siempre el mismo en los planos de P.H.) es:
- *
- *   - una "C" gruesa (arco de ~3/4 de círculo) con una ABERTURA hacia el este,
- *   - una BARRA gruesa recta que sale del centro hacia el NORTE y pasa por
- *     encima del arco (llega a ~2 radios del centro),
- *   - dos líneas finas en cruz y la letra "N", dentro de la abertura.
- *
- * El OCR casi nunca lee esa "N" (es un símbolo, no texto de línea), así que
- * el símbolo se busca por FORMA con OpenCV, sin depender del OCR:
- *
- *   1. Trazos gruesos: la tinta se binariza y con la transformada de
- *      distancia se quedan solo los trazos gruesos (el arco y la barra); las
- *      líneas finas de muros, cotas y texto desaparecen.
- *   2. Cada mancha gruesa se prueba como arco: se le ajusta un círculo
- *      (RANSAC, para que la barra pegada al arco no desvíe el ajuste) y se
- *      mide cuánto del anillo cubre y dónde está su abertura.
- *   3. La barra: trazos gruesos en la corona FUERA del arco (1.25R a 2.3R),
- *      concentrados en una sola dirección. Su eje (PCA) es el norte.
- *   4. Control: la abertura de la "C" tiene que quedar ~90° a la derecha
- *      (sentido horario) de la barra. Solo sube o baja la confianza.
- *
- * Como cualquier detección "asistida" (ver ColindanciasSection.jsx), esto es
- * una SUGERENCIA: nunca lanza, y si no encuentra el símbolo devuelve
- * angleDeg=0 con confidence='baja' -- el usuario corrige con los botones de
- * rotación manual. Además devuelve `diagnostico` para el log de llenado.
- *
- * Convención de angleDeg: es el ángulo (en grados, sentido horario) al que
- * apunta el norte detectado, tomando "arriba" (eje -Y de la imagen) como 0°.
- * Para llevar un punto de la imagen al sistema "arriba = norte" hay que
- * rotarlo por -angleDeg (ver rotatePoint más abajo, reusado por
- * colindanciasDetector.js).
- */
+
+import { buscarSimboloNorteFlecha } from './planNorthArrow'
 
 let cvPromise = null
 function getCv() {
   if (!cvPromise) {
-    // Vía opencvLoader.js: importar '@techstark/opencv-js' directo con
-    // import() falla en el navegador (ver ese archivo).
+    // Vía opencvLoader.js: importar '@techstark/opencv-js' directo con import() falla en el navegador (ver ese archivo).
     cvPromise = import('./opencvLoader').then(async ({ obtenerCv }) => {
       const cvModule = obtenerCv()
       if (!cvModule) throw new Error('OpenCV no quedó disponible')
@@ -87,12 +50,7 @@ export function rotatePoint(x, y, cx, cy, angleDeg) {
   }
 }
 
-// Lado mayor de la imagen de trabajo: los umbrales de grosor (px) de abajo
-// están calibrados a esta escala con planos reales (fotos de 2400-5200 px).
 const LADO_TRABAJO = 1600
-// Grosores mínimos (transformada de distancia = medio grosor del trazo) que
-// se prueban para separar el símbolo del resto del dibujo, de más a menos
-// estricto: los planos varían en grosor de pluma y en resolución.
 const UMBRALES_GROSOR = [4, 3, 2.5, 2]
 const PUNTAJE_MINIMO = 1.6
 const PUNTAJE_ALTA = 2.4
@@ -108,8 +66,6 @@ function difAngular(a, b) {
   return ((((a - b + 180) % 360) + 360) % 360) - 180
 }
 
-// PRNG con semilla: el RANSAC tiene que dar lo mismo cada vez que se corre
-// sobre la misma imagen (si no, el log de llenado no sería reproducible).
 function mulberry32(seed) {
   let a = seed
   return () => {
@@ -157,10 +113,6 @@ function ajustarCirculo(xs, ys, idx) {
   return r2 > 0 ? { cx, cy, r: Math.sqrt(r2) } : null
 }
 
-/**
- * Mide un círculo candidato: cobertura del anillo por la propia mancha,
- * abertura de la "C" y la barra en la corona exterior.
- */
 function medirSimbolo(grueso, etiquetas, etiqueta, ancho, alto, cx, cy, R) {
   const paso = 3
   const cubre = []
@@ -253,9 +205,6 @@ function medirSimbolo(grueso, etiquetas, etiqueta, ancho, alto, cx, cy, R) {
   const concentracion = sel.length / ang.length
   if (sel.length < 8) return { cobertura, abertura, barra: null }
 
-  // Eje principal (PCA) de los píxeles de la barra: la barra no pasa
-  // exactamente por el centro del arco, así que su EJE es más fiel que el
-  // ángulo desde el centro.
   let mx = 0
   let my = 0
   sel.forEach((i) => {
@@ -479,10 +428,22 @@ export async function detectNorth(blob, bloquesOcr) {
     const { escala, mejor, candidatos } = buscarSimboloNorte(cv, mat)
     const diagnostico = { metodo: 'simbolo', escalaTrabajo: r1(escala * 100) / 100, letrasN, simbolo: mejor, candidatos }
     if (!mejor) {
+      // Segundo estilo de simbolo (anillo + flecha rellena, "formato 2").
+      const flecha = buscarSimboloNorteFlecha(cv, mat)
+      diagnostico.flecha = { escalaTrabajo: r1(flecha.escala * 100) / 100, simbolo: flecha.mejor, candidatos: flecha.candidatos }
+      if (flecha.mejor) {
+        const f = flecha.mejor
+        return {
+          angleDeg: f.norteDeg,
+          confidence: f.coberturaAnillo >= 90 && f.flecha.baseEnRadios <= 0.8 ? 'alta' : 'media',
+          origen: `símbolo de norte (anillo y flecha) en (${f.centro.x}, ${f.centro.y}), radio ${f.radio} px`,
+          diagnostico,
+        }
+      }
       return {
         angleDeg: 0,
         confidence: 'baja',
-        origen: 'no se encontró el símbolo de norte (arco grueso con barra)',
+        origen: 'no se encontró el símbolo de norte',
         diagnostico,
       }
     }

@@ -2,11 +2,7 @@ import { AlertTriangle } from 'lucide-react'
 import { Modal } from './Modal'
 import { Button } from './Button'
 
-/**
- * Generic design-system confirmation dialog. Used before any destructive action
- * (delete a record, discard data). Parent controls `open` and passes `onConfirm`
- * with the real action; this component only asks and closes.
- */
+/** Generic design-system confirmation dialog. */
 export function ConfirmDialog({
   open,
   onClose,

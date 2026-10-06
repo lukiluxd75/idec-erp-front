@@ -1,4 +1,4 @@
-import { GripVertical, Inbox, Smartphone, Trash2 } from 'lucide-react'
+import { GripVertical, Inbox, Smartphone, Trash2, ZoomIn } from 'lucide-react'
 import { useState } from 'react'
 
 import { CaptureImage } from '@/domains/folder-analysis/components/CaptureImage'
@@ -7,19 +7,21 @@ import { CaptureUploader } from '@/domains/folder-analysis/components/CaptureUpl
 import { LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
 import { setDraggedCapture } from '@/domains/folder-analysis/utils/dragData'
-import { EmptyState } from '@/shared/ui'
+import { EmptyState, PhoneConnectedBadge } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 
-/**
- * Professional capture queue — operational inbox, not module catalog tiles.
- *
- * `types` son los carriles a los que se puede mandar una foto: los del tipo de
- * carpeta en la que se está trabajando. La bandeja en sí es siempre la misma --
- * las fotos llegan del celular sin saber a qué carpeta van.
- */
-export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, onDelete, onClearAll, types }) {
-  // The photo clicked in the queue, opened big: from a thumbnail this small the
-  // architect cannot tell a folio from a comprobante before sorting it.
+/** Professional capture queue — operational inbox, not module catalog tiles. */
+export function InboxPanel({
+  captures,
+  disabled,
+  uploading,
+  onUpload,
+  onSend,
+  onDelete,
+  onClearAll,
+  types,
+  phoneConnected = false,
+}) {
   const [opened, setOpened] = useState(null)
   const items = captures.map((c) => ({ captureId: c.id, label: c.file_name || 'Captura móvil' }))
   const openedIndex = opened ? captures.findIndex((c) => c.id === opened) : -1
@@ -30,9 +32,15 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
         <div className="flex items-center gap-2">
           <Inbox className="h-4 w-4 shrink-0 text-accent-600" aria-hidden />
           <h3 className="flex-1 text-sm font-bold text-slate-900">Fotos recibidas</h3>
-          <span className="text-xs font-bold tabular-nums text-slate-600">{captures.length}</span>
-          {/* Vaciar toda la bandeja: con treinta fotos subidas de más, borrarlas
-              de a una es el trabajo que este botón evita. */}
+          <span
+            className={cn(
+              'inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums',
+              captures.length > 0 ? 'bg-accent-600/10 text-accent-800' : 'bg-slate-200/70 text-slate-500',
+            )}
+          >
+            {captures.length}
+          </span>
+          {/* Vaciar toda la bandeja: con treinta fotos subidas de más, borrarlas de a una es el trabajo que este botón evita. */}
           {captures.length > 0 && (
             <button
               type="button"
@@ -46,8 +54,11 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
             </button>
           )}
         </div>
+        <div className="mt-2">
+          <PhoneConnectedBadge connected={phoneConnected} />
+        </div>
         <p className="mt-1 text-[11px] leading-snug text-slate-500">
-          Celular o equipo · arrastre o asigne a un carril
+          Llegan del celular o del equipo. Arrastre la foto al carril, o elíjalo en la tarjeta.
         </p>
         <CaptureUploader disabled={disabled} uploading={uploading} onFiles={onUpload} />
       </div>
@@ -71,7 +82,7 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
               onDragStart={(e) => setDraggedCapture(e, capture.id)}
               className={cn('workbench-queue-row group cursor-grab', disabled && 'pointer-events-none opacity-55')}
             >
-              <div className="flex h-full items-center pt-1 text-slate-300 group-hover:text-slate-500">
+              <div className="flex h-full items-center text-slate-300 group-hover:text-slate-500">
                 <GripVertical className="h-4 w-4" aria-hidden />
               </div>
 
@@ -81,21 +92,40 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
                 onClick={() => setOpened(capture.id)}
                 onMouseEnter={() => prefetchCapture(capture.id, 'preview')}
                 onFocus={() => prefetchCapture(capture.id, 'preview')}
-                className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+                className="group/thumb relative shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
               >
                 <CaptureImage
                   captureId={capture.id}
                   alt={capture.file_name}
-                  className="h-[4.25rem] w-[3.25rem] cursor-zoom-in rounded-lg object-cover shadow-sm ring-1 ring-slate-200/90 transition hover:ring-2 hover:ring-accent-400"
+                  className="h-[5.25rem] w-[4rem] cursor-zoom-in rounded-lg object-cover shadow-sm ring-1 ring-slate-200/90 transition group-hover/thumb:ring-2 group-hover/thumb:ring-accent-400"
                 />
+                <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-slate-900/0 opacity-0 transition group-hover/thumb:bg-slate-900/35 group-hover/thumb:opacity-100">
+                  <ZoomIn className="h-5 w-5 text-white drop-shadow" aria-hidden />
+                </span>
               </button>
 
               <div className="min-w-0 space-y-2">
-                <div>
-                  <p className="truncate text-sm font-semibold text-slate-800" title={capture.file_name}>
-                    {capture.file_name || 'Captura móvil'}
-                  </p>
-                  <p className="text-[11px] text-slate-500">{formatDateTime(capture.created_at)}</p>
+                <div className="flex items-start gap-1">
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="truncate text-[13px] font-semibold leading-tight text-slate-800"
+                      title={capture.file_name}
+                    >
+                      {capture.file_name || 'Captura móvil'}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">
+                      {formatDateTime(capture.created_at)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    title="Eliminar foto"
+                    disabled={disabled}
+                    onClick={() => onDelete(capture)}
+                    className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-state-danger/10 hover:text-state-danger disabled:opacity-50"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
                 <div className="workbench-assign" role="group" aria-label="Asignar a carril">
                   {types.map((type) => {
@@ -109,23 +139,13 @@ export function InboxPanel({ captures, disabled, uploading, onUpload, onSend, on
                         onClick={() => onSend(type.id, capture.id)}
                         className={cn('workbench-assign-btn', theme?.assignBtn)}
                       >
-                        <type.icon className="h-3 w-3 shrink-0" aria-hidden />
+                        <type.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                         <span className="truncate">{type.label}</span>
                       </button>
                     )
                   })}
                 </div>
               </div>
-
-              <button
-                type="button"
-                title="Eliminar foto"
-                disabled={disabled}
-                onClick={() => onDelete(capture)}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-state-danger/10 hover:text-state-danger disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
             </li>
           ))}
         </ul>

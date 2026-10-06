@@ -1,10 +1,11 @@
 import {
   ChevronRight,
+  Download,
   FileSearch,
-  FileSpreadsheet,
   FolderOpen,
   FolderPlus,
   FolderTree,
+  Images,
   Pencil,
   RefreshCw,
   Search,
@@ -15,12 +16,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
+import { useAuth } from '@/auth/hooks'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { ReadableValue } from '@/domains/folder-analysis/components/SavedDataFields'
 import { SavedDocumentPicker } from '@/domains/folder-analysis/components/SavedDocumentPicker'
 import { FolderSheet } from '@/domains/folder-analysis/components/FolderSheet'
+import { PagesViewer } from '@/domains/folder-analysis/components/PagesViewer'
 import { DOC_TYPES, LANE_THEME, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, sheetForm, useCatalog } from '@/domains/folder-analysis/utils/catalog'
+import { pendingFills, sheetSuggestions } from '@/domains/folder-analysis/utils/folderSheetFill'
 import {
   normalizeSearch,
   savedData,
@@ -45,6 +49,9 @@ import {
 const MAX_NAME_LENGTH = 120
 const MAX_NOTES_LENGTH = 500
 
+const MIN_SEARCH_LENGTH = 2
+const SEARCH_DEBOUNCE_MS = 350
+
 /** "2 folios · 1 impuesto", skipping the types the carpeta does not hold. */
 function countsLabel(countsByType) {
   return DOC_TYPES.filter((type) => countsByType?.[type.id])
@@ -55,18 +62,13 @@ function countsLabel(countsByType) {
     .join(' · ')
 }
 
-/**
- * "Carpetas registradas" — submódulo de "Datos guardados". El usuario le pone
- * nombre a cada proyecto y archiva en él los documentos ya solucionados (folios,
- * impuestos y planos), de modo que las revisiones dejen de ser una lista plana y
- * queden agrupadas por carpeta.
- *
- * Un documento se archiva en una sola carpeta (el backend lo impone), así que el
- * selector muestra deshabilitados los que ya están en otra, nombrándola.
- */
 export default function RegisteredFoldersPage() {
   const { catalog } = useCatalog()
+  const { user } = useAuth()
+  const puedeBuscarAjenas = (user?.permisos || []).includes('folder-analysis.admin')
   const [folders, setFolders] = useState([])
+  // Carpetas de otros usuarios que coinciden con la búsqueda.
+  const [ajenas, setAjenas] = useState({ term: '', folders: [], error: null })
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -74,6 +76,8 @@ export default function RegisteredFoldersPage() {
   // null = cerrado; { folder: null } = carpeta nueva; { folder } = editando esa.
   const [editing, setEditing] = useState(null)
   const [porEliminar, setPorEliminar] = useState(null)
+  // { folder, document } cuyo borrado se está confirmando (la X de una fila).
+  const [porQuitar, setPorQuitar] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -88,6 +92,33 @@ export default function RegisteredFoldersPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  const term = query.trim()
+  const buscaAjenas = puedeBuscarAjenas && term.length >= MIN_SEARCH_LENGTH
+  const respondida = buscaAjenas && ajenas.term === term
+  const ajenasEncontradas = respondida ? ajenas.folders : []
+  const errorAjenas = respondida ? ajenas.error : null
+  const buscandoAjenas = buscaAjenas && !respondida
+
+  /** Las carpetas de otros usuarios que coinciden con lo escrito, para quien administra el módulo. */
+  useEffect(() => {
+    if (!buscaAjenas) return undefined
+    let vigente = true
+    const timer = setTimeout(() => {
+      folderAnalysisApi
+        .searchFolders(term)
+        .then((found) => {
+          if (vigente) {
+            setAjenas({ term, folders: found.filter((folder) => !folder.mine), error: null })
+          }
+        })
+        .catch((e) => { if (vigente) setAjenas({ term, folders: [], error: e.message }) })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => {
+      vigente = false
+      clearTimeout(timer)
+    }
+  }, [term, buscaAjenas])
 
   /** Documento archivado -> nombre de la carpeta que lo tiene. */
   const holderByDocument = useMemo(() => {
@@ -128,7 +159,7 @@ export default function RegisteredFoldersPage() {
     try {
       await folderAnalysisApi.deleteFolder(folder.id)
       setFolders((prev) => prev.filter((current) => current.id !== folder.id))
-      toast.success(`Carpeta "${folder.name}" eliminada. Sus documentos siguen en Datos guardados.`)
+      toast.success(`Carpeta "${folder.name}" eliminada junto con sus documentos.`)
     } catch (e) {
       toast.error(e.message)
     }
@@ -137,7 +168,7 @@ export default function RegisteredFoldersPage() {
   const quitar = async (folder, document) => {
     try {
       replaceFolder(await folderAnalysisApi.removeFolderDocument(folder.id, document.id))
-      toast.success(`${savedDocumentTitle(document)} salió de "${folder.name}".`)
+      toast.success(`${savedDocumentTitle(document)} se eliminó de "${folder.name}" junto con sus fotos.`)
     } catch (e) {
       toast.error(e.message)
     }
@@ -149,11 +180,8 @@ export default function RegisteredFoldersPage() {
         icon={FolderTree}
         eyebrow="Analizador y extractor de datos de carpetas"
         title="Carpetas registradas"
-        subtitle="Cada carpeta es un trámite: su tipo decide qué documentos lleva y qué datos se le sacan. Ábrela para cargarle las fotos y trabajar sus documentos dentro."
+        subtitle="Cada carpeta física escaneada en el Extractor de datos se guarda aquí con su número como nombre. Ábrala para completar sus datos y seguir trabajando sus documentos."
         actions={<>
-          <Link to="/folder-analysis/saved">
-            <Button variant="ghost" size="sm" icon={FileSpreadsheet}>Datos guardados</Button>
-          </Link>
           <Button variant="secondary" size="sm" icon={RefreshCw} onClick={load}>Actualizar</Button>
           <Button size="sm" icon={FolderPlus} onClick={() => setEditing({ folder: null })}>Nueva carpeta</Button>
         </>}
@@ -169,13 +197,21 @@ export default function RegisteredFoldersPage() {
             id="folders-search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por carpeta, matrícula o datos…"
+            placeholder={
+              puedeBuscarAjenas
+                ? 'Buscar por número de carpeta, matrícula o datos. Por número busca también en las de otros usuarios…'
+                : 'Buscar por número de carpeta, matrícula o datos…'
+            }
             className="min-w-0 flex-1 py-2.5 text-sm outline-none"
           />
         </label>
         <p className="text-xs text-slate-500">
           {filteredFolders.length} {filteredFolders.length === 1 ? 'carpeta' : 'carpetas'} ·{' '}
-          {unfiledCount} {unfiledCount === 1 ? 'documento sin archivar' : 'documentos sin archivar'}
+          {unfiledCount === 0 ? (
+            'todo archivado'
+          ) : (
+            `${unfiledCount} ${unfiledCount === 1 ? 'documento sin archivar' : 'documentos sin archivar'}`
+          )}
         </p>
       </Card>
 
@@ -190,8 +226,8 @@ export default function RegisteredFoldersPage() {
             title={folders.length ? 'Ninguna carpeta coincide' : 'Todavía no hay carpetas registradas'}
             subtitle={
               folders.length
-                ? 'Prueba con otro texto.'
-                : 'Crea una carpeta, elige de qué trámite es y ábrela para cargarle sus fotos.'
+                ? 'Pruebe con otro texto.'
+                : 'Escanee una carpeta física en el Extractor de datos y pulse "Guardar en carpeta" para registrarla con su número.'
             }
           >
             {folders.length === 0 && (
@@ -210,10 +246,37 @@ export default function RegisteredFoldersPage() {
               catalog={catalog}
               onEdit={() => setEditing({ folder })}
               onDelete={() => setPorEliminar({ folder })}
-              onRemoveDocument={(document) => quitar(folder, document)}
+              onRemoveDocument={(document) => setPorQuitar({ folder, document })}
             />
           ))}
         </div>
+      )}
+
+      {buscaAjenas && (
+        <Card className="flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-bold text-slate-800">Carpetas de otros usuarios</p>
+            <p className="text-xs text-slate-500">
+              Coinciden por nombre de carpeta con lo que está buscando. Son de solo lectura: para
+              modificarlas, pídaselo a quien las registró.
+            </p>
+          </div>
+          {buscandoAjenas ? (
+            <div className="flex justify-center py-6"><Spinner className="h-5 w-5" /></div>
+          ) : errorAjenas ? (
+            <Alert type="error">No se pudo buscar en las carpetas de otros usuarios: {errorAjenas}</Alert>
+          ) : ajenasEncontradas.length === 0 ? (
+            <p className="py-2 text-sm text-slate-500">
+              Ninguna carpeta de otro usuario coincide con ese nombre.
+            </p>
+          ) : (
+            <div className="grid gap-4">
+              {ajenasEncontradas.map((folder) => (
+                <FolderCard key={folder.id} folder={folder} catalog={catalog} readOnly />
+              ))}
+            </div>
+          )}
+        </Card>
       )}
 
       {editing && (
@@ -234,22 +297,30 @@ export default function RegisteredFoldersPage() {
         title="Eliminar carpeta"
         message={
           porEliminar
-            ? `Se eliminará la carpeta "${porEliminar.folder.name}". Los ${porEliminar.folder.document_count} documento(s) que contiene no se borran: vuelven a quedar sin archivar en "Datos guardados".`
+            ? `Se eliminará la carpeta "${porEliminar.folder.name}" junto con sus ${porEliminar.folder.document_count} documento(s) y las fotos escaneadas. Esta acción no se puede deshacer.`
             : ''
         }
         confirmLabel="Eliminar carpeta"
+      />
+
+      <ConfirmDialog
+        open={Boolean(porQuitar)}
+        onClose={() => setPorQuitar(null)}
+        onConfirm={() => quitar(porQuitar.folder, porQuitar.document)}
+        title="Eliminar documento"
+        message={
+          porQuitar
+            ? `Se eliminará ${savedDocumentTitle(porQuitar.document)} de la carpeta "${porQuitar.folder.name}" junto con sus fotos escaneadas. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmLabel="Eliminar documento"
       />
     </div>
   )
 }
 
-/**
- * Una carpeta cerrada: se ve el nombre y cuántos documentos tiene, y hay que
- * apretarla para que aparezca lo que archiva. Así la pantalla se lee como un
- * estante de carpetas y no como la lista de revisiones que ya es "Datos
- * guardados".
- */
-function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
+/** Una carpeta cerrada: se ve el nombre y cuántos documentos tiene, y hay que apretarla para que aparezca lo que archiva. */
+function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument, readOnly = false }) {
   const [open, setOpen] = useState(false)
   const counts = countsLabel(folder.counts_by_type)
   const panelId = `folder-${folder.id}-documents`
@@ -262,8 +333,6 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
   return (
     <Card className="overflow-hidden p-0">
       <div className={`flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 px-4 py-3 sm:px-5 ${open ? 'border-b border-slate-100' : ''}`}>
-        {/* El botón ocupa toda la fila para que apretar la carpeta la abra,
-            pero deja fuera Editar/Eliminar: no deben abrirla al pulsarlas. */}
         <button
           type="button"
           onClick={() => setOpen((previous) => !previous)}
@@ -293,17 +362,25 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
           </span>
         </button>
         <div className="ml-auto flex items-center gap-1.5">
-          <Link to={`/folder-analysis/folders/${folder.id}`}>
-            <Button size="sm" icon={FolderOpen}>Abrir</Button>
-          </Link>
-          <Button size="sm" variant="secondary" icon={Pencil} onClick={onEdit}>Editar</Button>
-          <IconButton
-            icon={Trash2}
-            tone="danger"
-            title="Eliminar carpeta"
-            aria-label={`Eliminar la carpeta ${folder.name}`}
-            onClick={onDelete}
-          />
+          {readOnly ? (
+            <span className="text-xs font-semibold text-slate-500">
+              Solo lectura · {folder.owner ? `de ${folder.owner}` : 'de otro usuario'}
+            </span>
+          ) : (
+            <>
+              <Link to={`/folder-analysis/folders/${folder.id}`}>
+                <Button size="sm" icon={FolderOpen}>Abrir</Button>
+              </Link>
+              <Button size="sm" variant="secondary" icon={Pencil} onClick={onEdit}>Editar</Button>
+              <IconButton
+                icon={Trash2}
+                tone="danger"
+                title="Eliminar carpeta"
+                aria-label={`Eliminar la carpeta ${folder.name}`}
+                onClick={onDelete}
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -311,8 +388,14 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
         <div id={panelId}>
           {folder.document_count === 0 ? (
             <p className="px-4 py-4 text-sm text-slate-500 sm:px-5">
-              Todavía no hay documentos en esta carpeta. <strong>Ábrela</strong> para cargarle fotos, o
-              usa <strong>Editar</strong> para archivar en ella documentos ya revisados.
+              {readOnly ? (
+                'Esta carpeta todavía no tiene documentos.'
+              ) : (
+                <>
+                  Todavía no hay documentos en esta carpeta. <strong>Ábrala</strong> para cargarle
+                  fotos, o use <strong>Editar</strong> para archivar en ella documentos ya revisados.
+                </>
+              )}
             </p>
           ) : (
             <div className="grid gap-2 p-4 sm:p-5">
@@ -320,6 +403,8 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
                 <FolderDocumentRow
                   key={document.id}
                   document={document}
+                  readOnly={readOnly}
+                  folderId={readOnly ? folder.id : null}
                   onRemove={() => onRemoveDocument(document)}
                 />
               ))}
@@ -332,10 +417,12 @@ function FolderCard({ folder, catalog, onEdit, onDelete, onRemoveDocument }) {
 }
 
 /** Un documento archivado: cómo se llama, y sus datos guardados a un clic. */
-function FolderDocumentRow({ document, onRemove }) {
+function FolderDocumentRow({ document, onRemove, readOnly = false, folderId = null }) {
   const type = DOC_TYPES.find((item) => item.id === document.doc_type)
   const TypeIcon = type?.icon || FileSearch
   const data = savedData(document)
+  const [fotos, setFotos] = useState(false)
+  const pages = document.pages || []
 
   return (
     <div
@@ -353,17 +440,34 @@ function FolderDocumentRow({ document, onRemove }) {
             </p>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <Link to={`/folder-analysis/documents/${document.id}`}>
-            <Button size="sm" variant="secondary">Abrir revisión</Button>
-          </Link>
-          <IconButton
-            icon={X}
-            title="Quitar de la carpeta"
-            aria-label={`Quitar ${savedDocumentTitle(document)} de la carpeta`}
-            onClick={onRemove}
-          />
-        </div>
+        {readOnly ? (
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={Images}
+              disabled={pages.length === 0}
+              onClick={() => setFotos(true)}
+            >
+              {pages.length === 0
+                ? 'Sin fotos'
+                : `Ver ${pages.length} ${pages.length === 1 ? 'foto' : 'fotos'}`}
+            </Button>
+          </div>
+        ) : (
+          <div className="ml-auto flex items-center gap-1.5">
+            <Link to={`/folder-analysis/documents/${document.id}`}>
+              <Button size="sm" variant="secondary">Abrir revisión</Button>
+            </Link>
+            <IconButton
+              icon={X}
+              tone="danger"
+              title="Eliminar de la carpeta"
+              aria-label={`Eliminar ${savedDocumentTitle(document)} de la carpeta`}
+              onClick={onRemove}
+            />
+          </div>
+        )}
       </div>
       <details className="group border-t border-slate-100">
         <summary className="cursor-pointer list-none px-3 py-2 text-xs font-semibold text-accent-700 hover:bg-slate-50">
@@ -374,21 +478,37 @@ function FolderDocumentRow({ document, onRemove }) {
           <ReadableValue value={data} />
         </dl>
       </details>
+
+      {fotos && (
+        <PhotosModal
+          document={document}
+          folderId={folderId}
+          pages={pages}
+          onClose={() => setFotos(false)}
+        />
+      )}
     </div>
   )
 }
 
-/**
- * Crea o edita una carpeta: de qué trámite es, cómo se llama, su hoja de datos y
- * qué documentos ya revisados se archivan en ella.
- *
- * El tipo se elige al crearla y después no se cambia: sus documentos ya se
- * clasificaron con los carriles de ese tipo y su hoja se llenó con sus campos.
- * Ni los campos ni los tipos están escritos acá -- llegan del catálogo.
- */
+/** Las fotos escaneadas de un documento, para mirarlas y nada más. */
+function PhotosModal({ document, folderId, pages, onClose }) {
+  const [page, setPage] = useState(0)
+
+  return (
+    <Modal open onClose={onClose} title={savedDocumentTitle(document)} icon={Images} size="xl">
+      <p className="mb-3 text-xs text-slate-500">
+        Fotos escaneadas, de solo lectura.{' '}
+        {pages.length > 1 ? `${pages.length} páginas.` : 'Una página.'}
+      </p>
+      <div className="h-[70vh] min-h-0">
+        <PagesViewer pages={pages} current={page} onChange={setPage} folderId={folderId} />
+      </div>
+    </Modal>
+  )
+}
+
 function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose, onSaved }) {
-  // Se monta solo mientras está abierto (ver arriba), así que los campos arrancan
-  // de la carpeta que se está editando y no hace falta reiniciarlos.
   const [name, setName] = useState(folder?.name || '')
   const [notes, setNotes] = useState(folder?.notes || '')
   const [typeKey, setTypeKey] = useState(
@@ -406,6 +526,33 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
     setTypeKey(key)
     setSheet((previous) => sheetForm(folderTypeOf(catalog, key), previous))
   }
+
+  const cambiarCampo = (key, value) => setSheet((previous) => ({ ...previous, [key]: value }))
+
+  // Lo que los documentos ya revisados de la carpeta traen para su hoja.
+  const suggestions = useMemo(
+    () => sheetSuggestions(type, documents.filter((document) => selectedIds.includes(document.id))),
+    [type, documents, selectedIds]
+  )
+  const pendientes = pendingFills(sheet, suggestions)
+
+  // Completa los campos vacíos con la extracción/revisión guardada de los
+  // documentos seleccionados. Los datos que el usuario ya cargó se conservan.
+  useEffect(() => {
+    if (!pendientes.length) return
+    setSheet((previous) => {
+      const missing = pendingFills(previous, suggestions)
+      return missing.length
+        ? { ...previous, ...Object.fromEntries(missing.map(([key, suggestion]) => [key, suggestion.value])) }
+        : previous
+    })
+  }, [pendientes.length, suggestions])
+
+  const traerTodo = () =>
+    setSheet((previous) => ({
+      ...previous,
+      ...Object.fromEntries(pendientes.map(([key, suggestion]) => [key, suggestion.value])),
+    }))
 
   const filedElsewhere = useMemo(() => {
     const own = new Set(folder?.documents.map((document) => document.id) || [])
@@ -442,8 +589,8 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             id="folder-name"
-            label="Nombre de la carpeta"
-            placeholder="Ej.: Av. Ballivián 220 — ampliación"
+            label="Número de carpeta"
+            placeholder="Ej.: 1520"
             value={name}
             onChange={(event) => setName(event.target.value)}
             maxLength={MAX_NAME_LENGTH}
@@ -490,11 +637,20 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
 
         {type?.field_groups?.length > 0 && (
           <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
-            <p className="mb-2.5 text-sm font-medium text-slate-700">Datos de la carpeta</p>
+            <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-slate-700">Datos de la carpeta</p>
+              {pendientes.length > 0 && (
+                <Button type="button" size="sm" variant="secondary" icon={Download} onClick={traerTodo}>
+                  Traer {pendientes.length} de los documentos
+                </Button>
+              )}
+            </div>
             <FolderSheet
               folderType={type}
               value={sheet}
-              onChange={(key, value) => setSheet((previous) => ({ ...previous, [key]: value }))}
+              onChange={cambiarCampo}
+              suggestions={suggestions}
+              onApply={cambiarCampo}
             />
           </div>
         )}

@@ -40,9 +40,6 @@ export default function ResolutionsListPage() {
   // La resolucion que el usuario pidio borrar, a la espera de confirmar.
   const [porEliminar, setPorEliminar] = useState(null)
 
-  // `showFullSpinner` only for the first load: updates arriving via websocket
-  // (someone uploaded from the phone) refresh silently without covering the
-  // current list with the large spinner.
   const loadList = useCallback((showFullSpinner) => {
     if (showFullSpinner) setLoading(true)
     setError(null)
@@ -59,20 +56,12 @@ export default function ResolutionsListPage() {
     loadList(true)
   }, [loadList])
 
-  // WS notifies instantly, but only reaches this tab when it landed on the same
-  // backend worker that received the change, and not at all if a reverse proxy
-  // in front of the backend blocks/kills the wss:// upgrade handshake (seen in
-  // some environments). As a fallback, polling every 10s keeps the list fresh
-  // regardless of WS state instead of staying stale indefinitely — same pattern
-  // as CapturePage.jsx / useCapturesUpdates.js.
   useResolutionsUpdates(useCallback(() => loadList(false), [loadList]), setPhoneConnected)
   useEffect(() => {
     const interval = setInterval(() => loadList(false), 10000)
     return () => clearInterval(interval)
   }, [loadList])
 
-  // El backend hace soft-delete y avisa por WS; se saca de la lista al toque
-  // para no esperar al refresco, que igual va a confirmarlo.
   const eliminar = async (resolucion) => {
     try {
       await resolutionsApi.remove(resolucion.resolution_id)
@@ -119,8 +108,6 @@ export default function ResolutionsListPage() {
               key={r.resolution_id}
               className="relative flex h-full items-start gap-3 rounded-2xl border border-white/60 bg-white/70 p-4 shadow-xs transition hover:border-accent-300 hover:bg-white hover:shadow-md"
             >
-              {/* El link cubre la tarjeta entera, y el boton de borrar se le
-                  monta encima: un <button> dentro de un <a> no es HTML valido. */}
               <Link
                 to={`/resolutions/${r.resolution_id}`}
                 className="absolute inset-0 rounded-2xl"

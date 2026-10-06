@@ -1,7 +1,13 @@
-import DetectionPage from './pages/DetectionPage'
-import HistorialPage from './pages/HistorialPage'
-import ReportsPage from './pages/ReportsPage'
+/* eslint-disable react-refresh/only-export-components -- este archivo
+   exporta metadatos de rutas, no componentes: las paginas lazy de abajo no
+   son fronteras de Fast Refresh. Misma excusa que en
+   domains/cadastralviewer/routes.jsx. */
+import { lazy } from 'react'
 import { DetectionErrorBoundary } from './components/DetectionErrorBoundary'
+
+const DetectionPage = lazy(() => import('./pages/DetectionPage'))
+const HistorialPage = lazy(() => import('./pages/HistorialPage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 
 export const detectionRoutes = [
   {

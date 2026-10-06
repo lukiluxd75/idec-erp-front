@@ -10,13 +10,6 @@ import {
   MAX_ZOOM
 } from '../data/wmsConfig';
 
-// Encapsulates the entire Leaflet map lifecycle:
-// - map creation / destruction
-// - year switching (WMS imagery)
-// - vector overlays toggle
-// - animated marker for selected property
-// - live coordinates
-// - camera controls (zoom, recenter, flyTo)
 export function useLeafletMap({ targetElement, active }) {
   const mapRef = useRef(null);
   const imageryLayerRef = useRef(null);

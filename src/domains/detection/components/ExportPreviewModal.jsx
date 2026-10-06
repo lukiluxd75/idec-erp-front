@@ -225,7 +225,7 @@ function ParcelCard({ row, showCampaign }) {
  * both the campaign AND the date range the architect is looking at, not
  * just the campaign.
  */
-export default function ExportPreviewModal({ open, onClose, campaignId, dateFrom, dateTo }) {
+export default function ExportPreviewModal({ open, onClose, campaignId, unassignedOnly, dateFrom, dateTo }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -244,7 +244,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, dateFrom
     setLoading(true)
     setError('')
     detectionApi
-      .fetchCampaignReportData(selectedCampaignId, { allCampaigns })
+      .fetchCampaignReportData(selectedCampaignId, { unassignedOnly, allCampaigns })
       .then(setData)
       .catch((err) => setError(err.message || 'No se pudo cargar la vista previa.'))
       .finally(() => setLoading(false))

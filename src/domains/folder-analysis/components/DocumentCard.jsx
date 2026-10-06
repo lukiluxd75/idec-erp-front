@@ -9,6 +9,7 @@ import { ReadingProgress } from '@/domains/folder-analysis/components/ReadingPro
 import {
   IN_PROGRESS,
   LANE_ACCENT_CLASS,
+  NOT_READ,
   formatDateTime,
 } from '@/domains/folder-analysis/utils/documentMeta'
 import { prefetchCapture } from '@/domains/folder-analysis/utils/captureImages'
@@ -16,7 +17,7 @@ import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/util
 import { Button, IconButton } from '@/shared/ui'
 import { cn } from '@/shared/utils'
 
-const PAGES_EDITABLE = new Set(['draft', 'failed'])
+const PAGES_EDITABLE = new Set(['draft', 'failed', 'filed'])
 const HAS_DATA = new Set(['extracted', 'reviewed'])
 
 function shortRef(id) {
@@ -30,6 +31,8 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
   // Which page was clicked to be looked at big, before deciding anything about it.
   const [opened, setOpened] = useState(null)
   const inProgress = IN_PROGRESS.has(document.status)
+  // Otros documentos no se analizan: se guardan con sus fotos y nada más.
+  const read = !NOT_READ.has(document.doc_type)
   const pagesEditable = PAGES_EDITABLE.has(document.status) && !busy
   const acceptsDrop = pagesEditable && multiPage
   const ids = document.pages.map((p) => p.capture_id)
@@ -150,7 +153,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                 <span>{formatDateTime(document.created_at)}</span>
               </p>
             </div>
-            <DocumentStatusBadge status={document.status} />
+            <DocumentStatusBadge status={read ? document.status : 'filed'} />
           </div>
 
           {inProgress && <ReadingProgress document={document} />}
@@ -159,7 +162,7 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
           )}
 
           <div className="flex flex-wrap items-center gap-2">
-            {(document.status === 'draft' || document.status === 'failed') && (
+            {read && (document.status === 'draft' || document.status === 'failed') && (
               <Button
                 size="sm"
                 icon={document.status === 'failed' ? RotateCcw : Play}
@@ -169,14 +172,14 @@ export function DocumentCard({ document, multiPage, busy, onAddPage, onSetPages,
                 {document.status === 'failed' ? 'Reintentar' : 'Analizar'}
               </Button>
             )}
-            {HAS_DATA.has(document.status) && (
+            {read && HAS_DATA.has(document.status) && (
               <Link to={`/folder-analysis/documents/${document.id}`}>
                 <Button
                   size="sm"
                   icon={FileSearch}
                   variant={document.status === 'extracted' ? 'primary' : 'secondary'}
                 >
-                  {document.status === 'extracted' ? 'Revisar' : 'Ver datos'}
+                  {document.status === 'extracted' ? 'Revisar datos' : 'Ver datos'}
                 </Button>
               </Link>
             )}
