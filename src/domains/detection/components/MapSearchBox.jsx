@@ -94,10 +94,7 @@ export default function MapSearchBox({ onSelectSector, onSelectParcel, onSelectC
   const showDropdown = open && (trimmed.length >= 2 || recent.length > 0)
 
   return (
-    <div
-      ref={containerRef}
-      className="pointer-events-auto absolute left-1/2 top-3 z-[1100] w-[min(92%,22rem)] -translate-x-1/2"
-    >
+    <div ref={containerRef} className="relative z-[1100] ml-auto w-full min-w-[12rem] max-w-xs sm:w-64">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
@@ -106,7 +103,7 @@ export default function MapSearchBox({ onSelectSector, onSelectParcel, onSelectC
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           placeholder="Buscar sector, predio o campaña…"
-          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-8 text-sm text-slate-900 shadow-lg outline-none focus:border-accent-500/60 focus:ring-2 focus:ring-accent-400/30"
+          className="w-full rounded-lg border border-slate-200 bg-white py-1.5 pl-9 pr-8 text-xs font-medium text-slate-800 outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-400/30"
         />
         {trimmed && (
           <button

@@ -10,6 +10,7 @@ import {
   renderProcessedSectors,
 } from '../utils/processedSectorsLayer'
 import { createParcelHighlightLayer, renderParcelHighlight } from '../utils/parcelHighlightLayer'
+import MapSearchBox from './MapSearchBox'
 
 const DEFAULT_CENTER = [-17.39325, -66.15625]
 const DEFAULT_ZOOM = 17
@@ -118,6 +119,9 @@ function DetectionMapInner({
   resetSignal = null,
   onClearHighlight,
   campaignSelected = true,
+  onSearchSelectSector,
+  onSearchSelectParcel,
+  onSearchSelectCampaign,
 }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
@@ -439,6 +443,11 @@ function DetectionMapInner({
                 Seleccione una campaña para poder dibujar
               </p>
             )}
+            <MapSearchBox
+              onSelectSector={onSearchSelectSector}
+              onSelectParcel={onSearchSelectParcel}
+              onSelectCampaign={onSearchSelectCampaign}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">

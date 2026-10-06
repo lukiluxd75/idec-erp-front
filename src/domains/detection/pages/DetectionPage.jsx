@@ -30,7 +30,6 @@ import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
 import ParcelExplorePopup from '../components/ParcelExplorePopup'
-import MapSearchBox from '../components/MapSearchBox'
 import ExportPreviewModal from '../components/ExportPreviewModal'
 import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
@@ -139,12 +138,38 @@ export default function DetectionPage() {
     searchHighlightTimeoutRef.current = setTimeout(() => setHighlightParcelGeom(null), 2500)
   }
 
+  // The map overlay only renders sectors belonging to whatever campaign is
+  // currently active -- landing on a sector/predio from a different
+  // campaign without switching first means its real polygon never
+  // appears (confirmed bug: the view centers on the right spot but shows
+  // nothing once the temporary highlight below clears itself). Skipped
+  // when the result is already in the active campaign, so a same-campaign
+  // search doesn't needlessly reset the drawn polygon/exploring state.
+  function switchToResultCampaign(result) {
+    const resultCampaignId = result.campaign_id ?? null
+    if (resultCampaignId === campaignId) return
+    handleCampaignChange(
+      resultCampaignId,
+      resultCampaignId
+        ? {
+            id: resultCampaignId,
+            code: result.campaign_code,
+            name: result.campaign_name,
+            year_a: result.year_a,
+            year_b: result.year_b,
+          }
+        : null
+    )
+  }
+
   function handleSelectSearchSector(result) {
+    switchToResultCampaign(result)
     setExploring(null)
     focusSearchGeom(result.geom_geojson)
   }
 
   function handleSelectSearchParcel(result) {
+    switchToResultCampaign(result)
     setExploring(null)
     focusSearchGeom(result.geom_geojson)
   }
@@ -879,14 +904,11 @@ export default function DetectionPage() {
                   setExploring(null)
                 }}
                 campaignSelected={!!campaignId}
+                onSearchSelectSector={handleSelectSearchSector}
+                onSearchSelectParcel={handleSelectSearchParcel}
+                onSearchSelectCampaign={handleSelectSearchCampaign}
               />
             </Suspense>
-
-            <MapSearchBox
-              onSelectSector={handleSelectSearchSector}
-              onSelectParcel={handleSelectSearchParcel}
-              onSelectCampaign={handleSelectSearchCampaign}
-            />
 
             {exploring && (
               <ParcelExplorePopup
