@@ -37,6 +37,8 @@
  * colindanciasDetector.js).
  */
 
+import { buscarSimboloNorteFlecha } from './planNorthArrow'
+
 let cvPromise = null
 function getCv() {
   if (!cvPromise) {
@@ -479,10 +481,22 @@ export async function detectNorth(blob, bloquesOcr) {
     const { escala, mejor, candidatos } = buscarSimboloNorte(cv, mat)
     const diagnostico = { metodo: 'simbolo', escalaTrabajo: r1(escala * 100) / 100, letrasN, simbolo: mejor, candidatos }
     if (!mejor) {
+      // Segundo estilo de simbolo (anillo + flecha rellena, "formato 2").
+      const flecha = buscarSimboloNorteFlecha(cv, mat)
+      diagnostico.flecha = { escalaTrabajo: r1(flecha.escala * 100) / 100, simbolo: flecha.mejor, candidatos: flecha.candidatos }
+      if (flecha.mejor) {
+        const f = flecha.mejor
+        return {
+          angleDeg: f.norteDeg,
+          confidence: f.coberturaAnillo >= 90 && f.flecha.baseEnRadios <= 0.8 ? 'alta' : 'media',
+          origen: `símbolo de norte (anillo y flecha) en (${f.centro.x}, ${f.centro.y}), radio ${f.radio} px`,
+          diagnostico,
+        }
+      }
       return {
         angleDeg: 0,
         confidence: 'baja',
-        origen: 'no se encontró el símbolo de norte (arco grueso con barra)',
+        origen: 'no se encontró el símbolo de norte',
         diagnostico,
       }
     }
