@@ -5,6 +5,7 @@ import { Badge, Button, Card, EmptyState, Spinner } from '@/shared/ui'
 import { detectionApi } from '../api/detection.api'
 import HistorialMap from '../components/HistorialMap'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
+import ParcelExplorePopup from '../components/ParcelExplorePopup'
 
 const STATUS_BADGE = {
   completed: { variant: 'success', label: 'Procesado' },
@@ -35,6 +36,9 @@ export default function HistorialPage() {
   const [error, setError] = useState('')
   const [selectedSectorId, setSelectedSectorId] = useState(null)
   const [highlightParcelGeom, setHighlightParcelGeom] = useState(null)
+  // "Explorar predio" from ProcessedSectorDetailModal -- same pattern as
+  // DetectionPage's own `exploring` state (see its docstring there).
+  const [exploring, setExploring] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -75,13 +79,32 @@ export default function HistorialPage() {
       </header>
 
       <Card glass={false} className="!p-0 overflow-hidden">
-        <div className="p-3">
+        <div className="relative p-3">
           <HistorialMap
             processedSectors={sectors}
-            onViewSectorDetail={setSelectedSectorId}
+            onViewSectorDetail={(id) => {
+              setSelectedSectorId(id)
+              setExploring(null)
+              setHighlightParcelGeom(null)
+            }}
             height={420}
             highlightParcelGeom={highlightParcelGeom}
           />
+          {exploring && (
+            <ParcelExplorePopup
+              parcels={exploring.parcels}
+              index={exploring.index}
+              onNavigate={(nextIndex) => {
+                if (nextIndex < 0 || nextIndex >= exploring.parcels.length) return
+                setExploring((prev) => ({ ...prev, index: nextIndex }))
+                setHighlightParcelGeom(exploring.parcels[nextIndex].parcel_geom_geojson)
+              }}
+              onClose={() => {
+                setExploring(null)
+                setHighlightParcelGeom(null)
+              }}
+            />
+          )}
         </div>
       </Card>
 
@@ -147,12 +170,13 @@ export default function HistorialPage() {
       </Card>
 
       <ProcessedSectorDetailModal
-        open={!!selectedSectorId}
+        open={!!selectedSectorId && !exploring}
         sectorId={selectedSectorId}
         onClose={() => setSelectedSectorId(null)}
         allowReprocess={false}
-        onViewParcel={(parcel) => {
-          setHighlightParcelGeom(parcel.parcel_geom_geojson)
+        onExploreParcel={(parcels, startIndex) => {
+          setExploring({ parcels, index: startIndex })
+          setHighlightParcelGeom(parcels[startIndex]?.parcel_geom_geojson || null)
           requestAnimationFrame(() => {
             window.scrollTo({ top: 0, behavior: 'smooth' })
           })
