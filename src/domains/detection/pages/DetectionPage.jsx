@@ -4,7 +4,6 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
-  FileSpreadsheet,
   Images,
   Info,
   Layers2,
@@ -30,7 +29,6 @@ import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
 import ParcelExplorePopup from '../components/ParcelExplorePopup'
-import ExportPreviewModal from '../components/ExportPreviewModal'
 import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
@@ -190,7 +188,6 @@ export default function DetectionPage() {
   const [running, setRunning] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(false)
   const [metaError, setMetaError] = useState('')
-  const [exportPreviewOpen, setExportPreviewOpen] = useState(false)
   const [assetUrls, setAssetUrls] = useState({})
   const [selectedRow, setSelectedRow] = useState(null)
   const [alignOpen, setAlignOpen] = useState(false)
@@ -670,14 +667,6 @@ export default function DetectionPage() {
           <Badge variant={polygonReady ? 'accent' : 'neutral'} dot>
             {polygonReady ? 'Área lista' : 'Sin área'}
           </Badge>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setExportPreviewOpen(true)}
-            icon={FileSpreadsheet}
-          >
-            Exportar
-          </Button>
           <Button variant="secondary" size="sm" onClick={loadMeta} disabled={loadingMeta} icon={RefreshCw}>
             Actualizar
           </Button>
@@ -977,12 +966,6 @@ export default function DetectionPage() {
         open={!!validationTarget}
         onClose={() => setValidationTarget(null)}
         onReviewed={handleParcelReviewed}
-      />
-
-      <ExportPreviewModal
-        open={exportPreviewOpen}
-        onClose={() => setExportPreviewOpen(false)}
-        campaignId={campaignId}
       />
 
       {/* 3 · Resultados (solo tras detección) */}

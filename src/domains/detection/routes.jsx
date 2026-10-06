@@ -1,5 +1,6 @@
 import DetectionPage from './pages/DetectionPage'
 import HistorialPage from './pages/HistorialPage'
+import ReportsPage from './pages/ReportsPage'
 import { DetectionErrorBoundary } from './components/DetectionErrorBoundary'
 
 export const detectionRoutes = [
@@ -8,6 +9,15 @@ export const detectionRoutes = [
     element: (
       <DetectionErrorBoundary>
         <DetectionPage />
+      </DetectionErrorBoundary>
+    ),
+    wide: true,
+  },
+  {
+    path: '/detection/reports',
+    element: (
+      <DetectionErrorBoundary>
+        <ReportsPage />
       </DetectionErrorBoundary>
     ),
     wide: true,

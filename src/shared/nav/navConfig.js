@@ -55,6 +55,7 @@ export const NAV_SECTIONS = [
     path: '/detection',
     children: [
       { label: 'Mapa y detección', path: '/detection/map', icon: ScanSearch },
+      { label: 'Reportes', path: '/detection/reports', icon: BarChart3 },
       { label: 'Historial', path: '/detection/history', icon: History },
     ],
   },
