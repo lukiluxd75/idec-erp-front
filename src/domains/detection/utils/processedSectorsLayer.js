@@ -1,9 +1,11 @@
 import L from 'leaflet'
 
 /**
- * Shared Leaflet overlay for "sectores ya procesados" -- used by both
+ * Shared Leaflet overlay for "sectores ya procesados" -- used by
  * DetectionMap ("Mapa y detección", operational: avoid redrawing over
- * covered areas) and HistorialMap ("Historial", read-only browsing). Plain
+ * covered areas). Historial dropped its own map entirely (audit/consulta
+ * tool now, not a second place to browse the same polygons -- see
+ * HistorialPage), so this is DetectionMap's alone these days. Plain
  * Leaflet (no react-leaflet in this project), matching DetectionMap's own
  * imperative style.
  *

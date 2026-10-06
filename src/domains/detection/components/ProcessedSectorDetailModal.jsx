@@ -231,10 +231,23 @@ export default function ProcessedSectorDetailModal({
                                 {CONSTRUCTION_TYPE_LABEL[p.construction_type] || p.construction_type}
                               </p>
                             )}
-                            {p.validated_by_username && (
-                              <p className="mt-1 text-[11px] text-slate-500">
-                                Revisado por {p.validated_by_username} · {fmtDate(p.validated_at)}
-                              </p>
+                            {p.reviews?.length > 0 && (
+                              <div className="mt-1.5 space-y-1 border-t border-slate-100 pt-1.5">
+                                {p.reviews.map((rv, i) => (
+                                  <p key={i} className="text-[11px] text-slate-500">
+                                    <span className="font-semibold text-slate-700">
+                                      {rv.action === 'confirm' ? 'Confirmado' : 'Rechazado'}
+                                    </span>{' '}
+                                    por {rv.created_by_username || '—'} · {fmtDate(rv.created_at)}
+                                    {rv.comment && (
+                                      <>
+                                        {' — '}
+                                        <span className="italic">{rv.comment}</span>
+                                      </>
+                                    )}
+                                  </p>
+                                ))}
+                              </div>
                             )}
                           </div>
                         )
