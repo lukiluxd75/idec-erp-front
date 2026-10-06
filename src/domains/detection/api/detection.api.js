@@ -67,6 +67,14 @@ function getProcessedSectorDetail(sectorId) {
   return httpClient.get(API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId))
 }
 
+/** Cross-entity search (sector id/name, predio por código catastral, campaña
+ * por código/nombre) -- backs MapSearchBox, shared by "Mapa y detección" and
+ * "Historial" so neither re-implements its own search. */
+function searchDetectionEntities(query, { limit = 8 } = {}) {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}/search?${params.toString()}`)
+}
+
 /** "Continuar validación": the sector's persisted result, shaped just like
  * a live job's job_result -- feed it straight into the same Hallazgos table. */
 function resumeSectorValidation(sectorId) {
@@ -158,6 +166,7 @@ export const detectionApi = {
   reviewAffectedParcel,
   listProcessedSectors,
   getProcessedSectorDetail,
+  searchDetectionEntities,
   resumeSectorValidation,
   fetchCampaignReportData,
   exportCampaignReport,

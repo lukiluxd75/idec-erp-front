@@ -30,6 +30,7 @@ import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
 import ParcelExplorePopup from '../components/ParcelExplorePopup'
+import MapSearchBox from '../components/MapSearchBox'
 import ExportPreviewModal from '../components/ExportPreviewModal'
 import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
@@ -123,6 +124,39 @@ export default function DetectionPage() {
     setSelectedSectorId(null)
     setExploring(null)
     setHighlightParcelGeom(null)
+  }
+
+  // "Resaltarlo un instante" (engineer's spec for the search box): unlike
+  // "explorar predio" (which highlights until the architect navigates
+  // away), a search hit clears its own highlight shortly after landing --
+  // it's a locate-and-glance action, not an exploration session.
+  const searchHighlightTimeoutRef = useRef(null)
+  useEffect(() => () => clearTimeout(searchHighlightTimeoutRef.current), [])
+
+  function focusSearchGeom(geomGeojson) {
+    if (searchHighlightTimeoutRef.current) clearTimeout(searchHighlightTimeoutRef.current)
+    setHighlightParcelGeom(geomGeojson)
+    searchHighlightTimeoutRef.current = setTimeout(() => setHighlightParcelGeom(null), 2500)
+  }
+
+  function handleSelectSearchSector(result) {
+    setExploring(null)
+    focusSearchGeom(result.geom_geojson)
+  }
+
+  function handleSelectSearchParcel(result) {
+    setExploring(null)
+    focusSearchGeom(result.geom_geojson)
+  }
+
+  function handleSelectSearchCampaign(result) {
+    handleCampaignChange(result.campaign_id, {
+      id: result.campaign_id,
+      code: result.campaign_code,
+      name: result.campaign_name,
+      year_a: result.year_a,
+      year_b: result.year_b,
+    })
   }
 
   const [jobId, setJobId] = useState(null)
@@ -847,6 +881,12 @@ export default function DetectionPage() {
                 campaignSelected={!!campaignId}
               />
             </Suspense>
+
+            <MapSearchBox
+              onSelectSector={handleSelectSearchSector}
+              onSelectParcel={handleSelectSearchParcel}
+              onSelectCampaign={handleSelectSearchCampaign}
+            />
 
             {exploring && (
               <ParcelExplorePopup
