@@ -65,6 +65,7 @@ export const API_ENDPOINTS = {
     AFFECTED_PARCEL_REVIEW: (id) => `/api/detection/affected-parcels/${id}/review`,
     SECTORS: '/api/detection/sectors',
     SECTOR_DETAIL: (id) => `/api/detection/sectors/${id}`,
+    REPORT_STATS: '/api/detection/reports/stats',
   },
   APPRAISAL_REVIEW: {
     PENDING: '/api/appraisal-review/appraisals',

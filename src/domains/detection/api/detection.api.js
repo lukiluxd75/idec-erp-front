@@ -67,35 +67,55 @@ function getProcessedSectorDetail(sectorId) {
   return httpClient.get(API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId))
 }
 
+/** Cross-entity search (sector id/name, predio por código catastral, campaña
+ * por código/nombre) -- backs MapSearchBox, shared by "Mapa y detección" and
+ * "Historial" so neither re-implements its own search. */
+function searchDetectionEntities(query, { limit = 8 } = {}) {
+  const params = new URLSearchParams({ q: query, limit: String(limit) })
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}/search?${params.toString()}`)
+}
+
+/** Aggregated numbers for "Reportes"'s charts -- see the backend's
+ * SectorHistoryPort.get_report_stats for the exact bundle shape. */
+function getReportStats({ campaignId, dateFrom, dateTo } = {}) {
+  const params = new URLSearchParams()
+  if (campaignId) params.set('campaign_id', campaignId)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  const query = params.toString()
+  return httpClient.get(`${API_ENDPOINTS.DETECTION.REPORT_STATS}${query ? `?${query}` : ''}`)
+}
+
+/** "Continuar validación": the sector's persisted result, shaped just like
+ * a live job's job_result -- feed it straight into the same Hallazgos table. */
 function resumeSectorValidation(sectorId) {
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTOR_DETAIL(sectorId)}/resume-validation`)
 }
 
-function exportParams(campaignId, unassignedOnly) {
+function exportParams(campaignId, unassignedOnly, allCampaigns) {
   const params = new URLSearchParams()
-  if (campaignId) params.set('campaign_id', campaignId)
+  if (allCampaigns) params.set('all_campaigns', 'true')
+  else if (campaignId) params.set('campaign_id', campaignId)
   else if (unassignedOnly) params.set('unassigned_only', 'true')
   return params.toString()
 }
 
-function fetchCampaignReportData(campaignId, { unassignedOnly = false } = {}) {
-  const query = exportParams(campaignId, unassignedOnly)
+/** The "Exportar" preview modal's data source -- same confirmed/rejected
+ * rows the Excel/PDF exports use, already carrying their display labels.
+ * `allCampaigns` backs the modal's own "Todas las campañas" option -- every
+ * confirmed/rejected parcel regardless of campaign, overriding campaignId/
+ * unassignedOnly, so the report shows which campaign each sector belongs to. */
+function fetchCampaignReportData(campaignId, { unassignedOnly = false, allCampaigns = false } = {}) {
+  const query = exportParams(campaignId, unassignedOnly, allCampaigns)
   return httpClient.get(`${API_ENDPOINTS.DETECTION.SECTORS}/export/data?${query}`)
 }
 
-/** Downloads a file export (Excel/PDF) of the campaign's confirmed/rejected parcels. */
-async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = false } = {}) {
-  const query = exportParams(campaignId, unassignedOnly)
-  const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/${kind}?${query}`
-  const token = storageService.getToken()
-  const response = await fetch(`${ENV.API_BASE_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
+async function downloadBlobResponse(response, fallbackFilename) {
   if (!response.ok) throw new Error(`No se pudo generar el reporte (${response.status})`)
   const blob = await response.blob()
   const disposition = response.headers.get('Content-Disposition') || ''
   const match = disposition.match(/filename="?([^"]+)"?/)
-  const filename = match ? match[1] : `reporte-predios.${kind === 'excel' ? 'xlsx' : 'pdf'}`
+  const filename = match ? match[1] : fallbackFilename
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -106,11 +126,51 @@ async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = f
   URL.revokeObjectURL(url)
 }
 
+/** Downloads a file export (Excel/PDF) of the campaign's confirmed/rejected
+ * parcels. A binary file response, so this bypasses httpClient (JSON-only)
+ * the same way resolveAssetObjectUrl does, but triggers a save instead of an
+ * object URL. */
+async function downloadCampaignReportFile(kind, campaignId, { unassignedOnly = false, allCampaigns = false } = {}) {
+  const query = exportParams(campaignId, unassignedOnly, allCampaigns)
+  const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/${kind}?${query}`
+  const token = storageService.getToken()
+  const response = await fetch(`${ENV.API_BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  await downloadBlobResponse(response, `reporte-predios.${kind === 'excel' ? 'xlsx' : 'pdf'}`)
+}
+
+/** Same PDF as the plain GET export, plus one page per chart image --
+ * "Reportes" captures its own live charts as PNGs (html2canvas) before
+ * calling this, since a GET query string can't carry that much image data;
+ * needs a POST body instead. */
+async function downloadCampaignReportPdfWithCharts(
+  campaignId,
+  { unassignedOnly = false, allCampaigns = false } = {},
+  charts = []
+) {
+  const query = exportParams(campaignId, unassignedOnly, allCampaigns)
+  const path = `${API_ENDPOINTS.DETECTION.SECTORS}/export/pdf?${query}`
+  const token = storageService.getToken()
+  const response = await fetch(`${ENV.API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ charts }),
+  })
+  await downloadBlobResponse(response, 'reporte-predios.pdf')
+}
+
 function exportCampaignReport(campaignId, opts) {
   return downloadCampaignReportFile('excel', campaignId, opts)
 }
 
-function exportCampaignReportPdf(campaignId, opts) {
+/** `charts`, when non-empty, switches to the POST endpoint that appends one
+ * page per chart image -- see downloadCampaignReportPdfWithCharts. */
+function exportCampaignReportPdf(campaignId, opts, charts) {
+  if (charts && charts.length) return downloadCampaignReportPdfWithCharts(campaignId, opts, charts)
   return downloadCampaignReportFile('pdf', campaignId, opts)
 }
 
@@ -144,6 +204,8 @@ export const detectionApi = {
   reviewAffectedParcel,
   listProcessedSectors,
   getProcessedSectorDetail,
+  searchDetectionEntities,
+  getReportStats,
   resumeSectorValidation,
   fetchCampaignReportData,
   exportCampaignReport,

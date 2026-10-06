@@ -1,18 +1,76 @@
+/* Outside print, PrintReport's portal must stay fully invisible and take no
+   space. This MUST come before the @media print block below: both rules
+   target the same selector with equal specificity, so whichever is declared
+   LAST wins the cascade even inside @media print -- had this stayed below,
+   it would have silently beaten the block's `display: block` during an
+   actual print, leaving the print preview blank (confirmed: exactly what
+   happened before this fix). */
+.print-report-root {
+  display: none;
+}
+
+/* Printing: hide the whole app (and the Modal's on-screen panel) and show
+   only PrintReport's own portal instead. PrintReport renders straight to
+   `document.body` as a SIBLING of the Modal's own portal, not a descendant
+   of it -- the Modal panel is `max-h-[...] overflow-y-auto` to fit the
+   screen, and nesting print content inside that box confined `@media
+   print` output to the panel's own clipped, mid-screen position instead of
+   flowing from the top of the printed page (see PrintReport's docstring in
+   ExportPreviewModal.jsx). As a plain body-level sibling with normal static
+   flow, print-report-root has no such ancestor to fight and paginates
+   normally.
+   `display: none` on every OTHER body-level child, not `visibility:
+   hidden` -- visibility keeps an element's layout box (so its full height
+   still reserves space), which pushed print-report-root down past an
+   entire blank first page (confirmed: exactly what happened before this
+   fix, since #root's hidden-but-still-laid-out height was taller than one
+   printed page). display:none removes that space entirely. */
 @media print {
-  body * {
-    visibility: hidden;
+  body > *:not(.print-report-root) {
+    display: none !important;
   }
-  .export-print-root,
-  .export-print-root * {
-    visibility: visible;
-  }
-  .export-print-root {
-    position: absolute;
-    inset: 0;
-    width: 100%;
+  .print-report-root {
+    display: block;
     padding: 24px;
   }
-  .export-print-hide {
-    display: none !important;
+  .print-report-root h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px;
+  }
+  .print-report-subtitle {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0 0 16px;
+  }
+
+  /* Each predio's print ficha: a bordered vertical field:value table (not
+     the on-screen cards, not a 14-column spreadsheet table -- see
+     ExportPreviewModal.jsx's PrintFicha). break-inside keeps one predio's
+     fields together instead of splitting across a page boundary. */
+  .print-ficha {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    font-size: 11px;
+  }
+  .print-ficha th,
+  .print-ficha td {
+    border: 1px solid #cbd5e1;
+    padding: 4px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .print-ficha th {
+    width: 32%;
+    background: #f1f5f9;
+    font-weight: 700;
+    color: #334155;
+  }
+  .print-ficha td {
+    color: #0f172a;
   }
 }

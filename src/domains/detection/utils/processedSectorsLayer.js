@@ -1,5 +1,20 @@
 import L from 'leaflet'
 
+/**
+ * Shared Leaflet overlay for "sectores ya procesados" -- used by
+ * DetectionMap ("Mapa y detección", operational: avoid redrawing over
+ * covered areas). Historial dropped its own map entirely (audit/consulta
+ * tool now, not a second place to browse the same polygons -- see
+ * HistorialPage), so this is DetectionMap's alone these days. Plain
+ * Leaflet (no react-leaflet in this project), matching DetectionMap's own
+ * imperative style.
+ *
+ * Polygon color is the VALIDATION OUTCOME of the sector's most recent run
+ * (n_confirmed_parcels/n_rejected_parcels from the backend), not its pipeline
+ * status: green = the architect confirmed real changes and rejected none,
+ * red = every finding was rejected (the model was wrong there), orange = a
+ * mix of both, grey = nothing reviewed yet (or still processing/error).
+ */
 const COLORS = {
   good: { color: '#15803d', fillColor: '#22c55e' }, // confirmed-only
   bad: { color: '#b91c1c', fillColor: '#ef4444' }, // rejected-only

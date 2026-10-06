@@ -7,6 +7,7 @@ import { DetectionErrorBoundary } from './components/DetectionErrorBoundary'
 
 const DetectionPage = lazy(() => import('./pages/DetectionPage'))
 const HistorialPage = lazy(() => import('./pages/HistorialPage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 
 export const detectionRoutes = [
   {
@@ -14,6 +15,15 @@ export const detectionRoutes = [
     element: (
       <DetectionErrorBoundary>
         <DetectionPage />
+      </DetectionErrorBoundary>
+    ),
+    wide: true,
+  },
+  {
+    path: '/detection/reports',
+    element: (
+      <DetectionErrorBoundary>
+        <ReportsPage />
       </DetectionErrorBoundary>
     ),
     wide: true,

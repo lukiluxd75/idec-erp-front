@@ -16,6 +16,15 @@ const CONSTRUCTION_TYPES = [
 // Matches affected_parcel.construction_type's VARCHAR(30) on the backend.
 const CONSTRUCTION_TYPE_MAX_LENGTH = 30
 
+/**
+ * The architect's two validation actions on an affected_parcel (see
+ * ParcelValidationButtons — used from the hallazgos table). Confirming
+ * requires classifying the real change (construction_type) and accepts an
+ * optional free-text description alongside it; rejecting accepts only the
+ * optional comment (no classification). Both comments are kept solely for
+ * audit. The retroalimentación/model-retraining workflow was dropped
+ * entirely (alignment wasn't reliable enough for it).
+ */
 export default function ParcelValidationModal({ row, mode, open, onClose, onReviewed }) {
   const [busy, setBusy] = useState(false)
   const [constructionType, setConstructionType] = useState(CONSTRUCTION_TYPES[0].value)
@@ -45,7 +54,11 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
     try {
       const payload =
         mode === 'confirm'
-          ? { action: 'confirm', construction_type: isOther ? otherLabel.trim() : constructionType }
+          ? {
+              action: 'confirm',
+              construction_type: isOther ? otherLabel.trim() : constructionType,
+              comment: comment.trim() || undefined,
+            }
           : { action: 'reject', comment: comment.trim() || undefined }
       await detectionApi.reviewAffectedParcel(row.affected_parcel_id, payload)
       onReviewed?.(row.affected_parcel_id, mode === 'confirm' ? 'confirmed' : 'rejected')
@@ -94,6 +107,16 @@ export default function ParcelValidationModal({ row, mode, open, onClose, onRevi
                 placeholder="Ej: cambio de cerca"
               />
             )}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Descripción (opcional)</label>
+              <textarea
+                className="w-full rounded-xl border border-slate-200 bg-white/60 px-4 py-3 text-sm text-slate-900 outline-none transition-colors duration-200 focus:border-accent-500/60 focus:bg-white focus-visible:ring-2 focus-visible:ring-accent-400/40"
+                rows={3}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Detalle adicional sobre el cambio confirmado (opcional)."
+              />
+            </div>
           </>
         ) : (
           <>

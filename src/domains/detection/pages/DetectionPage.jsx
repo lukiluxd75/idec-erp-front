@@ -4,7 +4,6 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
-  FileSpreadsheet,
   Images,
   Info,
   Layers2,
@@ -30,7 +29,6 @@ import ParcelValidationButtons from '../components/ParcelValidationButtons'
 import ParcelValidationModal from '../components/ParcelValidationModal'
 import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
 import ParcelExplorePopup from '../components/ParcelExplorePopup'
-import ExportPreviewModal from '../components/ExportPreviewModal'
 import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
@@ -114,13 +112,71 @@ export default function DetectionPage() {
     setHighlightParcelGeom(null)
   }
 
+  // "Resaltarlo un instante" (engineer's spec for the search box): unlike
+  // "explorar predio" (which highlights until the architect navigates
+  // away), a search hit clears its own highlight shortly after landing --
+  // it's a locate-and-glance action, not an exploration session.
+  const searchHighlightTimeoutRef = useRef(null)
+  useEffect(() => () => clearTimeout(searchHighlightTimeoutRef.current), [])
+
+  function focusSearchGeom(geomGeojson) {
+    if (searchHighlightTimeoutRef.current) clearTimeout(searchHighlightTimeoutRef.current)
+    setHighlightParcelGeom(geomGeojson)
+    searchHighlightTimeoutRef.current = setTimeout(() => setHighlightParcelGeom(null), 2500)
+  }
+
+  // The map overlay only renders sectors belonging to whatever campaign is
+  // currently active -- landing on a sector/predio from a different
+  // campaign without switching first means its real polygon never
+  // appears (confirmed bug: the view centers on the right spot but shows
+  // nothing once the temporary highlight below clears itself). Skipped
+  // when the result is already in the active campaign, so a same-campaign
+  // search doesn't needlessly reset the drawn polygon/exploring state.
+  function switchToResultCampaign(result) {
+    const resultCampaignId = result.campaign_id ?? null
+    if (resultCampaignId === campaignId) return
+    handleCampaignChange(
+      resultCampaignId,
+      resultCampaignId
+        ? {
+            id: resultCampaignId,
+            code: result.campaign_code,
+            name: result.campaign_name,
+            year_a: result.year_a,
+            year_b: result.year_b,
+          }
+        : null
+    )
+  }
+
+  function handleSelectSearchSector(result) {
+    switchToResultCampaign(result)
+    setExploring(null)
+    focusSearchGeom(result.geom_geojson)
+  }
+
+  function handleSelectSearchParcel(result) {
+    switchToResultCampaign(result)
+    setExploring(null)
+    focusSearchGeom(result.geom_geojson)
+  }
+
+  function handleSelectSearchCampaign(result) {
+    handleCampaignChange(result.campaign_id, {
+      id: result.campaign_id,
+      code: result.campaign_code,
+      name: result.campaign_name,
+      year_a: result.year_a,
+      year_b: result.year_b,
+    })
+  }
+
   const [jobId, setJobId] = useState(null)
   const [progress, setProgress] = useState(null)
   const [result, setResult] = useState(null)
   const [running, setRunning] = useState(false)
   const [loadingMeta, setLoadingMeta] = useState(false)
   const [metaError, setMetaError] = useState('')
-  const [exportPreviewOpen, setExportPreviewOpen] = useState(false)
   const [assetUrls, setAssetUrls] = useState({})
   const [selectedRow, setSelectedRow] = useState(null)
   const [alignOpen, setAlignOpen] = useState(false)
@@ -518,7 +574,9 @@ export default function DetectionPage() {
       : 'Revisar alineación'
   const polygonReady = !!(polygon && polygon.length >= 4)
   const gpuCount = Array.isArray(health?.engine?.gpus) ? health.engine.gpus.length : 0
-  const canStart = health?.reachable && polygonReady && yearRef && yearMov && !running
+  // Every processed sector must belong to a campaign -- "Sin campaña" is
+  // view-only (see DetectionMap's own draw-click guard for the other half).
+  const canStart = health?.reachable && polygonReady && !!campaignId && yearRef && yearMov && !running
 
   return (
     <div className="space-y-4">
@@ -563,14 +621,6 @@ export default function DetectionPage() {
           <Badge variant={polygonReady ? 'accent' : 'neutral'} dot>
             {polygonReady ? 'Área lista' : 'Sin área'}
           </Badge>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setExportPreviewOpen(true)}
-            icon={FileSpreadsheet}
-          >
-            Exportar
-          </Button>
           <Button variant="secondary" size="sm" onClick={loadMeta} disabled={loadingMeta} icon={RefreshCw}>
             Actualizar
           </Button>
@@ -796,6 +846,10 @@ export default function DetectionPage() {
                   setHighlightParcelGeom(null)
                   setExploring(null)
                 }}
+                campaignSelected={!!campaignId}
+                onSearchSelectSector={handleSelectSearchSector}
+                onSearchSelectParcel={handleSelectSearchParcel}
+                onSearchSelectCampaign={handleSelectSearchCampaign}
               />
             </Suspense>
 
@@ -859,13 +913,6 @@ export default function DetectionPage() {
         open={!!validationTarget}
         onClose={() => setValidationTarget(null)}
         onReviewed={handleParcelReviewed}
-      />
-
-      <ExportPreviewModal
-        open={exportPreviewOpen}
-        onClose={() => setExportPreviewOpen(false)}
-        campaignId={campaignId}
-        unassignedOnly={!campaignId}
       />
 
       {/* 3 · Resultados (solo tras detección) */}
