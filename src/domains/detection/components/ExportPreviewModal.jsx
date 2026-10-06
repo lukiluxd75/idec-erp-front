@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal, flushSync } from 'react-dom'
 import { toast } from 'react-toastify'
 import { FileDown, FileJson, FileSpreadsheet, FileText, Printer } from 'lucide-react'
 import { Badge, Button, EmptyState, Modal, Select, Spinner } from '@/shared/ui'
@@ -69,7 +69,7 @@ function PrintFicha({ row }) {
  * bug this replaced). A `print-report-root` sibling with plain static flow
  * has no such ancestor to escape, so it paginates normally from the top.
  */
-function PrintReport({ data }) {
+function PrintReport({ data, charts }) {
   if (!data) return null
   return createPortal(
     <div className="print-report-root">
@@ -80,8 +80,44 @@ function PrintReport({ data }) {
       {data.rows.map((row) => (
         <PrintFicha key={`print-${row.number}-${row.cadastral_code}`} row={row} />
       ))}
+      {charts?.map((c) => (
+        <div key={c.title} className="print-chart-page">
+          <h2>{c.title}</h2>
+          <img src={c.image_base64} alt={c.title} />
+        </div>
+      ))}
     </div>,
     document.body
+  )
+}
+
+/**
+ * Off-screen (not display:none -- html2canvas can't rasterize a node with no
+ * layout) render of every chart Reportes has stats for, purely so "PDF" and
+ * "Imprimir" can capture each one as a PNG at click time -- same Recharts
+ * components the architect already sees on the page, just a throwaway copy
+ * positioned outside the viewport instead of shown. Always mounted whenever
+ * `charts` has entries (not gated on the modal being open) so the nodes are
+ * already laid out and ready to capture the instant an export is clicked.
+ */
+function ChartCaptureArea({ charts, nodeRefs }) {
+  if (!charts.length) return null
+  return (
+    <div
+      aria-hidden="true"
+      style={{ position: 'fixed', top: 0, left: '-99999px', width: '900px', pointerEvents: 'none' }}
+    >
+      {charts.map(({ key, Component, data }) => (
+        <div
+          key={key}
+          ref={(el) => {
+            nodeRefs.current[key] = el
+          }}
+        >
+          <Component data={data} />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -175,19 +211,29 @@ function ParcelCard({ row, showCampaign }) {
  * a vertical field:value table per predio (same fields as the Excel export)
  * instead of either these cards or a 14-column spreadsheet table, neither of
  * which prints legibly.
+ *
+ * `charts` (optional, from Reportes' loaded stats): `[{key, title,
+ * Component, data}]` -- when present, PDF and Imprimir each get one extra
+ * page per chart (captured as a PNG via html2canvas, see
+ * ChartCaptureArea/captureChartImages below). Excel and JSON never get
+ * charts -- a spreadsheet/data response has nowhere sensible to put an
+ * image, only a formatted document does.
  */
-export default function ExportPreviewModal({ open, onClose, campaignId }) {
+export default function ExportPreviewModal({ open, onClose, campaignId, charts = [] }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [busyFormat, setBusyFormat] = useState('')
   const [campaigns, setCampaigns] = useState([])
   const [selection, setSelection] = useState(campaignId ? String(campaignId) : '')
+  const [printCharts, setPrintCharts] = useState(null)
+  const chartNodeRefs = useRef({})
 
   // Every time the modal opens, start from whatever campaign is active on
   // the map -- reopening never resumes a stale selection from last time.
   useEffect(() => {
     if (open) setSelection(campaignId ? String(campaignId) : '')
+    else setPrintCharts(null)
   }, [open, campaignId])
 
   useEffect(() => {
@@ -232,14 +278,45 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
     URL.revokeObjectURL(url)
   }
 
+  /** Rasterizes every entry in `charts` from the off-screen ChartCaptureArea
+   * -- same pixels as the live chart, scale:2 for a print/PDF-sharp image
+   * instead of a blurry 1x screen capture. html2canvas-pro, not plain
+   * html2canvas: Tailwind v4's palette is oklch by default, and vanilla
+   * html2canvas (no CSS Color 4 support) throws "unsupported color function
+   * oklch" on every card's border/bg/text color -- the -pro fork is the
+   * maintained one that actually parses it. */
+  async function captureChartImages() {
+    if (!charts.length) return []
+    const { default: html2canvas } = await import('html2canvas-pro')
+    const images = []
+    for (const { key, title } of charts) {
+      const node = chartNodeRefs.current[key]
+      if (!node) continue
+      const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2 })
+      images.push({ title, image_base64: canvas.toDataURL('image/png') })
+    }
+    return images
+  }
+
   async function handleFormat(kind) {
     setBusyFormat(kind)
     const opts = { unassignedOnly: selectedUnassignedOnly, allCampaigns }
     try {
       if (kind === 'excel') await detectionApi.exportCampaignReport(selectedCampaignId, opts)
-      else if (kind === 'pdf') await detectionApi.exportCampaignReportPdf(selectedCampaignId, opts)
-      else if (kind === 'json') downloadJson()
-      else if (kind === 'print') window.print()
+      else if (kind === 'pdf') {
+        const chartImages = await captureChartImages()
+        await detectionApi.exportCampaignReportPdf(selectedCampaignId, opts, chartImages)
+      } else if (kind === 'json') downloadJson()
+      else if (kind === 'print') {
+        const chartImages = await captureChartImages()
+        // Must land in the DOM before window.print() reads it -- flushSync
+        // forces that commit synchronously instead of React's normal
+        // deferred flush, which could otherwise lose the race and print
+        // without the charts (same class of timing bug as the portal/CSS
+        // print issues documented elsewhere in this file).
+        flushSync(() => setPrintCharts(chartImages))
+        window.print()
+      }
       if (kind !== 'print') toast.success('Reporte generado.')
     } catch (err) {
       toast.error(err.message || 'No se pudo generar el reporte.')
@@ -352,7 +429,8 @@ export default function ExportPreviewModal({ open, onClose, campaignId }) {
           )}
         </div>
       </Modal>
-      <PrintReport data={!blocked && data?.rows.length ? data : null} />
+      <ChartCaptureArea charts={charts} nodeRefs={chartNodeRefs} />
+      <PrintReport data={!blocked && data?.rows.length ? data : null} charts={printCharts} />
     </>
   )
 }
