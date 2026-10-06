@@ -2,16 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
 import { FileDown, FileJson, FileSpreadsheet, FileText, Printer } from 'lucide-react'
-import { Badge, Button, EmptyState, Modal, Select, Spinner } from '@/shared/ui'
+import { Badge, Button, EmptyState, Modal, Spinner } from '@/shared/ui'
 import { detectionApi } from '../api/detection.api'
+import {
+  CampaignBreakdownChart,
+  CampaignResolutionChart,
+  ChangeTypeChart,
+  DailyTrendChart,
+  SectorsByStatusChart,
+  ValidationStatusChart,
+  ValidationTrendChart,
+} from './ReportCharts'
 import './ExportPreviewModal.css'
 
 const STATUS_STYLE = {
   confirmed: { border: 'border-l-emerald-400', badge: 'success' },
   rejected: { border: 'border-l-rose-400', badge: 'danger' },
 }
-
-const ALL_CAMPAIGNS_VALUE = '__all__'
 
 // Same 14 fields as the Excel export's columns (see export_excel.py's
 // HEADERS) -- the print profile keeps every technical column too, just laid
@@ -191,82 +198,89 @@ function ParcelCard({ row, showCampaign }) {
  * considered and dropped: no system consumes them yet, and we don't ship
  * exports nobody uses.
  *
- * The modal has its own campaign selector -- defaults to whatever campaign
- * is active on the map (`campaignId`/`unassignedOnly`, same as before), but
- * the architect can switch it to a different campaign, or to "Todas las
- * campañas" to list every confirmed/rejected parcel at once and see which
- * campaign each sector/detection belongs to (each row keeps its own
- * campaign_code). The map's own selection is never touched by this.
- * "Sin campaña" is blocked from exporting (see `blocked` below) -- every
- * processed sector must belong to a campaign, so that bucket is never worth
- * a report.
+ * No campaign selector of its own -- reuses whatever Reportes' own selector
+ * (`campaignId`, the page's `campaignFilter`) has picked, so the two never
+ * disagree ("exportar campaña X" can't silently include campaign Y's data).
+ * An empty `campaignId` means "Todas las campañas", matching that selector's
+ * own blank option; there is no "Sin campaña" bucket here anymore (Reportes'
+ * selector never offers one), so exporting is always available once a
+ * campaign (or "todas") is picked up there.
  *
  * "Imprimir" renders a different profile than this preview: see PrintFicha,
  * a vertical field:value table per predio (same fields as the Excel export)
  * instead of either these cards or a 14-column spreadsheet table, neither of
  * which prints legibly.
  *
- * `charts` (optional, from Reportes' loaded stats): `[{key, title,
- * Component, data}]` -- when present, PDF gets one extra page per chart
- * (captured as a PNG via html2canvas-pro, see
- * ChartCaptureArea/captureChartImages below). Imprimir stays plain fichas
- * only -- tried adding the same chart pages there too, but the captured
- * images weren't rendering in the print output (only each chart's title
- * showed), so that path was reverted; only PDF gets charts. Excel and JSON
- * never get charts either -- a spreadsheet/data response has nowhere
+ * PDF gets one extra page per chart (captured as a PNG via html2canvas-pro,
+ * see ChartCaptureArea/captureChartImages below) -- scoped to the SAME
+ * `campaignId` this modal is showing predios for. Imprimir stays plain
+ * fichas only -- tried adding the same chart pages there too, but the
+ * captured images weren't rendering in the print output (only each chart's
+ * title showed), so that path was reverted; only PDF gets charts. Excel and
+ * JSON never get charts either -- a spreadsheet/data response has nowhere
  * sensible to put an image, only a formatted document does.
+ *
+ * `dateFrom`/`dateTo` (optional): the Reportes page's own date filter, if
+ * any -- applied to the chart stats fetched here so the PDF's charts match
+ * both the campaign AND the date range the architect is looking at, not
+ * just the campaign.
  */
-export default function ExportPreviewModal({ open, onClose, campaignId, charts = [] }) {
+export default function ExportPreviewModal({ open, onClose, campaignId, dateFrom, dateTo }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [busyFormat, setBusyFormat] = useState('')
-  const [campaigns, setCampaigns] = useState([])
-  const [selection, setSelection] = useState(campaignId ? String(campaignId) : '')
+  const [chartStats, setChartStats] = useState(null)
   const chartNodeRefs = useRef({})
 
-  // Every time the modal opens, start from whatever campaign is active on
-  // the map -- reopening never resumes a stale selection from last time.
-  useEffect(() => {
-    if (open) setSelection(campaignId ? String(campaignId) : '')
-  }, [open, campaignId])
+  const allCampaigns = !campaignId
+  const selectedCampaignId = campaignId ? Number(campaignId) : null
 
   useEffect(() => {
-    if (!open) return
-    detectionApi
-      .listCampaigns()
-      .then((list) => setCampaigns(Array.isArray(list) ? list : []))
-      .catch(() => setCampaigns([]))
-  }, [open])
-
-  const allCampaigns = selection === ALL_CAMPAIGNS_VALUE
-  const selectedCampaignId = !allCampaigns && selection ? Number(selection) : null
-  const selectedUnassignedOnly = !allCampaigns && !selection
-  // "Sin campaña" never has anything worth exporting (every processed sector
-  // must belong to a campaign now) -- block exporting instead of letting the
-  // architect generate an empty report, same rule as the map's draw guard.
-  const blocked = !allCampaigns && !selectedCampaignId
-
-  useEffect(() => {
-    if (!open || blocked) {
+    if (!open) {
       setData(null)
       return
     }
     setLoading(true)
     setError('')
     detectionApi
-      .fetchCampaignReportData(selectedCampaignId, { unassignedOnly: selectedUnassignedOnly, allCampaigns })
+      .fetchCampaignReportData(selectedCampaignId, { allCampaigns })
       .then(setData)
       .catch((err) => setError(err.message || 'No se pudo cargar la vista previa.'))
       .finally(() => setLoading(false))
-  }, [open, blocked, selectedCampaignId, selectedUnassignedOnly, allCampaigns])
+  }, [open, selectedCampaignId, allCampaigns])
+
+  // Re-fetched every time Reportes' own campaign selector changes.
+  useEffect(() => {
+    if (!open) {
+      setChartStats(null)
+      return
+    }
+    detectionApi
+      .getReportStats({ campaignId: allCampaigns ? undefined : selectedCampaignId, dateFrom, dateTo })
+      .then(setChartStats)
+      .catch(() => setChartStats(null))
+  }, [open, selectedCampaignId, allCampaigns, dateFrom, dateTo])
+
+  // Only these 7 (the actual gráficas); ValidatorsTable isn't rasterized.
+  const exportCharts = chartStats
+    ? [
+        { key: 'validation_status', title: 'Estado de validación', Component: ValidationStatusChart, data: chartStats.by_validation_status },
+        { key: 'change_type', title: 'Distribución por tipo de cambio', Component: ChangeTypeChart, data: chartStats.by_change_type },
+        { key: 'sectors_by_status', title: 'Sectores por estado', Component: SectorsByStatusChart, data: chartStats.sectors_by_status },
+        { key: 'daily_trend', title: 'Evolución temporal', Component: DailyTrendChart, data: chartStats.daily_counts },
+        { key: 'validation_trend', title: 'Línea de tiempo de validación', Component: ValidationTrendChart, data: chartStats.daily_counts },
+        { key: 'campaign_breakdown', title: 'Cambios detectados por campaña', Component: CampaignBreakdownChart, data: chartStats.by_campaign },
+        { key: 'campaign_resolution', title: 'Comparativa de resolución entre campañas', Component: CampaignResolutionChart, data: chartStats.by_campaign },
+      ]
+    : []
 
   function downloadJson() {
     const blob = new Blob([JSON.stringify(data.rows, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `reporte-predios-${allCampaigns ? 'todas-las-campanas' : selectedCampaignId || 'sin-campania'}.json`
+    link.download = `reporte-predios-${allCampaigns ? 'todas-las-campanas' : selectedCampaignId}.json`
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -281,10 +295,10 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
    * oklch" on every card's border/bg/text color -- the -pro fork is the
    * maintained one that actually parses it. */
   async function captureChartImages() {
-    if (!charts.length) return []
+    if (!exportCharts.length) return []
     const { default: html2canvas } = await import('html2canvas-pro')
     const images = []
-    for (const { key, title } of charts) {
+    for (const { key, title } of exportCharts) {
       const node = chartNodeRefs.current[key]
       if (!node) continue
       const canvas = await html2canvas(node, { backgroundColor: '#ffffff', scale: 2 })
@@ -295,7 +309,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
 
   async function handleFormat(kind) {
     setBusyFormat(kind)
-    const opts = { unassignedOnly: selectedUnassignedOnly, allCampaigns }
+    const opts = { allCampaigns }
     try {
       if (kind === 'excel') await detectionApi.exportCampaignReport(selectedCampaignId, opts)
       else if (kind === 'pdf') {
@@ -315,35 +329,22 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
     <>
       <Modal open={open} onClose={onClose} title="Exportar reporte de predios" icon={FileDown} size="xl">
         <div className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[14rem] flex-1">
-              <Select label="Campaña a exportar" value={selection} onChange={(e) => setSelection(e.target.value)}>
-                <option value="">Sin campaña</option>
-                {campaigns.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.code} · {c.name}
-                  </option>
-                ))}
-                <option value={ALL_CAMPAIGNS_VALUE}>Todas las campañas</option>
-              </Select>
-            </div>
+          <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+            <p className="text-[11px] font-medium text-slate-400">Exportando</p>
+            <p className="text-sm font-bold text-slate-900">
+              {data ? data.campaign_label : loading ? 'Cargando…' : '—'}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
-            <p className="text-xs text-slate-500">
-              {blocked
-                ? 'Elija una campaña para exportar.'
-                : data
-                  ? `${data.campaign_label} · ${data.rows.length} predios`
-                  : 'Cargando…'}
-            </p>
+            <p className="text-xs text-slate-500">{data ? `${data.rows.length} predios` : 'Cargando…'}</p>
             <div className="flex flex-wrap gap-1.5">
               <Button
                 size="sm"
                 variant="secondary"
                 icon={FileText}
                 loading={busyFormat === 'pdf'}
-                disabled={blocked || !data || !!busyFormat}
+                disabled={!data || !!busyFormat}
                 onClick={() => handleFormat('pdf')}
               >
                 PDF
@@ -353,7 +354,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
                 variant="secondary"
                 icon={FileSpreadsheet}
                 loading={busyFormat === 'excel'}
-                disabled={blocked || !data || !!busyFormat}
+                disabled={!data || !!busyFormat}
                 onClick={() => handleFormat('excel')}
               >
                 Excel
@@ -363,7 +364,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
                 variant="secondary"
                 icon={FileJson}
                 loading={busyFormat === 'json'}
-                disabled={blocked || !data || !!busyFormat}
+                disabled={!data || !!busyFormat}
                 onClick={() => handleFormat('json')}
               >
                 JSON
@@ -372,7 +373,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
                 size="sm"
                 variant="secondary"
                 icon={Printer}
-                disabled={blocked || !data || !!busyFormat}
+                disabled={!data || !!busyFormat}
                 onClick={() => handleFormat('print')}
               >
                 Imprimir
@@ -380,24 +381,15 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
             </div>
           </div>
 
-          {blocked && (
-            <EmptyState
-              title="Elija una campaña"
-              subtitle="Todo sector procesado pertenece a una campaña -- seleccione una (o «Todas las campañas») para exportar."
-            />
-          )}
-
-          {!blocked && loading && (
+          {loading && (
             <div className="flex items-center justify-center py-14">
               <Spinner className="h-7 w-7" />
             </div>
           )}
 
-          {!blocked && !loading && error && (
-            <EmptyState title="No se pudo cargar la vista previa" subtitle={error} />
-          )}
+          {!loading && error && <EmptyState title="No se pudo cargar la vista previa" subtitle={error} />}
 
-          {!blocked && !loading && !error && data && (
+          {!loading && !error && data && (
             <div className="space-y-2">
               {data.rows.length === 0 ? (
                 <EmptyState
@@ -415,8 +407,8 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
           )}
         </div>
       </Modal>
-      <ChartCaptureArea charts={charts} nodeRefs={chartNodeRefs} />
-      <PrintReport data={!blocked && data?.rows.length ? data : null} />
+      <ChartCaptureArea charts={exportCharts} nodeRefs={chartNodeRefs} />
+      <PrintReport data={data?.rows.length ? data : null} />
     </>
   )
 }

@@ -88,21 +88,6 @@ export default function ReportsPage() {
     { total: 0, confirmed: 0, rejected: 0, pending: 0 }
   )
 
-  // Fed to ExportPreviewModal so "PDF"/"Imprimir" can each attach one page
-  // per chart -- see ChartCaptureArea there. Only these 7 (the actual
-  // gráficas); ValidatorsTable stays a plain table, not rasterized.
-  const exportCharts = stats
-    ? [
-        { key: 'validation_status', title: 'Estado de validación', Component: ValidationStatusChart, data: stats.by_validation_status },
-        { key: 'change_type', title: 'Distribución por tipo de cambio', Component: ChangeTypeChart, data: stats.by_change_type },
-        { key: 'sectors_by_status', title: 'Sectores por estado', Component: SectorsByStatusChart, data: stats.sectors_by_status },
-        { key: 'daily_trend', title: 'Evolución temporal', Component: DailyTrendChart, data: stats.daily_counts },
-        { key: 'validation_trend', title: 'Línea de tiempo de validación', Component: ValidationTrendChart, data: stats.daily_counts },
-        { key: 'campaign_breakdown', title: 'Cambios detectados por campaña', Component: CampaignBreakdownChart, data: stats.by_campaign },
-        { key: 'campaign_resolution', title: 'Comparativa de resolución entre campañas', Component: CampaignResolutionChart, data: stats.by_campaign },
-      ]
-    : []
-
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-3 shadow-sm sm:px-5">
@@ -214,8 +199,9 @@ export default function ReportsPage() {
       <ExportPreviewModal
         open={exportOpen}
         onClose={() => setExportOpen(false)}
-        campaignId={null}
-        charts={exportCharts}
+        campaignId={campaignFilter || null}
+        dateFrom={dateFrom || undefined}
+        dateTo={dateTo || undefined}
       />
     </div>
   )
