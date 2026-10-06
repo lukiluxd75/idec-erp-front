@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal, flushSync } from 'react-dom'
+import { createPortal } from 'react-dom'
 import { toast } from 'react-toastify'
 import { FileDown, FileJson, FileSpreadsheet, FileText, Printer } from 'lucide-react'
 import { Badge, Button, EmptyState, Modal, Select, Spinner } from '@/shared/ui'
@@ -69,7 +69,7 @@ function PrintFicha({ row }) {
  * bug this replaced). A `print-report-root` sibling with plain static flow
  * has no such ancestor to escape, so it paginates normally from the top.
  */
-function PrintReport({ data, charts }) {
+function PrintReport({ data }) {
   if (!data) return null
   return createPortal(
     <div className="print-report-root">
@@ -79,12 +79,6 @@ function PrintReport({ data, charts }) {
       </p>
       {data.rows.map((row) => (
         <PrintFicha key={`print-${row.number}-${row.cadastral_code}`} row={row} />
-      ))}
-      {charts?.map((c) => (
-        <div key={c.title} className="print-chart-page">
-          <h2>{c.title}</h2>
-          <img src={c.image_base64} alt={c.title} />
-        </div>
       ))}
     </div>,
     document.body
@@ -213,11 +207,14 @@ function ParcelCard({ row, showCampaign }) {
  * which prints legibly.
  *
  * `charts` (optional, from Reportes' loaded stats): `[{key, title,
- * Component, data}]` -- when present, PDF and Imprimir each get one extra
- * page per chart (captured as a PNG via html2canvas, see
- * ChartCaptureArea/captureChartImages below). Excel and JSON never get
- * charts -- a spreadsheet/data response has nowhere sensible to put an
- * image, only a formatted document does.
+ * Component, data}]` -- when present, PDF gets one extra page per chart
+ * (captured as a PNG via html2canvas-pro, see
+ * ChartCaptureArea/captureChartImages below). Imprimir stays plain fichas
+ * only -- tried adding the same chart pages there too, but the captured
+ * images weren't rendering in the print output (only each chart's title
+ * showed), so that path was reverted; only PDF gets charts. Excel and JSON
+ * never get charts either -- a spreadsheet/data response has nowhere
+ * sensible to put an image, only a formatted document does.
  */
 export default function ExportPreviewModal({ open, onClose, campaignId, charts = [] }) {
   const [data, setData] = useState(null)
@@ -226,14 +223,12 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
   const [busyFormat, setBusyFormat] = useState('')
   const [campaigns, setCampaigns] = useState([])
   const [selection, setSelection] = useState(campaignId ? String(campaignId) : '')
-  const [printCharts, setPrintCharts] = useState(null)
   const chartNodeRefs = useRef({})
 
   // Every time the modal opens, start from whatever campaign is active on
   // the map -- reopening never resumes a stale selection from last time.
   useEffect(() => {
     if (open) setSelection(campaignId ? String(campaignId) : '')
-    else setPrintCharts(null)
   }, [open, campaignId])
 
   useEffect(() => {
@@ -307,16 +302,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
         const chartImages = await captureChartImages()
         await detectionApi.exportCampaignReportPdf(selectedCampaignId, opts, chartImages)
       } else if (kind === 'json') downloadJson()
-      else if (kind === 'print') {
-        const chartImages = await captureChartImages()
-        // Must land in the DOM before window.print() reads it -- flushSync
-        // forces that commit synchronously instead of React's normal
-        // deferred flush, which could otherwise lose the race and print
-        // without the charts (same class of timing bug as the portal/CSS
-        // print issues documented elsewhere in this file).
-        flushSync(() => setPrintCharts(chartImages))
-        window.print()
-      }
+      else if (kind === 'print') window.print()
       if (kind !== 'print') toast.success('Reporte generado.')
     } catch (err) {
       toast.error(err.message || 'No se pudo generar el reporte.')
@@ -430,7 +416,7 @@ export default function ExportPreviewModal({ open, onClose, campaignId, charts =
         </div>
       </Modal>
       <ChartCaptureArea charts={charts} nodeRefs={chartNodeRefs} />
-      <PrintReport data={!blocked && data?.rows.length ? data : null} charts={printCharts} />
+      <PrintReport data={!blocked && data?.rows.length ? data : null} />
     </>
   )
 }
