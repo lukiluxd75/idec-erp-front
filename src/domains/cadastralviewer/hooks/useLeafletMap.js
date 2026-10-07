@@ -78,3 +78,80 @@ export function useLeafletMap({ targetElement, active, layers = [], onFeatureInf
 
     imageryLayerRef.current = layer;
   }, [imageryLayers]);
+
+  // 1. Inicialización del mapa
+  useEffect(() => {
+    if (!active || mapRef.current || !targetElement) return undefined;
+
+    const map = L.map(targetElement, {
+      center: INITIAL_CENTER,
+      zoom: INITIAL_ZOOM,
+      maxZoom: MAX_ZOOM,
+      zoomControl: false,
+    });
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    map.on('moveend', () => {
+      const center = map.getCenter();
+      setCoords({ lat: center.lat, lng: center.lng, zoom: map.getZoom() });
+    });
+
+    map.on('click', (e) => {
+      if (onFeatureInfoRef.current) {
+        onFeatureInfoRef.current(e.latlng, map);
+      }
+    });
+
+    mapRef.current = map;
+    setInitialized(true);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      setInitialized(false);
+    };
+  }, [active, targetElement]);
+
+  // 2. Carga de la capa satelital base cuando cambia el año
+  useEffect(() => {
+    if (mapRef.current && selectedYear) {
+      loadImageryForYear(mapRef.current, selectedYear);
+    }
+  }, [selectedYear, loadImageryForYear]);
+
+  // 3. Manejo de las capas vectoriales (overlays)
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+
+    vectorLayers.forEach((layerDef) => {
+      const layerId = layerDef.id || layerDef.name;
+      const isActive = activeOverlays[layerId];
+      const existingLayer = overlayLayersRef.current[layerId];
+
+      if (isActive && !existingLayer) {
+        const newLayer = createWmsLayer(layerDef, true);
+        newLayer.addTo(map);
+        newLayer.bringToFront();
+        overlayLayersRef.current[layerId] = newLayer;
+      } else if (!isActive && existingLayer) {
+        map.removeLayer(existingLayer);
+        delete overlayLayersRef.current[layerId];
+      }
+    });
+  }, [activeOverlays, vectorLayers]);
+
+  return {
+    map: mapRef.current,
+    initialized,
+    year: selectedYear,
+    setYear,
+    years,
+    isLoadingLayer,
+    coords,
+    activeOverlays,
+    setActiveOverlays,
+    vectorLayers
+  };
+}

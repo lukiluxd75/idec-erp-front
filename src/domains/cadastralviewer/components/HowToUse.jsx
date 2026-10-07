@@ -1,5 +1,6 @@
-// Instructions block explaining how to use the viewer.
+import React from 'react';
 
+// Instructions block explaining how to use the viewer.
 const STEPS = [
   { icon: '🗺️', title: '1. Abra el mapa', text: 'Toque cualquier parte de esta pantalla para abrir el visor interactivo satelital.' },
   { icon: '🔍', title: '2. Busque lo que necesita', text: <>Use los botones laterales o escriba el <b>código catastral</b> o la <b>dirección</b> para buscar predios, calles o <b>trámites</b>.</> },
@@ -17,3 +18,16 @@ export default function HowToUse() {
       </p>
 
       <ol className="vc-steps">
+        {STEPS.map((step, index) => (
+          <li key={index} className="vc-step">
+            <div className="vc-step-icon">{step.icon}</div>
+            <div className="vc-step-content">
+              <strong>{step.title}</strong>
+              <p>{step.text}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
