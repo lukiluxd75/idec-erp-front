@@ -1,4 +1,6 @@
-/** API endpoint catalog (service-oriented architecture). */
+/**
+ * API endpoint catalog (service-oriented architecture).
+ */
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/login',
@@ -75,6 +77,19 @@ export const API_ENDPOINTS = {
       `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/observations`,
     MIGRATE: (formNumber) => `/api/appraisal-review/appraisals/${encodeURIComponent(formNumber)}/migrate`,
   },
+  CADASTRAL_VIEWER: {
+    PROCEDURES: '/api/cadastralviewer/procedures',
+    ADMIN_PROCEDURES: '/api/cadastralviewer/procedures/admin',
+    PROCEDURE: (id) => `/api/cadastralviewer/procedures/${id}`,
+    LAYERS: '/api/cadastralviewer/layers',
+    ADMIN_LAYERS: '/api/cadastralviewer/layers/admin',
+    LAYER: (id) => `/api/cadastralviewer/layers/${id}`,
+    SEARCH: '/api/cadastralviewer/search',
+    ADVERTISEMENTS: '/api/cadastralviewer/advertisements',
+    ADMIN_ADVERTISEMENTS: '/api/cadastralviewer/advertisements/admin',
+    ADVERTISEMENT: (id) => `/api/cadastralviewer/advertisements/${id}`,
+    UPLOAD_ADVERTISEMENT: '/api/cadastralviewer/advertisements/upload',
+  },
   TEMPLATES: {
     BASE: '/api/templates',
     ONE: (id) => `/api/templates/${id}`,
@@ -96,7 +111,6 @@ export const API_ENDPOINTS = {
     CAPTURE_IMAGE: (id) => `/api/folder-analysis/captures/${id}/image`,
     CAPTURE_PREVIEW: (id) => `/api/folder-analysis/captures/${id}/preview`,
     CAPTURE_THUMBNAIL: (id) => `/api/folder-analysis/captures/${id}/thumbnail`,
-    // Indicador "Celular conectado".
     CAPTURES_PRESENCE: '/api/folder-analysis/captures/presence',
     DOCUMENTS: '/api/folder-analysis/documents',
     REVIEWED_DOCUMENTS: '/api/folder-analysis/documents/reviewed',

@@ -1,18 +1,16 @@
-import { VECTOR_LAYERS } from '../data/wmsConfig';
-
 // Chips to toggle WMS vector layers (manzanas, vías, predios).
-export default function OverlayChips({ activeOverlays, onToggle }) {
+export default function OverlayChips({ layers, activeOverlays, onToggle }) {
   return (
     <div className="vc-overlays-bar">
       <span className="vc-ol-label">Capas:</span>
-      {Object.entries(VECTOR_LAYERS).map(([key, cfg]) => (
+      {layers.map((layer) => (
         <button
-          key={key}
+          key={layer.code}
           type="button"
-          className={`vc-ol-chip ${activeOverlays[key] ? 'on' : ''}`}
-          onClick={() => onToggle(key)}
+          className={`vc-ol-chip ${activeOverlays[layer.code] ? 'on' : ''}`}
+          onClick={() => onToggle(layer.code)}
         >
-          <span className="vc-dot" /> {cfg.label}
+          <span className="vc-dot" /> {layer.name}
         </button>
       ))}
     </div>

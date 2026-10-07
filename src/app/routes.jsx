@@ -62,19 +62,13 @@ export function AppRoutes() {
           }
         />
 
-        <Route element={<ProtectedRoute />}>
-          {Array.isArray(cadastralViewerRoutes) && cadastralViewerRoutes.map((route) => (
-            <Route
-              key={route.path}
-              path={route.path}
-              element={
-                <Suspense fallback={<div style={{ height: '100dvh' }} />}>
-                  {route.element}
-                </Suspense>
-              }
-            />
-          ))}
-        </Route>
+        {cadastralViewerRoutes.filter((route) => route.path === '/kiosk').map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={<Suspense fallback={<div style={{ height: '100dvh' }} />}>{route.element}</Suspense>}
+          />
+        ))}
 
         <Route
           element={
