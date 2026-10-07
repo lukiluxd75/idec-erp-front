@@ -1,4 +1,4 @@
-import { ArrowLeft, Bug, Compass, FileSpreadsheet, Landmark, Save, ScanText, Table2, Trash2 } from 'lucide-react'
+import { ArrowLeft, Bug, Compass, FileSpreadsheet, Save, ScanText, Table2, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -6,7 +6,9 @@ import { toast } from 'react-toastify'
 import { ENV } from '@/core/config/env.config'
 import { resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
 import { ColindanciasSection } from '@/domains/resolutions/components/ColindanciasSection'
+import { GeneralDataForm } from '@/domains/resolutions/components/GeneralDataForm'
 import { PlanPagesSection } from '@/domains/resolutions/components/PlanPagesSection'
+import { ResolutionTabs } from '@/domains/resolutions/components/ResolutionTabs'
 import { StatusBadge } from '@/domains/resolutions/components/StatusBadge'
 import { SurfacesTable } from '@/domains/resolutions/components/SurfacesTable'
 import { plantasDePagina } from '@/domains/resolutions/utils/plantasCatalog'
@@ -14,7 +16,7 @@ import { buildRows, downloadBlob, fillSheet2 } from '@/domains/resolutions/utils
 import { parseSuperficiesPage } from '@/domains/resolutions/utils/surfacesOcrParser'
 import { detectAndDeskewTable } from '@/domains/resolutions/utils/tableLineDetector'
 import { ocrImage } from '@/shared/colindancias/ocrClient'
-import { Alert, Button, Card, ConfirmDialog, Input, SectionHeader, Spinner } from '@/shared/ui'
+import { Alert, Button, Card, ConfirmDialog, SectionHeader, Spinner } from '@/shared/ui'
 
 const TEMPLATE_URL = '/plantilla-ph.xlsm'
 
@@ -34,22 +36,12 @@ const DATOS_GENERALES_VACIO = {
   ci2: '',
 }
 
-function Campo({ campo, datosGenerales, setDatosGenerales, ...props }) {
-  return (
-    <Input
-      value={datosGenerales[campo]}
-      onChange={(e) => setDatosGenerales((prev) => ({ ...prev, [campo]: e.target.value }))}
-      {...props}
-    />
-  )
-}
-
 export default function ResolutionPage() {
   const { id } = useParams()
   const navigate = useNavigate()
 
   const [confirmarEliminar, setConfirmarEliminar] = useState(false)
-  const [pestana, setPestana] = useState('superficies') // 'superficies' | 'colindancias'
+  const [pestana, setPestana] = useState(null) // null | 'superficies' | 'colindancias'
   const [resolucion, setResolucion] = useState(null)
   const [paginasImg, setPaginasImg] = useState([]) // [{ orden, url, blob }]
   const [loadingPage, setLoadingPage] = useState(true)
@@ -315,248 +307,126 @@ export default function ResolutionPage() {
             </div>
           }
         />
-
-        <div className="flex flex-wrap gap-3">
-          {paginasImg.map((p) => (
-            <a key={p.orden} href={p.url} target="_blank" rel="noreferrer">
-              <img
-                src={p.url}
-                alt={`Página ${p.orden}`}
-                className="h-28 w-24 rounded-xl border border-white/60 object-cover shadow-xs transition hover:shadow-md"
-              />
-            </a>
-          ))}
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Button icon={ScanText} onClick={runOcr} loading={ocrRunning}>
-            {paginasTabla ? 'Volver a extraer con OCR' : 'Extraer con OCR'}
-          </Button>
-          {ocrDiagnostics && (
-            <Button variant="secondary" icon={Bug} onClick={downloadOcrDiagnostics}>
-              Descargar diagnóstico OCR
-            </Button>
-          )}
-        </div>
-        {ocrError && (
-          <Alert type="error" className="mt-3">
-            {ocrError}
-          </Alert>
-        )}
       </Card>
 
-      <Card className="animate-card-in">
-        <SectionHeader
-          icon={Landmark}
-          eyebrow="Plano de división"
-          title="Datos generales del edificio"
-          subtitle="No salen del escaneo de la tabla — se transcriben a mano mirando el plano aprobado y la resolución. Se escriben directo en la hoja INICIO del Excel al generar."
-        />
-
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Identificación catastral
-        </p>
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Campo
-            label="Código catastral"
-            placeholder="00-000-000-0-00-000-000"
-            campo="codigoCatastral"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="Distrito"
-            type="number"
-            campo="distrito"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="Subalcaldía"
-            campo="subalcaldia"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="Zona homogénea"
-            placeholder="Ej. ZONA 6"
-            campo="zonaHomogenea"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-        </div>
-
-        <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Ubicación</p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo
-            label="Calle o avenida"
-            campo="calle"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="Edificio / Proyecto"
-            placeholder='Ej. Edificio "Don Juan"'
-            campo="edificio"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-        </div>
-
-        <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Resolución ejecutiva
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Campo
-            label="N° Resolución Ejecutiva"
-            placeholder="102/2026"
-            campo="resolucionEjecutiva"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="Fecha de la R.E."
-            placeholder="DD/MM/AAAA"
-            campo="fechaResolucion"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="Fecha de plano aprobado"
-            placeholder="DD/MM/AAAA"
-            campo="fechaPlanoAprobado"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-        </div>
-
-        <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
-          Propietario(s) y superficie de lote
-        </p>
-        <div className="grid gap-4 sm:grid-cols-4">
-          <div className="sm:col-span-2">
-            <Campo
-              label="Propietario(s)"
-              placeholder="Nombre completo"
-              campo="propietario"
-              datosGenerales={datosGenerales}
-              setDatosGenerales={setDatosGenerales}
-            />
-          </div>
-          <Campo
-            label="C.I. propietario 1"
-            type="number"
-            campo="ci1"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-          <Campo
-            label="C.I. propietario 2"
-            type="number"
-            campo="ci2"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-4">
-          <Campo
-            label="Sup. de lote (m²)"
-            type="number"
-            campo="supLote"
-            datosGenerales={datosGenerales}
-            setDatosGenerales={setDatosGenerales}
-          />
-        </div>
-
-        <div className="mt-4">
-          <Button variant="secondary" icon={Save} onClick={saveGeneralData} loading={savingGeneralData}>
-            Guardar datos generales
-          </Button>
-        </div>
-      </Card>
-
-      <PlanPagesSection
-        resolutionId={id}
-        planPages={resolucion.plan_pages || []}
-        onChanged={refrescarResolucion}
+      <GeneralDataForm
+        datosGenerales={datosGenerales}
+        setDatosGenerales={setDatosGenerales}
+        onSave={saveGeneralData}
+        saving={savingGeneralData}
       />
 
-      <div role="tablist" aria-label="Resultados del OCR" className="flex gap-2 border-b border-slate-200">
-        {[
+      <ResolutionTabs
+        label="Secciones de la resolución"
+        tabs={[
           { id: 'superficies', label: 'Tabla de superficies', icon: Table2 },
           { id: 'colindancias', label: 'Colindancias', icon: Compass },
-        ].map(({ id: tabId, label, icon: Icon }) => (
-          <button
-            key={tabId}
-            type="button"
-            role="tab"
-            aria-selected={pestana === tabId}
-            onClick={() => setPestana(tabId)}
-            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
-              pestana === tabId
-                ? 'border-accent-600 text-accent-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
-      </div>
+        ]}
+        value={pestana}
+        onChange={setPestana}
+      />
 
       {/* Las dos pestañas quedan montadas (solo se ocultan): ColindanciasSection
-          guarda el resultado del OCR y las imágenes en su propio estado, y
-          desmontarla al cambiar de pestaña lo perdería. */}
-      <div role="tabpanel" hidden={pestana !== 'superficies'}>
-      {paginasTabla && (
-        <Card className="animate-card-in">
+          y PlanPagesSection guardan el resultado del OCR y las imágenes en su
+          propio estado, y desmontarlas al cambiar de pestaña lo perdería. */}
+      <div
+        role="tabpanel"
+        id="panel-superficies"
+        aria-labelledby="tab-superficies"
+        hidden={pestana !== 'superficies'}
+        className="animate-panel-in space-y-6"
+      >
+        <Card>
           <SectionHeader
-            icon={Table2}
-            eyebrow="Hoja2"
-            title="Tabla de superficies"
-            subtitle="Asigne qué es cada columna, corrija lo que el OCR haya leído mal (rojo) y complete la Planta."
+            icon={ScanText}
+            title="Páginas escaneadas"
+            subtitle={
+              paginasTabla
+                ? 'Si el OCR leyó mal, puede volver a extraer la tabla.'
+                : 'Todavía no hay tabla de superficies. Pulse "Extraer con OCR" para llenarla.'
+            }
           />
-          <div className="-mx-2 overflow-x-auto px-2">
-            <SurfacesTable
-              paginas={paginasTabla}
-              onRoleChange={onRoleChange}
-              onCellChange={onCellChange}
-              onPlantaChange={onPlantaChange}
-              onBloqueChange={onBloqueChange}
-              onDeleteRow={onDeleteRow}
-            />
+          <div className="flex flex-wrap gap-3">
+            {paginasImg.map((p) => (
+              <a key={p.orden} href={p.url} target="_blank" rel="noreferrer">
+                <img
+                  src={p.url}
+                  alt={`Página ${p.orden}`}
+                  className="h-28 w-24 rounded-xl border border-white/60 object-cover shadow-xs transition hover:shadow-md"
+                />
+              </a>
+            ))}
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button variant="secondary" icon={Save} onClick={() => saveTable('en_proceso')} loading={saving}>
-              Guardar borrador
+            <Button icon={ScanText} onClick={runOcr} loading={ocrRunning}>
+              {paginasTabla ? 'Volver a extraer con OCR' : 'Extraer con OCR'}
             </Button>
-            <Button icon={FileSpreadsheet} onClick={generateExcel} loading={generating}>
-              Generar Excel
-            </Button>
+            {ocrDiagnostics && (
+              <Button variant="secondary" icon={Bug} onClick={downloadOcrDiagnostics}>
+                Descargar diagnóstico OCR
+              </Button>
+            )}
           </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Celdas con confianza &lt; {ENV.OCR_CONFIDENCE_THRESHOLD} van en rojo para revisar.
-          </p>
+          {ocrError && (
+            <Alert type="error" className="mt-3">
+              {ocrError}
+            </Alert>
+          )}
         </Card>
-      )}
-        {!paginasTabla && (
-          <Card className="animate-card-in">
-            <p className="text-sm text-slate-500">
-              Todavía no hay tabla de superficies. Pulse "Extraer con OCR" arriba para llenarla.
+
+        {paginasTabla && (
+          <Card>
+            <SectionHeader
+              icon={Table2}
+              eyebrow="Hoja2"
+              title="Tabla de superficies"
+              subtitle="Asigne qué es cada columna, corrija lo que el OCR haya leído mal (rojo) y complete la Planta."
+            />
+            <div className="-mx-2 overflow-x-auto px-2">
+              <SurfacesTable
+                paginas={paginasTabla}
+                onRoleChange={onRoleChange}
+                onCellChange={onCellChange}
+                onPlantaChange={onPlantaChange}
+                onBloqueChange={onBloqueChange}
+                onDeleteRow={onDeleteRow}
+              />
+            </div>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button variant="secondary" icon={Save} onClick={() => saveTable('en_proceso')} loading={saving}>
+                Guardar borrador
+              </Button>
+              <Button icon={FileSpreadsheet} onClick={generateExcel} loading={generating}>
+                Generar Excel
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              Celdas con confianza &lt; {ENV.OCR_CONFIDENCE_THRESHOLD} van en rojo para revisar.
             </p>
           </Card>
         )}
       </div>
 
-      <div role="tabpanel" hidden={pestana !== 'colindancias'}>
-      <ColindanciasSection
-        resolutionId={id}
-        resolutionNumber={resolucion.resolution_number}
-        planPages={paginasPorPlanta}
-        unidadesPorPlanta={unidadesPorPlanta}
-        colindancias={colindancias}
-        setColindancias={setColindancias}
-      />
+      <div
+        role="tabpanel"
+        id="panel-colindancias"
+        aria-labelledby="tab-colindancias"
+        hidden={pestana !== 'colindancias'}
+        className="animate-panel-in space-y-6"
+      >
+        <PlanPagesSection
+          resolutionId={id}
+          planPages={resolucion.plan_pages || []}
+          onChanged={refrescarResolucion}
+        />
+        <ColindanciasSection
+          resolutionId={id}
+          resolutionNumber={resolucion.resolution_number}
+          planPages={paginasPorPlanta}
+          unidadesPorPlanta={unidadesPorPlanta}
+          colindancias={colindancias}
+          setColindancias={setColindancias}
+        />
       </div>
 
       <ConfirmDialog
