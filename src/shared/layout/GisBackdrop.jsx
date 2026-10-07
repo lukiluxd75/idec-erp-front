@@ -1,8 +1,5 @@
 import watermarkCocha from '@/assets/watermark/cocha-skyline-color.png'
 
-// Very fine fractal noise in SVG — standard technique to add grain/texture to a flat
-// gradient background without loading an image. encodeURIComponent avoids hand-escaping
-// special characters (#, %) in the data URI.
 const NOISE_SVG = `
 <svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'>
   <filter id='n'>
@@ -12,15 +9,7 @@ const NOISE_SVG = `
 </svg>`
 const NOISE_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(NOISE_SVG)}`
 
-/**
- * Fixed app-wide backdrop: institutional gradient + subtle texture for depth.
- * Layers above the gradient, all pointer-events-none and very faint so they do not compete
- * with the glass cards on top:
- *  - fine grain (noise) — removes the flatness of a smooth gradient
- *  - grid — cartographic nod (GIS domain) and "graph paper" depth
- *  - Cochabamba skyline pinned at the bottom — watermark as "ground", barely visible
- *  - radial vignette — slightly darkens corners for focus/perspective
- */
+/** Fixed app-wide backdrop: institutional gradient + subtle texture for depth. */
 export function GisBackdrop() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-gradient-to-br from-accent-300 via-accent-400 to-accent-500">

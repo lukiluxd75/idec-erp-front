@@ -1,9 +1,6 @@
 import { STORAGE_KEYS } from '@/core/config/storage.config'
 
-/**
- * Servicio de almacenamiento local (Storage Service)
- * Encapsulates direct localStorage access for decoupling and testing
- */
+/** Servicio de almacenamiento local (Storage Service) Encapsulates direct localStorage access for decoupling and testing / */
 export const storageService = {
   /**
    * Stores the authentication token
@@ -59,9 +56,7 @@ export const storageService = {
     return localStorage.getItem(STORAGE_KEYS.AUTH_USERNAME)
   },
 
-  /**
-   * Clears all stored session data
-   */
+  /** Clears all stored session data / */
   clearAuth() {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.AUTH_USERNAME)

@@ -1,8 +1,16 @@
 import { Component, useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
+import { toast } from 'react-toastify'
 import 'leaflet/dist/leaflet.css'
 import '../styles/detection-precision-cursor.css'
-import { Alert, Button } from '@/shared/ui'
+import { Alert, Badge, Button } from '@/shared/ui'
+import {
+  createProcessedSectorsLayer,
+  findOverlappingSector,
+  renderProcessedSectors,
+} from '../utils/processedSectorsLayer'
+import { createParcelHighlightLayer, renderParcelHighlight } from '../utils/parcelHighlightLayer'
+import MapSearchBox from './MapSearchBox'
 
 const DEFAULT_CENTER = [-17.39325, -66.15625]
 const DEFAULT_ZOOM = 17
@@ -104,19 +112,39 @@ function DetectionMapInner({
   basemapYear,
   onBasemapYearChange,
   height = 560,
+  processedSectors = [],
+  onViewSectorDetail,
+  presetPolygon = null,
+  highlightParcelGeom = null,
+  resetSignal = null,
+  onClearHighlight,
+  campaignSelected = true,
+  onSearchSelectSector,
+  onSearchSelectParcel,
+  onSearchSelectCampaign,
 }) {
   const mapRef = useRef(null)
   const mapInstance = useRef(null)
   const drawnLayer = useRef(null)
+  const processedLayer = useRef(null)
+  const highlightLayer = useRef(null)
   const baseLayer = useRef(null)
   const overlaysRef = useRef({})
   const pointsRef = useRef([])
   const onPolygonChangeRef = useRef(onPolygonChange)
+  const redrawPolygonRef = useRef(() => {})
+  const processedSectorsRef = useRef(processedSectors)
+  const onClearHighlightRef = useRef(onClearHighlight)
+  const campaignSelectedRef = useRef(campaignSelected)
   const [ready, setReady] = useState(false)
   const [layersOn, setLayersOn] = useState(() =>
     Object.fromEntries(OVERLAY_DEFS.map((d) => [d.key, d.defaultOn]))
   )
   onPolygonChangeRef.current = onPolygonChange
+  redrawPolygonRef.current = redrawPolygon
+  processedSectorsRef.current = processedSectors
+  onClearHighlightRef.current = onClearHighlight
+  campaignSelectedRef.current = campaignSelected
 
   const gisHost = (hosts && hosts[0]) || GIS_HOSTS[0]
 
@@ -142,6 +170,8 @@ function DetectionMapInner({
 
     mapInstance.current = map
     drawnLayer.current = L.layerGroup().addTo(map)
+    processedLayer.current = createProcessedSectorsLayer(map)
+    highlightLayer.current = createParcelHighlightLayer(map)
     overlaysRef.current = {}
     map.getContainer().classList.add('detection-precision-cursor')
     map.getContainer().style.cursor = 'crosshair'
@@ -154,8 +184,30 @@ function DetectionMapInner({
     }
 
     const onClick = (event) => {
+      // Every processed sector must belong to a campaign (engineer's rule) --
+      // "Sin campaña" is view-only on the map, drawing is blocked until the
+      // architect picks a real campaign.
+      if (!campaignSelectedRef.current) {
+        toast.warn('Seleccione una campaña antes de dibujar un polígono.')
+        return
+      }
+      // Drawing a new area means any prior "explorar predio" highlight no
+      // longer applies -- same rule for "clicks anywhere else on the map"
+      // (the other half lives in DetectionPage's onViewSectorDetail wrapper,
+      // for clicks on an existing processed-sector polygon instead).
+      onClearHighlightRef.current?.()
       const { lat, lng } = event.latlng
-      pointsRef.current.push([lng, lat])
+      const newPoint = [lng, lat]
+      const hit = findOverlappingSector(newPoint, pointsRef.current, processedSectorsRef.current)
+      if (hit) {
+        pointsRef.current = []
+        redrawPolygon(true)
+        toast.warn(
+          `Esta zona ya tiene un sector procesado (${hit.name || `#${hit.id}`}) en esta campaña. Vuelva a dibujar el polígono evitándolo.`
+        )
+        return
+      }
+      pointsRef.current.push(newPoint)
       redrawPolygon()
     }
     map.on('click', onClick)
@@ -180,12 +232,36 @@ function DetectionMapInner({
       }
       mapInstance.current = null
       drawnLayer.current = null
+      processedLayer.current = null
+      highlightLayer.current = null
       baseLayer.current = null
       overlaysRef.current = {}
       clearLeafletNode(node)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!ready || !mapInstance.current || !processedLayer.current) return
+    renderProcessedSectors(mapInstance.current, processedLayer.current, processedSectors, onViewSectorDetail)
+  }, [ready, processedSectors, onViewSectorDetail])
+
+  useEffect(() => {
+    if (!ready || !mapInstance.current || !highlightLayer.current) return
+    renderParcelHighlight(mapInstance.current, highlightLayer.current, highlightParcelGeom)
+  }, [ready, highlightParcelGeom])
+
+  useEffect(() => {
+    if (!ready || !presetPolygon) return
+    pointsRef.current = presetPolygon
+    redrawPolygonRef.current(true)
+  }, [ready, presetPolygon])
+
+  useEffect(() => {
+    if (!ready || resetSignal == null) return
+    pointsRef.current = []
+    redrawPolygonRef.current(true)
+  }, [ready, resetSignal])
 
   useEffect(() => {
     if (!ready || !mapInstance.current) return
@@ -346,9 +422,20 @@ function DetectionMapInner({
             <Button type="button" variant="secondary" size="sm" onClick={clearDrawing}>
               Limpiar área
             </Button>
-            <p className="text-[11px] font-medium text-slate-600 sm:ml-1">
-              Pulse el mapa para dibujar · mínimo 3 vértices
-            </p>
+            {campaignSelected ? (
+              <p className="text-[11px] font-medium text-slate-600 sm:ml-1">
+                Pulse el mapa para dibujar · mínimo 3 vértices
+              </p>
+            ) : (
+              <p className="text-[11px] font-bold text-amber-600 sm:ml-1">
+                Seleccione una campaña para poder dibujar
+              </p>
+            )}
+            <MapSearchBox
+              onSelectSector={onSearchSelectSector}
+              onSelectParcel={onSearchSelectParcel}
+              onSelectCampaign={onSearchSelectCampaign}
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
@@ -362,6 +449,10 @@ function DetectionMapInner({
                 onChange={(v) => setLayer(d.key, v)}
               />
             ))}
+            <Badge variant="accent" className="ml-auto">
+              {processedSectors.length} sector{processedSectors.length === 1 ? '' : 'es'} procesado
+              {processedSectors.length === 1 ? '' : 's'}
+            </Badge>
           </div>
         </div>
         <div

@@ -13,8 +13,6 @@ const EMPTY_FORM = {
   reinicia_por_gestion: true,
 }
 
-/** Registers a new sigla (área + tipo de documento): its own independent CITE
- * counter starts the first time it is used to generate one. */
 export function CiteConfiguracionFormModal({ open, onClose, onSaved }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)

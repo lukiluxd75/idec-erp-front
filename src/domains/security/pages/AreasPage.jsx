@@ -15,9 +15,7 @@ import {
 import { useSecurityData, securityActions } from '../data/securityStore'
 import { AreaFormModal } from '../components/AreaFormModal'
 
-/**
- * Organizational areas catalog. Role assignment happens on Users; permissions on Roles.
- */
+/** Organizational areas catalog. */
 export default function AreasPage() {
   const { areas, users, loading, error } = useSecurityData()
   const [editingArea, setEditingArea] = useState(undefined)

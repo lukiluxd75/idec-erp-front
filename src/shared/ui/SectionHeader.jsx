@@ -1,13 +1,9 @@
 import { cn } from '@/shared/utils'
 
-/**
- * Icon + eyebrow + title header used at the top of section cards (domain pages,
- * DashboardPage). `subtitle` and `actions` are optional (e.g. a refresh button on the
- * right) — see domains/resolutions for a usage with both.
- */
+/** Icon + eyebrow + title header used at the top of section cards (domain pages, DashboardPage). */
 export function SectionHeader({ icon: Icon, eyebrow, title, subtitle, actions, className = '' }) {
   return (
-    <div className={cn('mb-6 flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4', className)}>
+    <div className={cn('mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-slate-200/60 pb-4', className)}>
       <div className="flex items-center gap-3">
         {Icon && (
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600 ring-1 ring-accent-200">
@@ -20,7 +16,11 @@ export function SectionHeader({ icon: Icon, eyebrow, title, subtitle, actions, c
           {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
         </div>
       </div>
-      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex shrink items-center justify-end gap-2 max-sm:w-full max-sm:flex-wrap sm:shrink-0">
+          {actions}
+        </div>
+      )}
     </div>
   )
 }

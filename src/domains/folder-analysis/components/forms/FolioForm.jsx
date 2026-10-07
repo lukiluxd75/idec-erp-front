@@ -9,15 +9,14 @@ import {
 } from '@/domains/folder-analysis/utils/documentMeta'
 import { emptyEntry, emptyOwner } from '@/domains/folder-analysis/utils/formDefaults'
 import { Button } from '@/shared/ui'
+import { cn } from '@/shared/utils'
 
 const MULTILINE = new Set(['location', 'authority', 'document', 'filing'])
 
-/**
- * Review form for a Folio Real: the property description block and column
- * "A) Titularidad sobre el dominio", one card per asiento.
- */
-export function FolioForm({ value, onChange }) {
+export function FolioForm({ value, onChange, lowConfidence: flagged }) {
   const entries = value.ownership_entries
+  // Fields the reading was not sure about, already in this form's own keys.
+  const lowConfidence = new Set(flagged || [])
   const set = (key, v) => onChange({ ...value, [key]: v })
   const setEntries = (next) => set('ownership_entries', next)
   const setEntry = (i, patch) => setEntries(entries.map((e, j) => (j === i ? { ...e, ...patch } : e)))
@@ -33,12 +32,13 @@ export function FolioForm({ value, onChange }) {
         <div className="grid gap-3 sm:grid-cols-2">
           {FOLIO_FIELDS.map(([key, label]) => (
             <FieldInput key={key} label={label} value={value[key]} multiline={MULTILINE.has(key)}
-              onChange={(v) => set(key, v)} />
+              warn={lowConfidence.has(key)} onChange={(v) => set(key, v)} />
           ))}
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {BOUNDARY_FIELDS.map(([key, label]) => (
             <FieldInput key={key} label={`Lindero ${label}`} value={value.boundaries[key]}
+              warn={lowConfidence.has(`boundaries.${key}`)}
               onChange={(v) => set('boundaries', { ...value.boundaries, [key]: v })} />
           ))}
         </div>
@@ -49,11 +49,21 @@ export function FolioForm({ value, onChange }) {
           A) Titularidad sobre el dominio
         </legend>
         {entries.length === 0 && <p className="text-sm text-slate-500">No se detectaron asientos.</p>}
-        {entries.map((entry, i) => (
-          <div key={i} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+        {entries.map((entry, i) => {
+          const entryWarn = lowConfidence.has(`ownership_entries.${i}`)
+          return (
+          <div key={i} className={cn(
+            'flex flex-col gap-3 rounded-xl border p-3',
+            entryWarn ? 'border-state-amber/50 bg-state-amber/5' : 'border-slate-200 bg-slate-50/60'
+          )}>
             <div className="flex items-end gap-2">
               <FieldInput label="Asiento Nº" value={entry.entry_number} className="w-28"
-                onChange={(v) => setEntry(i, { entry_number: v })} />
+                warn={entryWarn} onChange={(v) => setEntry(i, { entry_number: v })} />
+              {entryWarn && (
+                <span className="mb-2 text-[11px] font-semibold text-state-orange-deep">
+                  Lectura dudosa: compare este asiento con la foto.
+                </span>
+              )}
               <button type="button" title="Quitar asiento" onClick={() => setEntries(entries.filter((_, j) => j !== i))}
                 className="mb-1 ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-state-danger/10 hover:text-state-danger">
                 <Trash2 className="h-4 w-4" />
@@ -84,7 +94,8 @@ export function FolioForm({ value, onChange }) {
               ))}
             </div>
           </div>
-        ))}
+          )
+        })}
         <Button size="sm" variant="secondary" icon={Plus} className="self-start"
           onClick={() => setEntries([...entries, emptyEntry()])}>
           Agregar asiento

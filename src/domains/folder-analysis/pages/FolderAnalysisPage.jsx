@@ -1,84 +1,40 @@
-import { FolderSearch } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
-import { toast } from 'react-toastify'
+import { FolderSearch, FolderTree, Layers } from 'lucide-react'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
-import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
-import { DocumentSection } from '@/domains/folder-analysis/components/DocumentSection'
-import { InboxPanel } from '@/domains/folder-analysis/components/InboxPanel'
+import { ClassificationBoard } from '@/domains/folder-analysis/components/ClassificationBoard'
 import { DOC_TYPES } from '@/domains/folder-analysis/utils/documentMeta'
-import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
-import { Alert, Card, ConfirmDialog, SectionHeader, Spinner } from '@/shared/ui'
+import { folderTypeOf, useCatalog } from '@/domains/folder-analysis/utils/catalog'
+import { Alert, Button, Card, SectionHeader, Select, Spinner } from '@/shared/ui'
 
+const STORAGE_KEY = 'folder-analysis.folder-type'
+
+function remembered() {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || ''
+  } catch {
+    return ''
+  }
+}
+
+/** El tablero de clasificación. */
 export default function FolderAnalysisPage() {
-  const [captures, setCaptures] = useState([])
-  const [documents, setDocuments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [confirm, setConfirm] = useState(null)
+  const { catalog, error, loading } = useCatalog()
+  const [typeKey, setTypeKey] = useState(remembered)
 
-  // `loading` only covers the first load; the polling refreshes are silent.
-  const refresh = useCallback(
-    () =>
-      Promise.all([folderAnalysisApi.inbox(), folderAnalysisApi.documents()])
-        .then(([inbox, docs]) => {
-          setCaptures(inbox)
-          setDocuments(docs)
-          setError(null)
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setLoading(false)),
-    []
-  )
+  // Con el catálogo en mano se resuelve qué tipo mostrar: el recordado, si todavía existe.
+  const types = catalog?.folder_types || []
+  const current = folderTypeOf(catalog, typeKey) || folderTypeOf(catalog, 'general') || types[0] || null
+  const lanes = current ? DOC_TYPES.filter((type) => current.document_types.includes(type.id)) : []
 
-  useEffect(() => {
-    refresh()
-  }, [refresh])
-
-  // Always on while the screen is open: new photos from the phone and the analysis
-  // progress both arrive by polling.
-  usePollWhile(true, refresh)
-
-  const run = async (action, successMessage) => {
-    setBusy(true)
+  const elegir = (key) => {
+    setTypeKey(key)
     try {
-      await action()
-      if (successMessage) toast.success(successMessage)
-    } catch (e) {
-      toast.error(e.message)
-    } finally {
-      setBusy(false)
-      refresh()
+      localStorage.setItem(STORAGE_KEY, key)
+    } catch {
+      // Sin almacenamiento del navegador se pierde la preferencia y nada más.
     }
   }
-
-  const handlers = {
-    onCreate: (docType, captureId) => run(() => folderAnalysisApi.createDocument(docType, [captureId])),
-    onAddPage: (document, captureId) =>
-      run(() => folderAnalysisApi.setPages(document.id, [...document.pages.map((p) => p.capture_id), captureId])),
-    onSetPages: (document, captureIds) => run(() => folderAnalysisApi.setPages(document.id, captureIds)),
-    onAnalyze: (document) =>
-      run(
-        () => folderAnalysisApi.analyze(document.id),
-        'Documento enviado a analizar. Los datos aparecerán en unos minutos.'
-      ),
-    onDelete: (document) =>
-      setConfirm({
-        title: '¿Eliminar documento?',
-        message:
-          document.status === 'reviewed'
-            ? 'Se perderán los datos revisados. Las fotos vuelven a "Fotos recibidas".'
-            : 'Las fotos vuelven a "Fotos recibidas" para que pueda clasificarlas de nuevo.',
-        onConfirm: () => run(() => folderAnalysisApi.deleteDocument(document.id)),
-      }),
-  }
-
-  const deleteCapture = (capture) =>
-    setConfirm({
-      title: '¿Eliminar foto?',
-      message: 'La foto se borra definitivamente. Si la necesita, tendrá que volver a tomarla con el celular.',
-      onConfirm: () => run(() => folderAnalysisApi.deleteCapture(capture.id)),
-    })
 
   return (
     <Card className="animate-card-in">
@@ -86,8 +42,21 @@ export default function FolderAnalysisPage() {
         icon={FolderSearch}
         eyebrow="Herramientas OCR+IA"
         title="Analizador y extractor de datos de carpetas"
-        subtitle="Las fotos que usted toma con la aplicación móvil llegan a la bandeja. Arrástrelas al apartado que corresponda y presione Analizar."
+        subtitle={
+          current
+            ? `Escanee una carpeta física completa de ${current.label.toLowerCase()}: bandeja a la izquierda y sus carriles a la derecha.`
+            : 'Escanee una carpeta física completa: bandeja a la izquierda y los carriles del tipo de carpeta elegido.'
+        }
+        actions={
+          <Link to="/folder-analysis/folders">
+            <Button variant="secondary" size="sm" icon={FolderTree}>
+              Carpetas registradas
+            </Button>
+          </Link>
+        }
       />
+
+      {error && <Alert type="error">{error}</Alert>}
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -95,36 +64,37 @@ export default function FolderAnalysisPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {error && <Alert type="error">{error}</Alert>}
-          <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
-            <InboxPanel
-              captures={captures}
-              disabled={busy}
-              onSend={handlers.onCreate}
-              onDelete={deleteCapture}
-            />
-            <div className="grid gap-4 xl:grid-cols-3">
-              {DOC_TYPES.map((type) => (
-                <DocumentSection
-                  key={type.id}
-                  type={type}
-                  documents={documents.filter((d) => d.doc_type === type.id)}
-                  busy={busy}
-                  {...handlers}
-                />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+            <Select
+              id="folder-type"
+              label="Tipo de carpeta a analizar"
+              value={current?.key || ''}
+              onChange={(event) => elegir(event.target.value)}
+              containerClassName="w-full sm:w-72"
+              className="py-2.5"
+            >
+              {types.map((type) => (
+                <option key={type.key} value={type.key}>
+                  {type.label}
+                </option>
               ))}
+            </Select>
+            <div className="min-w-0 flex-1 pt-1 sm:pt-6">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                <Layers className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                {lanes.map((lane) => lane.label).join(' · ')}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {current?.description} Cuando termine de escanear, pulse <strong>Guardar en carpeta</strong>{' '}
+                y escriba el número de la carpeta física: quedará en <strong>Carpetas registradas</strong>{' '}
+                con ese número como nombre.
+              </p>
             </div>
           </div>
+
+          <ClassificationBoard types={lanes} folderType={current?.key} folderTypeLabel={current?.label} />
         </div>
       )}
-
-      <ConfirmDialog
-        open={Boolean(confirm)}
-        onClose={() => setConfirm(null)}
-        onConfirm={confirm?.onConfirm}
-        title={confirm?.title}
-        message={confirm?.message}
-      />
     </Card>
   )
 }

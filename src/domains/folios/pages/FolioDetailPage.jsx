@@ -69,8 +69,7 @@ export default function FolioDetailPage() {
   const [saving, setSaving] = useState(false)
   const [dialog, setDialog] = useState(null) // 'confirm' | 'reprocess' | 'delete'
 
-  // `loading` only covers the first load. A refresh (websocket / poll) never
-  // overwrites unsaved edits.
+  // `loading` only covers the first load.
   const refresh = useCallback(
     () =>
       foliosApi

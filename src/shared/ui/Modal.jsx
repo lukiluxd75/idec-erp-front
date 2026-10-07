@@ -2,10 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
-/**
- * Generic design-system modal (see CLAUDE.md §3 — shared/ for domain-agnostic pieces).
- * Closes on Escape or click outside the panel.
- */
+/** Generic design-system modal (see CLAUDE.md §3 — shared/ for domain-agnostic pieces). */
 const SIZE_CLASS = {
   md: 'max-w-md',
   lg: 'max-w-2xl',
@@ -28,7 +25,7 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
@@ -36,7 +33,7 @@ export function Modal({ open, onClose, title, icon: Icon, children, className = 
         aria-modal="true"
         aria-label={title}
         onClick={(event) => event.stopPropagation()}
-        className={`animate-card-in w-full ${widthClass} rounded-3xl border border-slate-200/80 bg-white p-6 shadow-xl ${className}`}
+        className={`animate-card-in max-h-[calc(100dvh-2rem)] w-full overflow-y-auto overscroll-contain ${widthClass} rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xl sm:p-6 ${className}`}
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">

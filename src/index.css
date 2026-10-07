@@ -1,16 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  /* Tipografía y colores oficiales GAMC — Manual de Uso de Marca "Yo Amo Cocha" 2025
-     (paleta primaria y secundaria verificadas 1:1 contra los valores RGB del manual;
-     coincide con la paleta ya usada de https://github.com/FranciscoZambranaG/Dise-oGeneralGAMC) */
   --font-sans: "Poppins", ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Tipografía de acento — SOLO para resaltar una palabra/mensaje puntual (nunca cuerpo
-     de texto ni títulos completos, ver manual §Tipografía). Hello Bunny es de pago para
-     uso institucional/comercial (gratis solo para uso personal) y no está en Google Fonts:
-     hasta conseguir la licencia y el archivo real, se usa Caveat (Google Fonts, misma
-     familia manuscrita) como reemplazo visualmente equivalente. */
   --font-display: "Hello Bunny", "Caveat", cursive;
 
   --color-graphite-950: #0a0d12;
@@ -23,10 +15,7 @@
   --color-brand-800: #341a67; /* R52 G26 B103 */
   --color-brand-600: #584291; /* R88 G66 B145 */
 
-  /* Acento (Paleta de Colores · Primarios) — íconos, focos, resaltados.
-     accent-50/accent-200 son tintes derivados del mismo celeste (el manual solo define
-     un tono por color); se usaban ya en varios componentes (fondos suaves de íconos)
-     pero faltaba definirlos, así que esas clases no pintaban nada. */
+  /* Acento (Paleta de Colores · Primarios) — íconos, focos, resaltados. */
   --color-accent-50: #edf8fd;
   --color-accent-200: #c4e7f4;
   --color-accent-300: #a8daed; /* R168 G218 B237 */
@@ -34,9 +23,7 @@
   --color-accent-500: #009ed0; /* R0 G158 B208 */
   --color-accent-600: #007ea6;
 
-  /* Estados (Paleta de Colores · Secundarios) — SOLO badges/indicadores, nunca estructural.
-     Las 4 en uso ya son valores oficiales del manual; se agregan las 5 restantes de la
-     misma paleta secundaria para cuando un dominio necesite más categorías de badge. */
+  /* Estados (Paleta de Colores · Secundarios) — SOLO badges/indicadores, nunca estructural. */
   --color-state-success: #72ae17; /* R114 G174 B23 */
   --color-state-success-soft: #9ac040; /* R154 G192 B64 */
   --color-state-warning: #efbe00; /* R239 G190 B0 */
@@ -95,16 +82,7 @@
   }
 }
 
-/* "Liquid glass" — panel translúcido tipo vidrio esmerilado, con brillo especular y borde
-   con luz. Probando primero solo en el Dashboard (ver conversación de diseño); si funciona
-   bien se extiende a otras pantallas. Reglas CSS planas, fuera de @utility/@layer a propósito:
-   así ganan siempre sobre las utilities de fondo/borde/sombra de <Card> y sobre los estados
-   hover propios de cada superficie, sin depender del orden en que Tailwind genera las clases
-   ni de !important (que también taparía el propio :hover). El brillo (::before) usa
-   z-index negativo a propósito: así pinta por debajo de CUALQUIER hijo real (bloque, flex
-   o grid, tenga o no `position` propio) sin tener que envolver el contenido de cada Card en
-   un div `relative` — eso hubiera roto layouts que dependen de ser hijo directo flex/grid
-   del contenedor (ej. Card+flex-col en ChatPage). */
+/* "Liquid glass" — panel translúcido tipo vidrio esmerilado, con brillo especular y borde con luz. */
 .liquid-glass,
 .liquid-glass-panel,
 .liquid-glass-tile,
@@ -127,10 +105,6 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  /* El pseudo-elemento no hereda el radio de la tarjeta por sí solo, y no todas las
-     tarjetas tienen overflow-hidden — sin esto, su esquina recta asoma por encima de la
-     esquina redondeada real (visible sobre todo arriba a la izquierda, donde el brillo
-     es más opaco). */
   border-radius: inherit;
   background: radial-gradient(140% 70% at 14% -12%, rgba(255, 255, 255, 0.55), transparent 60%);
   mix-blend-mode: screen;
@@ -152,9 +126,7 @@
     inset 0 -1px 14px rgba(255, 255, 255, 0.12);
 }
 
-/* Variante "estándar" — para el contenido general del ERP (tablas, formularios, chat, etc.
-   vía el <Card> compartido). Menos transparente que .liquid-glass: esas pantallas necesitan
-   más contraste de lectura que la portada del Dashboard. */
+/* Variante "estándar" — para el contenido general del ERP (tablas, formularios, chat, etc. */
 .liquid-glass-panel {
   background: linear-gradient(
     155deg,
@@ -171,8 +143,7 @@
     inset 0 -1px 12px rgba(255, 255, 255, 0.15);
 }
 
-/* Variante con tinte de marca — para superficies con texto blanco (ej. la cabecera de
-   bienvenida) donde un vidrio totalmente transparente le quitaría contraste al texto. */
+/* Variante con tinte de marca — para superficies con texto blanco (ej. */
 .liquid-glass-tint {
   background: linear-gradient(120deg, rgba(52, 26, 103, 0.74), rgba(88, 66, 145, 0.58));
   backdrop-filter: blur(20px) saturate(160%);
@@ -184,8 +155,6 @@
     inset 0 -1px 14px rgba(10, 13, 18, 0.18);
 }
 
-/* Variante más "esmerilada" (menos transparente) para elementos chicos que necesitan más
-   contraste de lectura, como los tiles de módulo. */
 .liquid-glass-tile {
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.32));
   backdrop-filter: blur(16px) saturate(140%);
@@ -205,9 +174,6 @@
     inset 0 -1px 10px rgba(255, 255, 255, 0.24);
 }
 
-/* Variante para el "chrome" fijo (Header, Sidebar) — vidrio bien visible (menos blanco que
-   antes) pero sin saturate: acá NO queremos que el backdrop-filter intensifique el celeste
-   de fondo (mismo problema que se corrigió en .liquid-glass), solo que se note transparente. */
 .liquid-glass-bar {
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.22));
   backdrop-filter: blur(18px);
@@ -216,6 +182,291 @@
   box-shadow:
     0 8px 24px -14px rgba(15, 23, 42, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+/* Banco de trabajo (folder-analysis): tablero plano — no tarjetas de catálogo. */
+.workbench-shell {
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgb(255 255 255);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.workbench-board {
+  display: flex;
+  flex-direction: column;
+  min-height: 28rem;
+}
+
+@media (min-width: 1024px) {
+  .workbench-board {
+    flex-direction: row;
+  }
+}
+
+/* Los carriles son bandas horizontales, una debajo de otra y cada una a todo el ancho. */
+.workbench-lanes {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  border-top: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+@media (min-width: 1024px) {
+  .workbench-lanes {
+    border-top: none;
+    border-left: 1px solid rgba(226, 232, 240, 0.95);
+  }
+}
+
+.workbench-queue {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: rgb(248 250 252);
+}
+
+@media (min-width: 1024px) {
+  .workbench-queue {
+    width: min(100%, 22rem);
+    flex-shrink: 0;
+  }
+}
+
+.workbench-queue__head {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(255, 255, 255, 0.6));
+}
+
+.workbench-queue__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.625rem;
+}
+
+.workbench-queue-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 0.625rem;
+  align-items: start;
+  padding: 0.625rem;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.workbench-queue-row:hover {
+  border-color: rgba(148, 163, 184, 0.95);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+
+.workbench-queue-row:active {
+  cursor: grabbing;
+}
+
+.workbench-assign {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.625rem;
+  background: rgba(241, 245, 249, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+/* El último carril, cuando son impares, ocupa la fila entera en vez de dejar un hueco al lado. */
+.workbench-assign-btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.workbench-assign-btn {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.3rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.1;
+  text-align: left;
+  color: rgb(71 85 105);
+  background: rgb(255 255 255);
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.workbench-lane {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: rgb(255 255 255);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.workbench-lane:last-child {
+  border-bottom: none;
+}
+
+.workbench-lane::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgb(100 116 139);
+}
+
+.workbench-lane--folio::before {
+  background: rgb(52 26 103);
+}
+
+.workbench-lane--tax::before {
+  background: rgb(5 150 105);
+}
+
+.workbench-lane--plan::before {
+  background: rgb(0 158 208);
+}
+
+.workbench-lane--appraisal::before {
+  background: rgb(217 119 6);
+}
+
+.workbench-lane--form::before {
+  background: rgb(79 70 229);
+}
+
+.workbench-lane--sworn::before {
+  background: rgb(225 29 72);
+}
+
+.workbench-lane--id::before {
+  background: rgb(13 148 136);
+}
+
+.workbench-lane--active {
+  background: rgba(240, 249, 255, 0.65);
+  box-shadow: inset 0 0 0 2px rgba(0, 158, 208, 0.25);
+}
+
+/* Toda la cabecera de la banda en una sola fila: nombre, contador, de qué es el carril y dónde soltar la foto. */
+/* Todo en una fila y sin saltos: la descripción se recorta en vez de robar un renglón. */
+.workbench-lane__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+.workbench-lane__drop {
+  margin-left: auto;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px dashed rgba(148, 163, 184, 0.55);
+  background: rgba(248, 250, 252, 0.85);
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: rgb(100 116 139);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workbench-lane--active .workbench-lane__drop {
+  border-color: rgba(0, 158, 208, 0.55);
+  background: rgba(224, 247, 255, 0.75);
+  color: rgb(8 89 121);
+}
+
+.workbench-lane__body {
+  flex: 1;
+  min-height: 0;
+  /* Una banda con muchos documentos hace su propio scroll en vez de empujar a las de abajo fuera de la pantalla. */
+  max-height: 30rem;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.workbench-lane__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  list-style: none;
+  margin: 0;
+  padding: 0.625rem;
+}
+
+.workbench-lane__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.5rem 1rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  border-radius: 0.625rem;
+  background: rgba(248, 250, 252, 0.6);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: rgb(100 116 139);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* La misma fila es el destino, así que se enciende al arrastrar sobre el carril. */
+.workbench-lane--active .workbench-lane__empty {
+  border-color: rgba(0, 158, 208, 0.55);
+  background: rgba(224, 247, 255, 0.75);
+  color: rgb(8 89 121);
+}
+
+/* Each document gets its own surface so page thumbnails and review actions read as one grouped unit inside its lane. */
+.workbench-work-row {
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 0.875rem;
+  background: rgb(255 255 255);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: background-color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.workbench-work-row:hover {
+  border-color: rgba(148, 163, 184, 0.8);
+  background: rgba(248, 250, 252, 0.85);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+}
+
+.workbench-work-row--drop-target {
+  background: rgba(224, 247, 255, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(0, 158, 208, 0.35);
 }
 
 :root {
@@ -237,10 +488,6 @@ body {
   );
 }
 
-/* react-image-crop fija max-width:100% en .ReactCrop y en el <img> de su child-wrapper
-   (pensado para encajar en el contenedor, sin zoom) — se pisa con más especificidad para
-   permitir agrandar la imagen más allá de eso al hacer zoom (ver CapturaPage.jsx, dominio
-   geoextraction). */
 .zoomable-crop.ReactCrop,
 .zoomable-crop .ReactCrop__child-wrapper,
 .zoomable-crop .ReactCrop__child-wrapper > img {
@@ -249,4 +496,68 @@ body {
 
 .zoomable-crop .ReactCrop__child-wrapper {
   overflow: visible;
+}
+
+:root {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.nav-chevron {
+  transition: transform 200ms var(--ease-out-strong);
+}
+.nav-chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.nav-fan {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden; /* cerrado, sus enlaces no reciben foco con Tab */
+  transition:
+    grid-template-rows 140ms ease-out,
+    visibility 0s linear 140ms;
+}
+.nav-fan[data-open='true'] {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows 240ms var(--ease-out-strong),
+    visibility 0s;
+}
+.nav-fan-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.nav-fan-item {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  transform-origin: top left;
+  transition:
+    opacity 100ms ease-out,
+    transform 140ms ease-out;
+}
+.nav-fan[data-open='true'] .nav-fan-item {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 200ms var(--ease-out-strong) calc(var(--i, 0) * 32ms + 30ms),
+    transform 240ms var(--ease-out-strong) calc(var(--i, 0) * 32ms + 30ms);
+}
+
+/* Movimiento reducido: sin desplazamientos ni escalonado. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-chevron {
+    transition-duration: 1ms;
+  }
+  .nav-fan,
+  .nav-fan[data-open='true'] {
+    transition-duration: 1ms, 0s;
+    transition-delay: 0s;
+  }
+  .nav-fan-item,
+  .nav-fan[data-open='true'] .nav-fan-item {
+    transform: none;
+    transition: opacity 150ms ease-out;
+  }
 }

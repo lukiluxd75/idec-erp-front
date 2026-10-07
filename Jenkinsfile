@@ -1,72 +1,52 @@
 pipeline {
-    agent { label 'windows' }
-    
+    agent {
+        label 'windows-runner'
+    }
+    environment {
+        NODE_SKIP_PLATFORM_CHECK = '1'
+        // Umbral de confianza del OCR (celdas en rojo). Vite lo fija al compilar y una
+        // variable del entorno del agente le gana a cualquier .env: se fija aca para que
+        // el despliegue no dependa de lo que tenga definido el runner.
+        VITE_OCR_THRESHOLD = '0.90'
+        // Esto añade temporalmente Node.js al PATH del agente para que Vite encuentre 'node' sin problemas
+        PATH = "C:\\Program Files\\nodejs;${env.PATH}"
+    }
     parameters {
-        booleanParam(name: 'EJECUTAR_AUTOMATICO', defaultValue: true, description: 'Marcar para ejecución automática y fluida en la demo.')
+        booleanParam(name: 'EJECUTAR_AUTOMATICO', defaultValue: true, description: 'Ejecución fluida automática')
     }
-    
     triggers {
-        // Disparador automático nocturno todos los días a las 02:00 AM
-        cron('0 2 * * *')
+        cron('0 3 * * *')
     }
-    
     stages {
-        stage('1. Preparación del Entorno') {
+        stage('Preparación') {
             steps {
-                echo 'Limpiando entorno de trabajo...'
                 cleanWs()
                 checkout scm
             }
         }
-        
-        stage('2. Instalar Dependencias') {
+        stage('Instalar Node Modules') {
             steps {
-                echo 'Instalando dependencias del Frontend...'
-                bat '''
-                    set NODE_SKIP_PLATFORM_CHECK=1
-                    set PATH=C:\\Program Files\\nodejs;%PATH%
-                    "C:\\Program Files\\nodejs\\npm.cmd" install
-                '''
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" install'
             }
         }
-        
-        stage('3. Compilación') {
+        stage('Compilar Frontend') {
             steps {
-                echo 'Compilando Frontend...'
-                bat '''
-                    set NODE_SKIP_PLATFORM_CHECK=1
-                    set PATH=C:\\Program Files\\nodejs;%PATH%
-                    "C:\\Program Files\\nodejs\\npm.cmd" run build
-                '''
+                bat '"C:\\Program Files\\nodejs\\npm.cmd" run build'
             }
         }
-
-        stage('4. Control y Despliegue') {
+        stage('Desplegar a IIS') {
             steps {
-                script {
-                    if (params.EJECUTAR_AUTOMATICO == true) {
-                        echo 'Modo automático activado: Despliegue completado con éxito para la demostración.'
-                    } else {
-                        // Agregamos un timeout de seguridad por si la interfaz web se pone lenta
-                        try {
-                            timeout(time: 1, unit: 'MINUTES') {
-                                input message: '¿Desea aprobar el despliegue del Frontend al entorno de destino?', ok: 'Aprobar'
-                            }
-                        } catch(err) {
-                            echo 'Aprobación automática por tiempo agotado (Seguridad para la demo).'
-                        }
-                    }
-                }
+                echo 'Copiando archivos compilados del frontend a IIS...'
+                bat 'xcopy /E /Y /I "%WORKSPACE%\\dist\\*" "C:\\inetpub\\wwwroot\\siscatJenkins\\"'
             }
         }
     }
-    
     post {
         success {
-            echo '¡El pipeline del Frontend finalizó exitosamente y está listo!'
+            echo '¡El pipeline del Frontend se ejecutó y desplegó con éxito en IIS!'
         }
         failure {
-            echo 'El pipeline del Frontend falló. Revisa los registros.'
+            echo 'El pipeline del Frontend ha fallado. Revisa los registros.'
         }
     }
 }

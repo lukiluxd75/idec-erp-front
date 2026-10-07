@@ -1,0 +1,96 @@
+﻿diff --git a/src/domains/templates/api/templates.api.js b/src/domains/templates/api/templates.api.js
+index df004b9..4b0640c 100644
+--- a/src/domains/templates/api/templates.api.js
++++ b/src/domains/templates/api/templates.api.js
+@@ -26,7 +26,5 @@ export const templatesApi = {
+   createCiteConfiguracion: (payload) => httpClient.post(API_ENDPOINTS.TEMPLATES.CITES_CONFIGURACIONES, payload),
+ 
+   // Emits the next correlative CITE for a sigla (area_codigo + tipo_documento_codigo).
+-  // A sigla never used before starts its own counter at 01 -- see backend
+-  // GenerateCiteUseCase / SqlCiteRepository.generate.
+   generateCite: (payload) => httpClient.post(API_ENDPOINTS.TEMPLATES.CITES_GENERAR, payload),
+ }
+diff --git a/src/domains/templates/components/CiteConfiguracionFormModal.jsx b/src/domains/templates/components/CiteConfiguracionFormModal.jsx
+index b0078c3..d668be6 100644
+--- a/src/domains/templates/components/CiteConfiguracionFormModal.jsx
++++ b/src/domains/templates/components/CiteConfiguracionFormModal.jsx
+@@ -13,8 +13,6 @@ const EMPTY_FORM = {
+   reinicia_por_gestion: true,
+ }
+ 
+-/** Registers a new sigla (├írea + tipo de documento): its own independent CITE
+- * counter starts the first time it is used to generate one. */
+ export function CiteConfiguracionFormModal({ open, onClose, onSaved }) {
+   const [form, setForm] = useState(EMPTY_FORM)
+   const [submitting, setSubmitting] = useState(false)
+diff --git a/src/domains/templates/components/GenerateCiteModal.jsx b/src/domains/templates/components/GenerateCiteModal.jsx
+index ed421a9..c60bffc 100644
+--- a/src/domains/templates/components/GenerateCiteModal.jsx
++++ b/src/domains/templates/components/GenerateCiteModal.jsx
+@@ -4,9 +4,7 @@ import { toast } from 'react-toastify'
+ import { Modal, Select, Input, Button, Spinner } from '@/shared/ui'
+ import { templatesApi } from '../api/templates.api'
+ 
+-/** Emits the next CITE for a chosen sigla. Switching the sigla dropdown to a
+- * combination never used before will show 01 -- it is a different counter,
+- * not a continuation of whichever sigla was selected last. */
++/** Emits the next CITE for a chosen sigla. */
+ export function GenerateCiteModal({ open, onClose, onSaved }) {
+   const [configuraciones, setConfiguraciones] = useState([])
+   const [loading, setLoading] = useState(true)
+diff --git a/src/domains/templates/components/TemplateFormModal.jsx b/src/domains/templates/components/TemplateFormModal.jsx
+index cd1a501..592d830 100644
+--- a/src/domains/templates/components/TemplateFormModal.jsx
++++ b/src/domains/templates/components/TemplateFormModal.jsx
+@@ -13,14 +13,7 @@ const EMPTY_FORM = {
+   contenido_html: '',
+ }
+ 
+-/**
+- * Creates a new template or edits an existing one. Parent must mount this with
+- * a `key` that changes on each open (see TemplatesCatalogPage) so the form
+- * starts fresh each time instead of carrying over the previous edit's state.
+- *
+- * `templateId` (not the row's list item) because the catalog list omits
+- * `contenido_html`/`descripcion` ΓÇö editing fetches the full detail on open.
+- */
++/** Creates a new template or edits an existing one. */
+ export function TemplateFormModal({ open, onClose, templateId, onSaved }) {
+   const isEditing = Boolean(templateId)
+   const [form, setForm] = useState(EMPTY_FORM)
+diff --git a/src/domains/templates/components/VariableFormModal.jsx b/src/domains/templates/components/VariableFormModal.jsx
+index 01f80f7..99824bc 100644
+--- a/src/domains/templates/components/VariableFormModal.jsx
++++ b/src/domains/templates/components/VariableFormModal.jsx
+@@ -8,8 +8,7 @@ const EMPTY_FORM = { nombre: '', clave: '', tipo_dato: '', descripcion: '', valo
+ 
+ const CLAVE_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*$/
+ 
+-/** Registers a new reusable variable (placeholder). There is no edit/delete yet
+- * -- the catalog only exposes "Registrar variable", so that is all this wires up. */
++/** Registers a new reusable variable (placeholder). */
+ export function VariableFormModal({ open, onClose, onSaved }) {
+   const [form, setForm] = useState(EMPTY_FORM)
+   const [submitting, setSubmitting] = useState(false)
+diff --git a/src/domains/templates/routes.jsx b/src/domains/templates/routes.jsx
+index 6d7eadf..86da280 100644
+--- a/src/domains/templates/routes.jsx
++++ b/src/domains/templates/routes.jsx
+@@ -1,7 +1,13 @@
+-import TemplatesCatalogPage from './pages/TemplatesCatalogPage'
+-import VariablesPage from './pages/VariablesPage'
+-import CitesPage from './pages/CitesPage'
+-import DocumentsPage from './pages/DocumentsPage'
++/* eslint-disable react-refresh/only-export-components -- este archivo
++   exporta metadatos de rutas, no componentes: las paginas lazy de abajo no
++   son fronteras de Fast Refresh. Misma excusa que en
++   domains/cadastralviewer/routes.jsx. */
++import { lazy } from 'react'
++
++const TemplatesCatalogPage = lazy(() => import('./pages/TemplatesCatalogPage'))
++const VariablesPage = lazy(() => import('./pages/VariablesPage'))
++const CitesPage = lazy(() => import('./pages/CitesPage'))
++const DocumentsPage = lazy(() => import('./pages/DocumentsPage'))
+ 
+ export const templatesRoutes = [
+   { path: '/templates/catalog', element: <TemplatesCatalogPage /> },

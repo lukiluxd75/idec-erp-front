@@ -50,10 +50,7 @@ function buildDetailLines(progress) {
   return uniq
 }
 
-/**
- * Blocking progress modal (like the prototype global loader).
- * Does not close on Escape or outside click; only when finished or the job is stopped.
- */
+/** Blocking progress modal (like the prototype global loader). */
 export default function DetectionProgressModal({
   open,
   progress,

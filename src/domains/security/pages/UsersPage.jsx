@@ -16,10 +16,71 @@ import {
 import { useSecurityData, securityActions } from '../data/securityStore'
 import { UserAssignmentModal } from '../components/UserAssignmentModal'
 
-/**
- * Lists users with roles and area. Assignment opens UserAssignmentModal (role + area
- * together). Deactivation is soft (is_active) — row kept for reactivation.
- */
+/** Roles shown inline before collapsing into a "+N" chip, so every row keeps one line. */
+const MAX_VISIBLE_ROLES = 2
+
+/** A–Z, ignoring case and accents, so "Ávalos" lands next to "Avaluos" and not after Z. */
+const compareNames = (a, b) =>
+  String(a).localeCompare(String(b), 'es', { sensitivity: 'base', numeric: true })
+
+const sortByName = (names) => [...names].sort(compareNames)
+
+/** Role chips for one row, sorted A–Z. */
+function RoleChips({ names }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const sorted = useMemo(() => sortByName(names), [names])
+
+  if (sorted.length === 0) {
+    return <span className="text-xs text-slate-400">Sin roles</span>
+  }
+
+  const visible = expanded ? sorted : sorted.slice(0, MAX_VISIBLE_ROLES)
+  const hidden = sorted.length - visible.length
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div
+        className={`flex min-w-0 items-center gap-1.5 ${
+          expanded ? 'flex-1 flex-wrap' : 'flex-nowrap overflow-hidden'
+        }`}
+      >
+        {visible.map((name) => (
+          <span
+            key={name}
+            title={name}
+            className="inline-block min-w-0 max-w-[9rem] truncate rounded-md border border-accent-400/30 bg-accent-300/20 px-2 py-1 text-[11px] font-semibold leading-4 text-accent-600"
+          >
+            {name}
+          </span>
+        ))}
+      </div>
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          title={`Ver ${hidden} rol${hidden === 1 ? '' : 'es'} más: ${sorted
+            .slice(MAX_VISIBLE_ROLES)
+            .join(' · ')}`}
+          className="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-[11px] font-semibold leading-4 text-slate-600 transition hover:bg-slate-200"
+        >
+          +{hidden}
+        </button>
+      )}
+      {expanded && sorted.length > MAX_VISIBLE_ROLES && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="shrink-0 rounded-md px-1.5 py-1 text-[11px] font-semibold leading-4 text-slate-400 transition hover:text-slate-600"
+        >
+          Ver menos
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Lists users with roles and area. */
 export default function UsersPage() {
   const { users, roles, areas, loading, error } = useSecurityData()
   const [reloading, setReloading] = useState(false)
@@ -92,6 +153,12 @@ export default function UsersPage() {
   const roleName = (id) => roles.find((role) => role.id === id)?.nombre || id
   const areaName = (id) => areas.find((area) => area.id === id)?.nombre
 
+  /** Filter dropdown follows the same A–Z order as the chips in the table. */
+  const sortedRoles = useMemo(
+    () => [...roles].sort((a, b) => compareNames(a.nombre, b.nombre)),
+    [roles],
+  )
+
   if (loading) {
     return (
       <Card className="flex items-center justify-center gap-2 py-16 text-slate-500">
@@ -117,7 +184,7 @@ export default function UsersPage() {
             type="button"
             onClick={handleReload}
             disabled={reloading}
-            title="Vuelve a pedir la lista de usuarios al backend"
+            title="Solicitar nuevamente la lista de usuarios al servidor"
             className="mt-1 flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${reloading ? 'animate-spin' : ''}`} />
@@ -149,7 +216,7 @@ export default function UsersPage() {
               />
               <Select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
                 <option value="">Todos los roles</option>
-                {roles.map((role) => (
+                {sortedRoles.map((role) => (
                   <option key={role.id} value={role.id}>
                     {role.nombre}
                   </option>
@@ -181,7 +248,15 @@ export default function UsersPage() {
               />
             ) : (
               <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200/70">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[880px] table-fixed text-left text-sm">
+                  <colgroup>
+                    <col className="w-[16%]" />
+                    <col className="w-[22%]" />
+                    <col className="w-[34%]" />
+                    <col className="w-[14%]" />
+                    <col className="w-[120px]" />
+                    <col className="w-[96px]" />
+                  </colgroup>
                   <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <tr>
                       <th className="px-4 py-3">Usuario</th>
@@ -189,34 +264,44 @@ export default function UsersPage() {
                       <th className="px-4 py-3">Roles</th>
                       <th className="px-4 py-3">Área</th>
                       <th className="px-4 py-3">Estado</th>
-                      <th className="px-4 py-3" />
+                      <th className="px-4 py-3 text-right">
+                        <span className="sr-only">Acciones</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredUsers.map((user) => (
                       <tr
                         key={user.id}
-                        className={`bg-white/60 ${user.activo ? '' : 'opacity-60'}`}
+                        className={`bg-white/60 align-middle transition hover:bg-white ${
+                          user.activo ? '' : 'opacity-60'
+                        }`}
                       >
-                        <td className="px-4 py-3 font-mono font-medium text-slate-800">
-                          {user.username}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{user.email || '—'}</td>
                         <td className="px-4 py-3">
-                          {user.rolIds.length === 0 ? (
-                            <span className="text-xs text-slate-400">Sin roles</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1.5">
-                              {user.rolIds.map((id) => (
-                                <Badge key={id} variant="accent">
-                                  {roleName(id)}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                          <span
+                            className="block truncate font-mono font-medium text-slate-800"
+                            title={user.username}
+                          >
+                            {user.username}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {areaName(user.areaId) || (
+                        <td className="px-4 py-3">
+                          <span className="block truncate text-slate-600" title={user.email || ''}>
+                            {user.email || '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <RoleChips names={user.rolIds.map(roleName)} />
+                        </td>
+                        <td className="px-4 py-3">
+                          {areaName(user.areaId) ? (
+                            <span
+                              className="block truncate text-slate-600"
+                              title={areaName(user.areaId)}
+                            >
+                              {areaName(user.areaId)}
+                            </span>
+                          ) : (
                             <span className="text-xs text-slate-400">Sin área</span>
                           )}
                         </td>
@@ -225,7 +310,7 @@ export default function UsersPage() {
                             {user.activo ? 'Activo' : 'Inactivo'}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3">
                           <div className="flex justify-end gap-1">
                             <IconButton
                               icon={Pencil}
@@ -265,7 +350,7 @@ export default function UsersPage() {
         open={editingUser !== undefined}
         onClose={() => setEditingUser(undefined)}
         user={editingUser}
-        roles={roles}
+        roles={sortedRoles}
         areas={areas}
       />
 

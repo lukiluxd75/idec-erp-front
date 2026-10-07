@@ -1,6 +1,4 @@
-/**
- * Custom class to encapsulate and standardize errors from the HTTP service layer
- */
+/** Custom class to encapsulate and standardize errors from the HTTP service layer / */
 export class ApiError extends Error {
   constructor(message, status = null, data = null) {
     super(message)

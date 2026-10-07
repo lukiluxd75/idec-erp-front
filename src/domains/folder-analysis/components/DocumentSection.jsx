@@ -1,20 +1,23 @@
+import { ArrowDownToLine, Layers, Combine } from 'lucide-react'
 import { useState } from 'react'
 
 import { DocumentCard } from '@/domains/folder-analysis/components/DocumentCard'
+import { LANE_THEME, NOT_READ } from '@/domains/folder-analysis/utils/documentMeta'
 import { getDraggedCapture, isCaptureDrag } from '@/domains/folder-analysis/utils/dragData'
 import { cn } from '@/shared/utils'
 
-/**
- * One of the three sections (Folio, Impuesto, Plano). Dropping a photo on the
- * section starts a new document of that type; dropping it on a draft card adds a
- * page to that document instead.
- */
-export function DocumentSection({ type, documents, busy, onCreate, ...cardHandlers }) {
+export function DocumentSection({ type, documents, busy, loose = 0, onCreate, onConsolidate, ...cardHandlers }) {
   const [dragOver, setDragOver] = useState(false)
   const Icon = type.icon
+  const theme = LANE_THEME[type.id] || LANE_THEME.folio
+  const gathers = documents.reduce((n, d) => n + (d.pages?.length || 0), 0) + loose
+  const sources = documents.length + (loose > 0 ? 1 : 0)
+  const canGather = NOT_READ.has(type.id) && onConsolidate && !busy && sources > 1
 
   return (
     <section
+      role="region"
+      aria-label={`Carril de clasificación: ${type.label}`}
       onDragOver={(e) => {
         if (!isCaptureDrag(e) || busy) return
         e.preventDefault()
@@ -29,40 +32,72 @@ export function DocumentSection({ type, documents, busy, onCreate, ...cardHandle
         const captureId = getDraggedCapture(e)
         if (captureId && !busy) onCreate(type.id, captureId)
       }}
-      className={cn(
-        'flex min-h-[18rem] flex-col gap-3 rounded-2xl border-2 border-dashed p-4 transition',
-        dragOver ? 'border-accent-400 bg-accent-50/70' : 'border-slate-200 bg-white/50'
-      )}
+      className={cn('workbench-lane', theme.lane, dragOver && 'workbench-lane--active')}
     >
-      <header className="flex items-start gap-2.5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-50 text-accent-600 ring-1 ring-accent-200">
-          <Icon className="h-4.5 w-4.5" />
+      <header className="workbench-lane__head sticky top-0 z-[1] bg-white/95 backdrop-blur-sm">
+        <Icon className="h-4 w-4 shrink-0 text-slate-600" aria-hidden />
+        <h3 className="shrink-0 text-sm font-bold text-slate-900">{type.label}</h3>
+        {/* Vacío es un cero atenuado: "0 documentos" en cada carril era la misma palabra cuatro veces para decir que no hay nada. */}
+        <span
+          title={`${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'}`}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold tabular-nums',
+            documents.length > 0 ? 'bg-accent-600/10 text-accent-800' : 'bg-slate-100 text-slate-400'
+          )}
+        >
+          <Layers className="h-3 w-3" aria-hidden />
+          {documents.length > 0
+            ? `${documents.length} ${documents.length === 1 ? 'documento' : 'documentos'}`
+            : '0'}
         </span>
-        <div className="min-w-0">
-          <h3 className="text-sm font-bold text-slate-800">{type.label}</h3>
-          <p className="text-xs text-slate-500">{type.hint}</p>
-        </div>
+        <p
+          title={type.hint}
+          className="hidden min-w-0 flex-1 truncate text-[11px] text-slate-500 sm:block"
+        >
+          {type.hint}
+        </p>
+        {canGather && (
+          <button
+            type="button"
+            onClick={() => onConsolidate(type.id)}
+            title={`Deja en un solo documento las ${gathers} fotos de este carril y de la bandeja`}
+            className={cn('workbench-assign-btn shrink-0', theme?.assignBtn)}
+          >
+            <Combine className="h-3 w-3 shrink-0" aria-hidden />
+            <span className="truncate">Juntar todo en uno ({gathers})</span>
+          </button>
+        )}
+        {/* Con el carril vacío el destino ES la fila de abajo, así que tener los dos era decir lo mismo dos veces en cada carril. */}
+        {(documents.length > 0 || dragOver) && (
+          <div className={cn('workbench-lane__drop', dragOver && 'flex items-center gap-1.5')}>
+            <ArrowDownToLine className={cn('inline h-3.5 w-3.5 shrink-0', !dragOver && 'hidden')} aria-hidden />
+            {dragOver ? 'Suelte para crear un documento' : 'Suelte una foto aquí'}
+          </div>
+        )}
       </header>
 
-      <p
-        className={cn(
-          'rounded-xl py-3 text-center text-xs font-medium transition',
-          dragOver ? 'text-accent-600' : 'text-slate-400'
+      <div className="workbench-lane__body">
+        {documents.length === 0 ? (
+          // El vacío de un carril ES su destino: una sola fila dice que no hay nada y ofrece dónde soltar.
+          <div className="workbench-lane__empty">
+            <ArrowDownToLine className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {dragOver ? 'Suelte para crear un documento' : `Arrastre una foto aquí para crear ${type.noun}`}
+          </div>
+        ) : (
+          <ul className="workbench-lane__list" role="list">
+            {documents.map((document) => (
+              <li key={document.id}>
+                <DocumentCard
+                  document={document}
+                  multiPage={type.multiPage}
+                  // A document still being created has no id of its own yet: it takes no pages and no analysis until the server names it.
+                  busy={busy || Boolean(document.pending)}
+                  {...cardHandlers}
+                />
+              </li>
+            ))}
+          </ul>
         )}
-      >
-        Suelte aquí una foto para crear un documento nuevo
-      </p>
-
-      <div className="flex flex-col gap-3">
-        {documents.map((document) => (
-          <DocumentCard
-            key={document.id}
-            document={document}
-            multiPage={type.multiPage}
-            busy={busy}
-            {...cardHandlers}
-          />
-        ))}
       </div>
     </section>
   )

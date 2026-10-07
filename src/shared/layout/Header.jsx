@@ -5,9 +5,7 @@ import { BRAND } from '@/shared/branding'
 import { ENV } from '@/core/config/env.config'
 import { ProfileModal } from './ProfileModal'
 
-/**
- * ERP top bar: wide, aligned, with compact user actions.
- */
+/** ERP top bar: wide, aligned, with compact user actions. */
 export function Header({ onLogout, onToggleSidebar, user }) {
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)

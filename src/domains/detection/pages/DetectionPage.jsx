@@ -24,6 +24,12 @@ import SiscatFileModal from '../components/SiscatFileModal'
 import ManualAlignPanel from '../components/ManualAlignPanel'
 import ResultGallery from '../components/ResultGallery'
 import DetectionProgressModal from '../components/DetectionProgressModal'
+import CampaignPicker from '../components/CampaignPicker'
+import ParcelValidationButtons from '../components/ParcelValidationButtons'
+import ParcelValidationModal from '../components/ParcelValidationModal'
+import ProcessedSectorDetailModal from '../components/ProcessedSectorDetailModal'
+import ParcelExplorePopup from '../components/ParcelExplorePopup'
+import { applyParcelReviewToSectors, polygonRingFromGeoJson } from '../utils/processedSectorsLayer'
 
 const DetectionMap = lazy(() => import('../components/DetectionMap'))
 
@@ -72,9 +78,7 @@ function tipoBadgeVariant(tipo) {
   return 'warning'
 }
 
-/**
- * Fiscal intelligence workbench: configure → detect → validate (image vs SISCAT).
- */
+/** Fiscal intelligence workbench: configure → detect → validate (image vs SISCAT). */
 export default function DetectionPage() {
   const [health, setHealth] = useState(null)
   const [wmsMeta, setWmsMeta] = useState({ layers: [], hosts: [], years: [] })
@@ -86,6 +90,86 @@ export default function DetectionPage() {
   const [prediosBuffer, setPrediosBuffer] = useState('10')
   const [gpu, setGpu] = useState(0)
   const [polygon, setPolygon] = useState(null)
+  const [drawResetSignal, setDrawResetSignal] = useState(0)
+  const [campaignId, setCampaignId] = useState(null)
+  const [campaignYears, setCampaignYears] = useState(null)
+
+  function handleCampaignChange(id, campaign) {
+    setCampaignId(id)
+    if (campaign?.year_a != null && campaign?.year_b != null) {
+      setCampaignYears({ year_a: campaign.year_a, year_b: campaign.year_b })
+      setYearRef(String(campaign.year_a))
+      setYearMov(String(campaign.year_b))
+    } else {
+      setCampaignYears(null)
+    }
+    setDrawResetSignal((n) => n + 1)
+    setResult(null)
+    setSelectedRow(null)
+    setAssetUrls({})
+    setSelectedSectorId(null)
+    setExploring(null)
+    setHighlightParcelGeom(null)
+  }
+
+  // "Resaltarlo un instante" (engineer's spec for the search box): unlike
+  // "explorar predio" (which highlights until the architect navigates
+  // away), a search hit clears its own highlight shortly after landing --
+  // it's a locate-and-glance action, not an exploration session.
+  const searchHighlightTimeoutRef = useRef(null)
+  useEffect(() => () => clearTimeout(searchHighlightTimeoutRef.current), [])
+
+  function focusSearchGeom(geomGeojson) {
+    if (searchHighlightTimeoutRef.current) clearTimeout(searchHighlightTimeoutRef.current)
+    setHighlightParcelGeom(geomGeojson)
+    searchHighlightTimeoutRef.current = setTimeout(() => setHighlightParcelGeom(null), 2500)
+  }
+
+  // The map overlay only renders sectors belonging to whatever campaign is
+  // currently active -- landing on a sector/predio from a different
+  // campaign without switching first means its real polygon never
+  // appears (confirmed bug: the view centers on the right spot but shows
+  // nothing once the temporary highlight below clears itself). Skipped
+  // when the result is already in the active campaign, so a same-campaign
+  // search doesn't needlessly reset the drawn polygon/exploring state.
+  function switchToResultCampaign(result) {
+    const resultCampaignId = result.campaign_id ?? null
+    if (resultCampaignId === campaignId) return
+    handleCampaignChange(
+      resultCampaignId,
+      resultCampaignId
+        ? {
+            id: resultCampaignId,
+            code: result.campaign_code,
+            name: result.campaign_name,
+            year_a: result.year_a,
+            year_b: result.year_b,
+          }
+        : null
+    )
+  }
+
+  function handleSelectSearchSector(result) {
+    switchToResultCampaign(result)
+    setExploring(null)
+    focusSearchGeom(result.geom_geojson)
+  }
+
+  function handleSelectSearchParcel(result) {
+    switchToResultCampaign(result)
+    setExploring(null)
+    focusSearchGeom(result.geom_geojson)
+  }
+
+  function handleSelectSearchCampaign(result) {
+    handleCampaignChange(result.campaign_id, {
+      id: result.campaign_id,
+      code: result.campaign_code,
+      name: result.campaign_name,
+      year_a: result.year_a,
+      year_b: result.year_b,
+    })
+  }
 
   const [jobId, setJobId] = useState(null)
   const [progress, setProgress] = useState(null)
@@ -102,12 +186,20 @@ export default function DetectionPage() {
   const [resultTab, setResultTab] = useState('validacion')
   const [cancelling, setCancelling] = useState(false)
   const [runStartedAt, setRunStartedAt] = useState(null)
+  const [processedSectors, setProcessedSectors] = useState([])
+  const [selectedSectorId, setSelectedSectorId] = useState(null)
+  const [presetPolygon, setPresetPolygon] = useState(null)
+  const [validationTarget, setValidationTarget] = useState(null)
+  const [highlightParcelGeom, setHighlightParcelGeom] = useState(null)
+  const [exploring, setExploring] = useState(null)
 
   const pollRef = useRef(null)
   const objectUrlsRef = useRef([])
   const resultsRef = useRef(null)
   /** After applying manual alignment, do not reopen the modal automatically when re-detection finishes. */
   const skipAutoAlignOpenRef = useRef(false)
+  /** setInterval fires every POLL_MS regardless of whether the previous pollJob() call (an HTTP round-trip) already returned. */
+  const finishingRef = useRef(false)
 
   const yearOptions = useMemo(() => {
     const layers = wmsMeta.layers || []
@@ -125,6 +217,14 @@ export default function DetectionPage() {
     const rows = result?.reporte_arquitecto || []
     return rows.filter((r) => Number(r.prob_pct || 0) >= minPct - 1e-9)
   }, [result, minProb])
+
+  const SECTOR_STATUS_LABELS = {
+    awaiting_validation: { variant: 'warning', label: 'Pendiente de validación' },
+    awaiting_manual_alignment: { variant: 'warning', label: 'Requiere alineación manual' },
+    completed: { variant: 'accent', label: 'Sector procesado' },
+    error: { variant: 'danger', label: 'Error en el pipeline' },
+  }
+  const sectorStatusBadge = SECTOR_STATUS_LABELS[result?.processed_sector_status] || null
 
   const loadMeta = useCallback(async () => {
     setLoadingMeta(true)
@@ -159,6 +259,15 @@ export default function DetectionPage() {
     }
   }, [])
 
+  const loadProcessedSectors = useCallback(async () => {
+    try {
+      const data = await detectionApi.listProcessedSectors(campaignId, { unassignedOnly: !campaignId })
+      setProcessedSectors(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.warn('No se pudieron cargar los sectores procesados', err)
+    }
+  }, [campaignId])
+
   useEffect(() => {
     loadMeta()
     return () => {
@@ -166,6 +275,10 @@ export default function DetectionPage() {
       objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
     }
   }, [loadMeta])
+
+  useEffect(() => {
+    loadProcessedSectors()
+  }, [loadProcessedSectors])
 
   async function hydrateAssets(payload) {
     objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
@@ -199,6 +312,8 @@ export default function DetectionPage() {
   async function finishWithResult(id) {
     const res = await detectionApi.getResult(id)
     setResult(res)
+    loadProcessedSectors()
+    setDrawResetSignal((n) => n + 1)
     await hydrateAssets(res)
     const level = String(
       res.align_quality?.level || res.resumen_confiabilidad?.align_level || ''
@@ -253,6 +368,8 @@ export default function DetectionPage() {
       const status = (prog.status || '').toLowerCase()
       if (status === 'done' || prog.result_ready) {
         stopPolling()
+        if (finishingRef.current) return // an overlapping tick already got here first
+        finishingRef.current = true
         setProgress((prev) => ({
           ...(prev || {}),
           ...prog,
@@ -266,6 +383,7 @@ export default function DetectionPage() {
         } finally {
           setRunning(false)
           setRunStartedAt(null)
+          finishingRef.current = false
         }
         return
       }
@@ -336,6 +454,7 @@ export default function DetectionPage() {
         min_prob_pct: Number(minProb),
         predios_buffer_m: Number(prediosBuffer),
         gpu: Number(gpu),
+        campaign_id: campaignId || undefined,
       }
       const started = await detectionApi.startDetectWms(payload)
       startPolling(started.job_id, {
@@ -372,6 +491,41 @@ export default function DetectionPage() {
   function handleRowClick(row) {
     const bbox = findBboxForRow(result, row)
     setSelectedRow({ ...row, bbox_px: bbox || row.bbox_px || row.bbox })
+  }
+
+  function handleParcelReviewed(affectedParcelId, validationStatus, sectorId) {
+    setResult((prev) => {
+      if (!prev) return prev
+      const patchArray = (arr) =>
+        (arr || []).map((r) =>
+          r.affected_parcel_id === affectedParcelId ? { ...r, validation_status: validationStatus } : r
+        )
+      const cambios = patchArray(prev.cambios)
+      // Mirrors the backend's own rule (SqlAffectedParcelReviewRepository.
+      const allReviewed =
+        cambios.length > 0 &&
+        cambios.every((r) => !r.affected_parcel_id || r.validation_status !== 'pending')
+      const completableStatus =
+        prev.processed_sector_status === 'awaiting_validation' ||
+        prev.processed_sector_status === 'awaiting_manual_alignment'
+      return {
+        ...prev,
+        cambios,
+        reporte_arquitecto: patchArray(prev.reporte_arquitecto),
+        processed_sector_status:
+          allReviewed && completableStatus ? 'completed' : prev.processed_sector_status,
+      }
+    })
+    setSelectedRow((prev) =>
+      prev?.affected_parcel_id === affectedParcelId
+        ? { ...prev, validation_status: validationStatus }
+        : prev
+    )
+
+    const targetSectorId = sectorId ?? result?.processed_sector_id
+    if (targetSectorId != null) {
+      setProcessedSectors((prev) => applyParcelReviewToSectors(prev, targetSectorId, validationStatus))
+    }
   }
 
   const viewGeom = result?.view_geometry || {}
@@ -420,7 +574,9 @@ export default function DetectionPage() {
       : 'Revisar alineación'
   const polygonReady = !!(polygon && polygon.length >= 4)
   const gpuCount = Array.isArray(health?.engine?.gpus) ? health.engine.gpus.length : 0
-  const canStart = health?.reachable && polygonReady && yearRef && yearMov && !running
+  // Every processed sector must belong to a campaign -- "Sin campaña" is
+  // view-only (see DetectionMap's own draw-click guard for the other half).
+  const canStart = health?.reachable && polygonReady && !!campaignId && yearRef && yearMov && !running
 
   return (
     <div className="space-y-4">
@@ -512,7 +668,13 @@ export default function DetectionPage() {
 
           <div className="flex flex-wrap items-end gap-3 px-4 py-3">
             <div className="min-w-[140px] flex-1 basis-[140px] sm:max-w-[180px]">
-              <Select label="Año A · referencia" value={yearRef} onChange={(e) => setYearRef(e.target.value)}>
+              <Select
+                label="Año A · referencia"
+                value={yearRef}
+                onChange={(e) => setYearRef(e.target.value)}
+                disabled={!!campaignYears}
+                title={campaignYears ? 'Fijado por la campaña seleccionada' : undefined}
+              >
                 <option value="">Seleccione…</option>
                 {yearOptions.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -526,6 +688,8 @@ export default function DetectionPage() {
                 label="Año B · comparación"
                 value={yearMov}
                 onChange={(e) => setYearMov(e.target.value)}
+                disabled={!!campaignYears}
+                title={campaignYears ? 'Fijado por la campaña seleccionada' : undefined}
               >
                 <option value="">Seleccione…</option>
                 {yearOptions.map((o) => (
@@ -548,6 +712,13 @@ export default function DetectionPage() {
                 <option value="70">≥ 70 %</option>
                 <option value="80">≥ 80 %</option>
               </Select>
+            </div>
+            <div className="min-w-[160px] flex-1 basis-[160px] sm:max-w-[220px]">
+              <CampaignPicker
+                campaignId={campaignId}
+                onChange={handleCampaignChange}
+                yearOptions={yearOptions.map((o) => o.value)}
+              />
             </div>
 
             <button
@@ -642,7 +813,7 @@ export default function DetectionPage() {
               {polygonReady ? 'Polígono definido' : 'Pulse el mapa para dibujar'}
             </Badge>
           </div>
-          <div className="p-3">
+          <div className="relative p-3">
             <Suspense
               fallback={
                 <div className="flex h-[560px] items-center justify-center rounded-xl bg-slate-50">
@@ -662,11 +833,87 @@ export default function DetectionPage() {
                 basemapYear={basemapYear}
                 onBasemapYearChange={setBasemapYear}
                 height={620}
+                processedSectors={processedSectors}
+                onViewSectorDetail={(id) => {
+                  setSelectedSectorId(id)
+                  setExploring(null)
+                  setHighlightParcelGeom(null)
+                }}
+                presetPolygon={presetPolygon}
+                highlightParcelGeom={highlightParcelGeom}
+                resetSignal={drawResetSignal}
+                onClearHighlight={() => {
+                  setHighlightParcelGeom(null)
+                  setExploring(null)
+                }}
+                campaignSelected={!!campaignId}
+                onSearchSelectSector={handleSelectSearchSector}
+                onSearchSelectParcel={handleSelectSearchParcel}
+                onSearchSelectCampaign={handleSelectSearchCampaign}
               />
             </Suspense>
+
+            {exploring && (
+              <ParcelExplorePopup
+                parcels={exploring.parcels}
+                index={exploring.index}
+                onNavigate={(nextIndex) => {
+                  if (nextIndex < 0 || nextIndex >= exploring.parcels.length) return
+                  setExploring((prev) => ({ ...prev, index: nextIndex }))
+                  setHighlightParcelGeom(exploring.parcels[nextIndex].parcel_geom_geojson)
+                }}
+                onClose={() => {
+                  setExploring(null)
+                  setHighlightParcelGeom(null)
+                }}
+              />
+            )}
           </div>
         </Card>
       </section>
+
+      <ProcessedSectorDetailModal
+        open={!!selectedSectorId && !exploring}
+        sectorId={selectedSectorId}
+        onClose={() => setSelectedSectorId(null)}
+        allowReprocess
+        onReprocess={(detail) => {
+          const sector = processedSectors.find((s) => s.id === detail.id)
+          const ring = sector ? polygonRingFromGeoJson(sector.geom_geojson) : null
+          if (ring) setPresetPolygon(ring)
+          setYearRef(String(detail.year_a))
+          setYearMov(String(detail.year_b))
+          setResult(null)
+          setSelectedRow(null)
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          })
+        }}
+        onExploreParcel={(parcels, startIndex) => {
+          setExploring({ parcels, index: startIndex })
+          setHighlightParcelGeom(parcels[startIndex]?.parcel_geom_geojson || null)
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          })
+        }}
+        onResumeValidation={async (payload) => {
+          setResult(payload)
+          setSelectedRow(null)
+          toast.success('Retomando la validación de este sector.')
+          requestAnimationFrame(() => {
+            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          })
+          await hydrateAssets(payload)
+        }}
+      />
+
+      <ParcelValidationModal
+        row={validationTarget?.row}
+        mode={validationTarget?.mode}
+        open={!!validationTarget}
+        onClose={() => setValidationTarget(null)}
+        onReviewed={handleParcelReviewed}
+      />
 
       {/* 3 · Resultados (solo tras detección) */}
       {result && (
@@ -683,6 +930,9 @@ export default function DetectionPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5">
+              {sectorStatusBadge && (
+                <Badge variant={sectorStatusBadge.variant}>{sectorStatusBadge.label}</Badge>
+              )}
               <Badge variant="success">Nuevas {result.n_nueva ?? '—'}</Badge>
               <Badge variant="danger">Eliminadas {result.n_eliminada ?? '—'}</Badge>
               <Badge variant="warning">Cambio {result.n_cambio ?? '—'}</Badge>
@@ -826,12 +1076,13 @@ export default function DetectionPage() {
                               <th className="px-2 py-2">Tipo</th>
                               <th className="px-2 py-2">%</th>
                               <th className="px-2 py-2">Código</th>
+                              <th className="px-2 py-2">Validar</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white">
                             {reportRows.length === 0 ? (
                               <tr>
-                                <td colSpan={4} className="px-3 py-8">
+                                <td colSpan={5} className="px-3 py-8">
                                   <EmptyState
                                     title="Sin hallazgos"
                                     subtitle={`No hay filas ≥ ${minProb} %.`}
@@ -847,17 +1098,27 @@ export default function DetectionPage() {
                                   (selectedRow.tipo || selectedRow.tipo_cambio) ===
                                     (row.tipo || row.tipo_cambio)
                                 const tipo = row.tipo || row.tipo_cambio || '—'
+                                const reviewed =
+                                  row.validation_status && row.validation_status !== 'pending'
                                 return (
                                   <tr
                                     key={`${row.codigo_catastral}-${idx}`}
                                     className={`cursor-pointer border-t border-slate-100 transition-colors ${
                                       selected
                                         ? 'bg-accent-50 ring-1 ring-inset ring-accent-200'
-                                        : 'hover:bg-slate-50'
+                                        : reviewed
+                                          ? 'bg-slate-50/70 text-slate-500 hover:bg-slate-100'
+                                          : 'hover:bg-slate-50'
                                     }`}
                                     onClick={() => handleRowClick(row)}
                                   >
                                     <td className="px-2 py-2 text-slate-500">
+                                      {reviewed && (
+                                        <span
+                                          className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-accent-400"
+                                          title={`Revisado: ${row.validation_status}`}
+                                        />
+                                      )}
                                       {row.nro ?? idx + 1}
                                     </td>
                                     <td className="px-2 py-2">
@@ -868,6 +1129,12 @@ export default function DetectionPage() {
                                     </td>
                                     <td className="max-w-[7.5rem] truncate px-2 py-2 font-medium text-slate-900">
                                       {row.codigo_catastral || '—'}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                      <ParcelValidationButtons
+                                        row={row}
+                                        onOpenValidation={(r, mode) => setValidationTarget({ row: r, mode })}
+                                      />
                                     </td>
                                   </tr>
                                 )

@@ -1,14 +1,4 @@
-/**
- * Convierte un PDF (plano escaneado subido desde la web) en una imagen JPEG
- * por pagina -- asi el backend y la deteccion CV de colindancias nunca
- * tienen que distinguir "vino de PDF" vs "foto sacada con el celular": las
- * dos terminan siendo el mismo tipo de archivo (una imagen), lo mismo que ya
- * pasa con las fotos de la tabla de superficies.
- */
 
-// Dynamic import: pdfjs-dist (con su worker) solo se necesita si alguien
-// realmente sube un PDF desde la web -- igual que @techstark/opencv-js en
-// tableLineDetector.js, no tiene sentido que vaya en el bundle principal.
 let pdfjsPromise = null
 function getPdfjs() {
   if (!pdfjsPromise) {
@@ -23,8 +13,6 @@ function getPdfjs() {
   return pdfjsPromise
 }
 
-// Escala 2 sobre el punto base de 72dpi del PDF (~144dpi): alcanza para leer
-// nombres de ambiente y cotas del plano sin generar imagenes gigantes.
 const ESCALA = 2
 
 /** @param {File|Blob} file @returns {Promise<Blob[]>} una imagen JPEG por pagina */

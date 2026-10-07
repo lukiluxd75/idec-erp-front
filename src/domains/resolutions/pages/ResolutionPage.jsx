@@ -1,26 +1,23 @@
-import { ArrowLeft, Bug, FileSpreadsheet, Landmark, Save, ScanText, Table2 } from 'lucide-react'
+import { ArrowLeft, Bug, Compass, FileSpreadsheet, Landmark, Save, ScanText, Table2, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 
 import { ENV } from '@/core/config/env.config'
-import { ocrImage, resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
+import { resolutionsApi } from '@/domains/resolutions/api/resolutions.api'
 import { ColindanciasSection } from '@/domains/resolutions/components/ColindanciasSection'
 import { PlanPagesSection } from '@/domains/resolutions/components/PlanPagesSection'
 import { StatusBadge } from '@/domains/resolutions/components/StatusBadge'
 import { SurfacesTable } from '@/domains/resolutions/components/SurfacesTable'
+import { plantasDePagina } from '@/domains/resolutions/utils/plantasCatalog'
 import { buildRows, downloadBlob, fillSheet2 } from '@/domains/resolutions/utils/sheet2Excel'
 import { parseSuperficiesPage } from '@/domains/resolutions/utils/surfacesOcrParser'
 import { detectAndDeskewTable } from '@/domains/resolutions/utils/tableLineDetector'
-import { Alert, Button, Card, Input, SectionHeader, Spinner } from '@/shared/ui'
+import { ocrImage } from '@/shared/colindancias/ocrClient'
+import { Alert, Button, Card, ConfirmDialog, Input, SectionHeader, Spinner } from '@/shared/ui'
 
 const TEMPLATE_URL = '/plantilla-ph.xlsm'
 
-// Campos que van directo a celdas fijas de INICIO al generar el Excel (ver
-// INICIO_CAMPOS en sheet2Excel.js) -- salvo "propietario", que sigue siendo
-// solo de referencia interna (no se encontro una celda propia para el
-// nombre del propietario en la plantilla, a diferencia de sus documentos de
-// identidad).
 const DATOS_GENERALES_VACIO = {
   codigoCatastral: '',
   distrito: '',
@@ -37,8 +34,6 @@ const DATOS_GENERALES_VACIO = {
   ci2: '',
 }
 
-// Input controlado atado a un campo de `datosGenerales` -- evita repetir
-// value/onChange en cada uno de los ~12 campos de la tarjeta de abajo.
 function Campo({ campo, datosGenerales, setDatosGenerales, ...props }) {
   return (
     <Input
@@ -51,7 +46,10 @@ function Campo({ campo, datosGenerales, setDatosGenerales, ...props }) {
 
 export default function ResolutionPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
 
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false)
+  const [pestana, setPestana] = useState('superficies') // 'superficies' | 'colindancias'
   const [resolucion, setResolucion] = useState(null)
   const [paginasImg, setPaginasImg] = useState([]) // [{ orden, url, blob }]
   const [loadingPage, setLoadingPage] = useState(true)
@@ -60,25 +58,13 @@ export default function ResolutionPage() {
   const [paginasTabla, setPaginasTabla] = useState(null)
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrError, setOcrError] = useState(null)
-  // Raw OCR blocks per page, for the "Descargar diagnóstico OCR" button —
-  // so the file can be sent directly instead of hand-copying from the browser
-  // console (which also only shows it collapsed).
   const [ocrDiagnostics, setOcrDiagnostics] = useState(null)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
 
-  // Datos generales del edificio: no salen del escaneo de la tabla de
-  // superficies -- se transcriben a mano mirando el plano/resolucion
-  // aprobados. Se guardan en el mismo JSON opaco "tabla" que las paginas
-  // (ver saveTable) y, al generar el Excel, casi todos se escriben en celdas
-  // fijas de la hoja INICIO (ver INICIO_CAMPOS en sheet2Excel.js) -- excepto
-  // "propietario", que queda solo de referencia interna.
   const [datosGenerales, setDatosGenerales] = useState(DATOS_GENERALES_VACIO)
   const [savingGeneralData, setSavingGeneralData] = useState(false)
 
-  // Sugerencias de COLINDANCIAS revisadas/editadas por el usuario:
-  // colindancias[planta][ambiente] = { norte, este, sud, oeste }. Mismo JSON
-  // opaco que datosGenerales/paginasTabla (ver ColindanciasSection.jsx).
   const [colindancias, setColindancias] = useState({})
 
   useEffect(() => {
@@ -122,14 +108,10 @@ export default function ResolutionPage() {
       const out = []
       const diag = []
       for (const img of paginasImg) {
-        // Deskews by perspective using the table's own borders and detects
-        // its row lines; if the photo has no detectable table borders, returns
-        // the image as-is with empty lineYs (parser falls back to its usual gap heuristic).
         const { blob: blobCorregido, lineYs, corregido } = await detectAndDeskewTable(img.blob)
         const bloques = await ocrImage(blobCorregido, `pagina_${img.orden}.jpg`)
         const parsed = parseSuperficiesPage(bloques, { lineYs })
-        // For diagnostics: "Descargar diagnóstico OCR" (below) downloads this
-        // as a file if column detection goes wrong.
+        // For diagnostics: "Descargar diagnóstico OCR" (below) downloads this as a file if column detection goes wrong.
          
         console.log(`[OCR] página ${img.orden} — deskew`, { corregido, lineYs })
          
@@ -171,13 +153,6 @@ export default function ResolutionPage() {
       ),
     }))
 
-  // El <select> de Planta que ve el usuario representa un bloque de varias
-  // filas fusionadas por rowSpan (ver calcularTramosPlanta en
-  // SurfacesTable.jsx), no solo la fila "cabecera" cuyo id llega acá --
-  // hay que propagar el valor elegido a todo el tramo contiguo que
-  // compartía el valor viejo, si no el resto del bloque queda con su
-  // planta original (vacía si el OCR no la pudo adivinar) aunque
-  // visualmente parezca ya asignado.
   const onPlantaChange = (pageIdx, rowId, text) =>
     upd(pageIdx, (p) => {
       const idx = p.rows.findIndex((row) => row.id === rowId)
@@ -247,9 +222,6 @@ export default function ResolutionPage() {
     }
   }
 
-  // Nombres de "Ambiente" ya cargados en Hoja2, agrupados por Planta -- lo
-  // que ColindanciasSection necesita para saber qué unidades buscar en cada
-  // página del plano (y qué ofrecer como vecino en el <input list>).
   const unidadesPorPlanta = {}
   if (paginasTabla) {
     buildRows(paginasTabla).forEach((f) => {
@@ -259,6 +231,10 @@ export default function ResolutionPage() {
     })
   }
 
+  const paginasPorPlanta = (resolucion?.plan_pages || []).flatMap((p) =>
+    plantasDePagina(p).map((planta) => ({ ...p, planta })),
+  )
+
   const generateExcel = async () => {
     const filas = buildRows(paginasTabla)
     if (filas.length === 0) {
@@ -267,7 +243,8 @@ export default function ResolutionPage() {
     }
     setGenerating(true)
     try {
-      const buf = await fetch(TEMPLATE_URL).then((r) => {
+      // `no-cache`: revalidar siempre.
+      const buf = await fetch(TEMPLATE_URL, { cache: 'no-cache' }).then((r) => {
         if (!r.ok) throw new Error('No se encontró la plantilla (public/plantilla-ph.xlsm).')
         return r.arrayBuffer()
       })
@@ -298,6 +275,16 @@ export default function ResolutionPage() {
     )
   }
 
+  const eliminarResolucion = async () => {
+    try {
+      await resolutionsApi.remove(id)
+      toast.success('Resolución eliminada.')
+      navigate('/resolutions')
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="animate-card-in">
@@ -314,7 +301,19 @@ export default function ResolutionPage() {
           subtitle={`${resolucion.total_pages} ${
             resolucion.total_pages === 1 ? 'página escaneada' : 'páginas escaneadas'
           }`}
-          actions={<StatusBadge status={resolucion.status} />}
+          actions={
+            <div className="flex items-center gap-2">
+              <StatusBadge status={resolucion.status} />
+              <Button
+                variant="danger"
+                size="sm"
+                icon={Trash2}
+                onClick={() => setConfirmarEliminar(true)}
+              >
+                Eliminar
+              </Button>
+            </div>
+          }
         />
 
         <div className="flex flex-wrap gap-3">
@@ -482,14 +481,33 @@ export default function ResolutionPage() {
         onChanged={refrescarResolucion}
       />
 
-      <ColindanciasSection
-        resolutionId={id}
-        planPages={resolucion.plan_pages || []}
-        unidadesPorPlanta={unidadesPorPlanta}
-        colindancias={colindancias}
-        setColindancias={setColindancias}
-      />
+      <div role="tablist" aria-label="Resultados del OCR" className="flex gap-2 border-b border-slate-200">
+        {[
+          { id: 'superficies', label: 'Tabla de superficies', icon: Table2 },
+          { id: 'colindancias', label: 'Colindancias', icon: Compass },
+        ].map(({ id: tabId, label, icon: Icon }) => (
+          <button
+            key={tabId}
+            type="button"
+            role="tab"
+            aria-selected={pestana === tabId}
+            onClick={() => setPestana(tabId)}
+            className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              pestana === tabId
+                ? 'border-accent-600 text-accent-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
 
+      {/* Las dos pestañas quedan montadas (solo se ocultan): ColindanciasSection
+          guarda el resultado del OCR y las imágenes en su propio estado, y
+          desmontarla al cambiar de pestaña lo perdería. */}
+      <div role="tabpanel" hidden={pestana !== 'superficies'}>
       {paginasTabla && (
         <Card className="animate-card-in">
           <SectionHeader
@@ -521,6 +539,34 @@ export default function ResolutionPage() {
           </p>
         </Card>
       )}
+        {!paginasTabla && (
+          <Card className="animate-card-in">
+            <p className="text-sm text-slate-500">
+              Todavía no hay tabla de superficies. Pulse "Extraer con OCR" arriba para llenarla.
+            </p>
+          </Card>
+        )}
+      </div>
+
+      <div role="tabpanel" hidden={pestana !== 'colindancias'}>
+      <ColindanciasSection
+        resolutionId={id}
+        resolutionNumber={resolucion.resolution_number}
+        planPages={paginasPorPlanta}
+        unidadesPorPlanta={unidadesPorPlanta}
+        colindancias={colindancias}
+        setColindancias={setColindancias}
+      />
+      </div>
+
+      <ConfirmDialog
+        open={confirmarEliminar}
+        onClose={() => setConfirmarEliminar(false)}
+        onConfirm={eliminarResolucion}
+        title="Eliminar resolución"
+        message={`Se eliminará "${resolucion.name}" (N° ${resolucion.resolution_number}) con sus páginas escaneadas, el plano y la tabla de superficies.`}
+        confirmLabel="Eliminar"
+      />
     </div>
   )
 }

@@ -24,9 +24,7 @@ const ASSET_LABELS = {
 
 const PRIMARY_KEYS = new Set(['resultado', 'panel_resultado', 'align_check'])
 
-/**
- * Evidence gallery: full-size images + enlarged viewer.
- */
+/** Evidence gallery: full-size images + enlarged viewer. */
 export default function ResultGallery({ assetUrls = {}, compact = false }) {
   const [viewer, setViewer] = useState(null)
 

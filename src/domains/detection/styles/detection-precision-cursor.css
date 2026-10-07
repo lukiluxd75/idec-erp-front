@@ -1,7 +1,4 @@
-/**
- * Cursor de precisión para dibujar polígonos / marcar puntos de control.
- * Leaflet usa “mano” (grab) por defecto y tapa la precisión del clic.
- */
+/** Cursor de precisión para dibujar polígonos / marcar puntos de control. */
 .detection-precision-cursor,
 .detection-precision-cursor.leaflet-container,
 .detection-precision-cursor.leaflet-grab {

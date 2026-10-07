@@ -6,11 +6,7 @@ const KioskPage = lazy(() => import('./pages/KioskPage'));
 // eslint-disable-next-line react-refresh/only-export-components
 const CadastralViewerAdminPage = lazy(() => import('./pages/CadastralViewerAdminPage'));
 
-/**
- * Authenticated routes for the Cadastral Viewer domain.
- *
- * Mounted outside AppShell to keep the kiosk full-screen without sidebar or header.
- */
+/** Authenticated routes for the Cadastral Viewer domain. */
 export const cadastralViewerRoutes = [
   {
     path: '/kiosk',

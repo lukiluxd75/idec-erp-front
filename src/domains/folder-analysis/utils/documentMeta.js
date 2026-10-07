@@ -1,10 +1,20 @@
-import { FileSpreadsheet, Map as MapIcon, Receipt, ScrollText } from 'lucide-react'
+import {
+  Calculator,
+  ClipboardList,
+  FileSpreadsheet,
+  Paperclip,
+  Map as MapIcon,
+  Receipt,
+  ScrollText,
+  Signature,
+} from 'lucide-react'
 
-/** The three sections of the screen, in display order. */
+/** Every kind of document the module can classify, in display order. */
 export const DOC_TYPES = [
   {
     id: 'folio',
     label: 'Folio',
+    noun: 'el folio',
     icon: ScrollText,
     hint: 'Folio Real de Derechos Reales. Puede tener varias páginas.',
     multiPage: true,
@@ -12,6 +22,7 @@ export const DOC_TYPES = [
   {
     id: 'tax_receipt',
     label: 'Impuesto',
+    noun: 'el comprobante',
     icon: Receipt,
     hint: 'Comprobante de pago del impuesto a la propiedad (FUR).',
     multiPage: false,
@@ -19,13 +30,117 @@ export const DOC_TYPES = [
   {
     id: 'plan',
     label: 'Plano',
+    noun: 'el plano',
     icon: MapIcon,
-    hint: 'Planos arquitectónicos. Por ahora se extrae el texto, los datos y las tablas.',
+    hint: 'Planos arquitectónicos. Se extrae el texto, los datos y los cuadros con OCR + OpenCV.',
+    multiPage: true,
+  },
+  {
+    id: 'appraisal',
+    label: 'Avalúo',
+    noun: 'el avalúo',
+    icon: Calculator,
+    hint: 'Avalúo del inmueble. Puede tener varias páginas.',
+    multiPage: true,
+  },
+  {
+    id: 'form',
+    label: 'Formulario',
+    noun: 'el formulario',
+    icon: ClipboardList,
+    hint: 'Formulario del trámite. Puede tener varias páginas.',
+    multiPage: true,
+  },
+  {
+    id: 'sworn_statement',
+    label: 'Declaración jurada',
+    noun: 'la declaración jurada',
+    icon: Signature,
+    hint: 'Carril retirado. Solo para los documentos guardados antes de quitarlo.',
+    multiPage: true,
+  },
+  {
+    id: 'id_card',
+    label: 'Otros documentos',
+    noun: 'el documento',
+    icon: Paperclip,
+    hint: 'Respaldos que acompañan a la carpeta: carnets y cualquier otra hoja. Se guardan con sus fotos, no se leen.',
     multiPage: true,
   },
 ]
 
+/** Lo que la carpeta guarda sin leer: respaldos que la acompañan y no tienen datos que sacarles. */
+export const NOT_READ = new Set(['id_card'])
+
+export const SERVER_READ = new Set(
+  DOC_TYPES.map((type) => type.id).filter((id) => !NOT_READ.has(id))
+)
+
 export const DOC_TYPE_BY_ID = Object.fromEntries(DOC_TYPES.map((t) => [t.id, t]))
+
+/** Visual theme per lane (workbench — not module catalog tiles). */
+export const LANE_THEME = {
+  folio: {
+    accentBar: 'bg-brand-900',
+    iconWrap: 'bg-brand-900/10 text-brand-900 ring-brand-900/20',
+    lane: 'workbench-lane--folio',
+    workAccent: 'border-l-brand-800',
+    assignBtn:
+      'ring-brand-900/15 text-brand-900 hover:bg-brand-900/10 hover:ring-brand-900/30 focus-visible:ring-brand-900/40',
+  },
+  tax_receipt: {
+    accentBar: 'bg-emerald-600',
+    iconWrap: 'bg-emerald-600/10 text-emerald-800 ring-emerald-600/20',
+    lane: 'workbench-lane--tax',
+    workAccent: 'border-l-emerald-600',
+    assignBtn:
+      'ring-emerald-600/15 text-emerald-800 hover:bg-emerald-600/10 hover:ring-emerald-600/30 focus-visible:ring-emerald-600/40',
+  },
+  plan: {
+    accentBar: 'bg-accent-600',
+    iconWrap: 'bg-accent-600/10 text-accent-800 ring-accent-600/25',
+    lane: 'workbench-lane--plan',
+    workAccent: 'border-l-accent-600',
+    assignBtn:
+      'ring-accent-600/15 text-accent-800 hover:bg-accent-600/10 hover:ring-accent-600/30 focus-visible:ring-accent-600/40',
+  },
+  appraisal: {
+    accentBar: 'bg-amber-600',
+    iconWrap: 'bg-amber-600/10 text-amber-800 ring-amber-600/20',
+    lane: 'workbench-lane--appraisal',
+    workAccent: 'border-l-amber-600',
+    assignBtn:
+      'ring-amber-600/15 text-amber-800 hover:bg-amber-600/10 hover:ring-amber-600/30 focus-visible:ring-amber-600/40',
+  },
+  form: {
+    accentBar: 'bg-indigo-600',
+    iconWrap: 'bg-indigo-600/10 text-indigo-800 ring-indigo-600/20',
+    lane: 'workbench-lane--form',
+    workAccent: 'border-l-indigo-600',
+    assignBtn:
+      'ring-indigo-600/15 text-indigo-800 hover:bg-indigo-600/10 hover:ring-indigo-600/30 focus-visible:ring-indigo-600/40',
+  },
+  sworn_statement: {
+    accentBar: 'bg-rose-600',
+    iconWrap: 'bg-rose-600/10 text-rose-800 ring-rose-600/20',
+    lane: 'workbench-lane--sworn',
+    workAccent: 'border-l-rose-600',
+    assignBtn:
+      'ring-rose-600/15 text-rose-800 hover:bg-rose-600/10 hover:ring-rose-600/30 focus-visible:ring-rose-600/40',
+  },
+  id_card: {
+    accentBar: 'bg-teal-600',
+    iconWrap: 'bg-teal-600/10 text-teal-800 ring-teal-600/20',
+    lane: 'workbench-lane--id',
+    workAccent: 'border-l-teal-600',
+    assignBtn:
+      'ring-teal-600/15 text-teal-800 hover:bg-teal-600/10 hover:ring-teal-600/30 focus-visible:ring-teal-600/40',
+  },
+}
+
+export const LANE_ACCENT_CLASS = Object.fromEntries(
+  Object.entries(LANE_THEME).map(([id, t]) => [id, t.workAccent])
+)
 
 export const FALLBACK_ICON = FileSpreadsheet
 
@@ -36,6 +151,8 @@ export const STATUS_META = {
   extracted: { label: 'Por revisar', variant: 'warning' },
   failed: { label: 'Falló', variant: 'danger' },
   reviewed: { label: 'Revisado', variant: 'success' },
+  // El carril que no se lee: guardado y terminado, sin nada que revisar.
+  filed: { label: 'Guardado', variant: 'success' },
 }
 
 export const IN_PROGRESS = new Set(['queued', 'processing'])

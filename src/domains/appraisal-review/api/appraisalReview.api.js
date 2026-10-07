@@ -7,9 +7,6 @@ function listPending() {
   return httpClient.get(API_ENDPOINTS.APPRAISAL_REVIEW.PENDING)
 }
 
-// Searches ALL appraisals by form_number regardless of status — Avalúos has its own
-// separate login, so there is no automatic notification when one is created; this lets
-// the reviewer pull it up directly instead of waiting for it to reach 'submitted'.
 function search(formNumber) {
   return httpClient.get(API_ENDPOINTS.APPRAISAL_REVIEW.SEARCH(formNumber))
 }

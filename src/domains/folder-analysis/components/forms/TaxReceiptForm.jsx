@@ -11,13 +11,14 @@ function Group({ title, children }) {
 }
 
 /** Review form for a FUR property tax payment receipt. */
-export function TaxReceiptForm({ value, onChange }) {
+export function TaxReceiptForm({ value, onChange, lowConfidence: flagged }) {
+  const lowConfidence = new Set(flagged || [])
   const set = (key, v) => onChange({ ...value, [key]: v })
   const [receipt, ...rest] = TAX_RECEIPT_GROUPS
   const fieldsOf = (group) =>
     group.fields.map(([key, label]) => (
       <FieldInput key={key} label={label} value={value[key]} multiline={key === 'location'}
-        onChange={(v) => set(key, v)} />
+        warn={lowConfidence.has(key)} onChange={(v) => set(key, v)} />
     ))
 
   return (
@@ -26,6 +27,7 @@ export function TaxReceiptForm({ value, onChange }) {
       <Group title="Contribuyente">
         {TAXPAYER_FIELDS.map(([key, label]) => (
           <FieldInput key={key} label={label} value={value.taxpayer[key]}
+            warn={lowConfidence.has(`taxpayer.${key}`)}
             onChange={(v) => set('taxpayer', { ...value.taxpayer, [key]: v })} />
         ))}
       </Group>

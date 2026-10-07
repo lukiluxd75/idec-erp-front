@@ -1,9 +1,3 @@
-/**
- * Groups raw text blocks from the OCR service into rows/columns of a coordinates table,
- * cleaning text to digits/dots/signs only and splitting "X.XXX Y.YYYY" pairs stuck in the
- * same block when OCR did not detect them as separate cells.
- * Ported as-is from geo-extract/frontend/src/services/ocrService.js.
- */
 export function processAndFilterOCRData(blocks) {
   let rowsMap = []
 

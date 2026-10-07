@@ -1,37 +1,19 @@
-/**
- * Corrects rotation of a "RELACION DE SUPERFICIE" table photo (one table per
- * photo, as the real app scans) using the average angle of its own horizontal
- * lines, and returns the Y positions of row lines on the corrected image -- so
- * the parser (surfacesOcrParser.js) can use them as real row boundaries instead
- * of grouping OCR blocks only by a fixed Y gap.
- *
- * Corrects ONLY rotation (not 4-corner perspective): tested on real photos,
- * finding the table's 4 corners is fragile -- if an edge is weak/fragmented
- * (glare, shadow), the detected edge becomes an interior line and perspective
- * crop LOSES entire data columns. Rotate without cropping (enlarged output
- * canvas) has no that risk: worst case it improves nothing, never loses data.
- *
- * Never throws: if there are not enough candidate horizontal lines (photo with
- * no visible lines, heavily cropped, etc.) returns the original image untouched
- * and `lineYs: []`, and the parser falls back to its usual heuristic.
- */
 
-// Dynamic import: @techstark/opencv-js weighs several MB (embedded wasm) and is
-// only needed on this screen when pressing "Extraer con OCR" -- a static import
-// would put it in the main bundle and every page would download it unused.
 let cvPromise = null
 function getCv() {
   if (!cvPromise) {
-    cvPromise = import('@techstark/opencv-js').then(async ({ default: cvModule }) => {
-      // Installed version (5.0.0-release.1) exports default as a Promise that
-      // resolves straight to the cv object (verified in Node: the old
-      // "cv.onRuntimeInitialized = cb" pattern never fires here and hangs
-      // forever). Both formats are supported just in case.
-      if (typeof cvModule.then === 'function') return cvModule
+    cvPromise = import('@/shared/colindancias/opencvLoader').then(async ({ obtenerCv }) => {
+      const cvModule = obtenerCv()
+      if (!cvModule) throw new Error('OpenCV no quedó disponible')
       if (cvModule.Mat) return cvModule
+      if (typeof cvModule.then === 'function') return await cvModule
       return new Promise((resolve) => {
         cvModule['onRuntimeInitialized'] = () => resolve(cvModule)
       })
+    })
+    // Si falla, que el próximo intento vuelva a probar en vez de quedar roto.
+    cvPromise.catch(() => {
+      cvPromise = null
     })
   }
   return cvPromise
@@ -56,8 +38,7 @@ function matToJpegBlob(cv, mat, quality = 0.9) {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
 }
 
-// Otsu: separates dark ink (text/lines) from paper without a fixed threshold
-// -- phone photos vary a lot in lighting.
+// Otsu: separates dark ink (text/lines) from paper without a fixed threshold -- phone photos vary a lot in lighting.
 function binarize(cv, colorMat) {
   const gray = new cv.Mat()
   cv.cvtColor(colorMat, gray, cv.COLOR_RGBA2GRAY)
@@ -67,11 +48,7 @@ function binarize(cv, colorMat) {
   return bin
 }
 
-// Isolate long horizontal strokes (MORPH_OPEN with a narrow-and-long kernel):
-// only grid lines survive; text is too short. Pre-dilate 1-2px on the short
-// (vertical) axis before the long erosion: without that, a slightly tilted
-// line breaks into short fragments as soon as it leaves the row -- tested on
-// a real photo; without this step almost all row lines are lost.
+// Isolate long horizontal strokes (MORPH_OPEN with a narrow-and-long kernel): only grid lines survive; text is too short.
 function extractHorizontalLineMask(cv, bin) {
   const size = Math.max(15, Math.round(bin.cols / 20))
   const preKernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(1, 3))
@@ -101,8 +78,6 @@ function findContourRects(cv, mask) {
   return { contours, rects }
 }
 
-// Angle (degrees, median -- tolerates outliers) of detected long horizontal
-// lines: that is the photo tilt angle to correct.
 function estimateSkewAngleDeg(cv, colorMat) {
   const bin = binarize(cv, colorMat)
   const mask = extractHorizontalLineMask(cv, bin)
@@ -131,9 +106,6 @@ function estimateSkewAngleDeg(cv, colorMat) {
   return { angle, n: angles.length }
 }
 
-// Rotate without cropping: output canvas grows to hold the full rotated image
-// (unlike a perspective crop, it can never lose a data column/row by
-// miscalculating an edge).
 function rotateNoCrop(cv, colorMat, angleDeg) {
   const { cols: w, rows: h } = colorMat
   const M = cv.getRotationMatrix2D(new cv.Point(w / 2, h / 2), angleDeg, 1)
@@ -156,8 +128,7 @@ function rotateNoCrop(cv, colorMat, angleDeg) {
   return out
 }
 
-// On the already-rotated image, the center of each long horizontal stroke is the
-// posicion Y de esa linea de fila.
+// On the already-rotated image, the center of each long horizontal stroke is the posicion Y de esa linea de fila.
 function detectRowLines(cv, colorMat) {
   const bin = binarize(cv, colorMat)
   const mask = extractHorizontalLineMask(cv, bin)

@@ -12,7 +12,7 @@ const GREETING = {
     '¡Buenos días! Bienvenido al servicio de atención virtual de la Dirección de Administración Geográfica y Catastro.',
 }
 
-const SUGGESTIONS = ['¿Qué puedes hacer?', '¿Qué áreas abarcas?', 'Contacto']
+const SUGGESTIONS = ['¿Qué puede hacer?', '¿Qué áreas abarca?', 'Contacto']
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([GREETING])
@@ -80,7 +80,7 @@ export default function ChatPage() {
   }
 
   return (
-    <Card className="flex h-[calc(100dvh-8rem)] flex-col animate-card-in">
+    <Card className="flex h-[calc(100dvh-7rem)] flex-col animate-card-in sm:h-[calc(100dvh-8rem)]">
       <SectionHeader icon={Bot} eyebrow="Catastro" title="Asistente de Trámites" className="shrink-0" />
 
       <div className="flex-1 space-y-4 overflow-y-auto py-2">

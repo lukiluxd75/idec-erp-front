@@ -1,30 +1,4 @@
-/**
- * Fills `Hoja2` + `INICIO` of `plantilla-ph.xlsm` with user-reviewed rows and
- * triggers .xlsm download.
- *
- * Column mapping of Hoja2 (verified against a real filled example, "Prueba
- * PH - MARIA AUXILIADORA" — do NOT reuse the mapping from a previous version
- * of this file, the engineers swapped Planta/Bloque when they added
- * COLINDANCIAS): A (Bloque), B (Planta), C (Ambiente), D/E (Priv.
- * Construida/Libre), G (Ideal), H/I (Común Construida/Libre). Do NOT touch F
- * (=D+E) or J (=D+H): they're formulas. First data row = 10.
- *
- * Besides the per-unit rows, this also writes one SUBTOTAL row per planta
- * (column C = nombre canónico de PLANTAS_RESUMEN, D:J = `SUM()` over that
- * planta's row range) — `RESUMEN` busca esas filas con VLOOKUP contra
- * Hoja2!C10:C705 y sin ellas queda vacía (y por lo tanto MODEL SISCAT
- * también). Y los 4 totales del edificio en INICIO (C35/C36/C38/C39), que
- * alimentan sigma1/sigma2 y el % Ideal en Hoja2 y que antes quedaban en
- * blanco porque nadie los llenaba.
- *
- * IMPORTANT about formatting/colors: the template already has per-cell color
- * and format (gray "Descripción", number "0.00", borders, etc. in
- * `xl/styles.xml` via each `<c s="N">`). SheetJS free edition only handles
- * limited styles and drops `s="N"` on every touched cell. So the .xlsm is
- * edited as a ZIP of XML: JSZip rewrites only targeted cells inside
- * `xl/worksheets/sheetN.xml`, leaving style attributes, other sheets, styles
- * and VBA macros byte-intact.
- */
+/** Fills `Hoja2` + `INICIO` of `plantilla-ph.xlsm` with user-reviewed rows and triggers .xlsm download. */
 import JSZip from 'jszip'
 
 const HOJA2 = 'Hoja2'
@@ -33,16 +7,6 @@ const COLINDANCIAS = 'COLINDANCIAS'
 const FIRST_ROW = 10
 const LAST_ROW = 705 // limite real de la plantilla (Hoja2!U2 suma U10:U705)
 
-// COLINDANCIAS trae, para CADA fila de Hoja2 (real o no: subtotales y filas
-// sin usar tambien tienen su bloque), un bloque de 5 filas con formulas ya
-// armadas en A/B/C/D que apuntan a `Hoja2!<col><r>` (ver docstring del
-// archivo) -- lo unico que la plantilla deja en blanco es la columna E
-// (NORTE/ESTE/SUD/OESTE, en ese orden dentro del bloque). Bloque de la fila
-// r de Hoja2 arranca en `11 + 5*(r-10)`: r=10 -> 11, r=11 -> 16, r=17 -> 46
-// (verificado contra COLINDANCIAS!B46="=Hoja2!B17" en el Excel real de
-// referencia). Solo se escribe E para filas con unidad real (no subtotales):
-// para esas no hay ninguna sugerencia en `colindancias` y `set()` ya ignora
-// valores null/undefined.
 const COLINDANCIAS_OFFSET = { norte: 0, este: 1, sud: 2, oeste: 3 }
 function filaBloqueColindancias(filaHoja2) {
   return 11 + 5 * (filaHoja2 - FIRST_ROW)
@@ -61,9 +25,6 @@ const COLUMNAS = {
 
 const SUBTOTAL_COLS = ['D', 'E', 'F', 'G', 'H', 'I', 'J']
 
-// Campos de "Datos generales del edificio" que van directo a celdas fijas de
-// INICIO (los nombres de campo son los que usa ResolutionPage.jsx). ci1/ci2/
-// distrito/supLote se escriben como número; el resto como texto.
 const INICIO_CAMPOS = {
   codigoCatastral: 'C2',
   subalcaldia: 'C4',
@@ -84,23 +45,10 @@ const INICIO_CAMPOS_NUMERICOS = new Set(['distrito', 'ci1', 'ci2', 'supLote'])
 export function parseNumero(texto) {
   if (texto == null || texto === '') return null
   const bruto = String(texto).trim()
-  // Si el agrupador por posicion junto de mas (2-3 ambientes en una sola
-  // celda: "12,50 17,21 12,50"), no hay forma de saber cual de esos numeros
-  // es el correcto -- concatenar sus digitos daria un numero inventado
-  // ("12.501721125", que Excel redondea a "12,50" y parece un dato real sin
-  // serlo). Mejor null: la celda queda vacia y el usuario nota que falta
-  // revisar esa fila a mano, en vez de llevarse un numero que no es de nadie.
   const partes = bruto.split(/\s+/).filter((p) => /\d/.test(p))
   if (partes.length > 1) return null
 
-  // Si trae coma, esa es la decimal real (formato boliviano) y el punto es de
-  // miles -> se borra. Si NO trae coma, el OCR probablemente escribio el
-  // punto donde iba una coma (visto en fotos reales: "7.19" en vez de "7,19")
-  // -- no hay forma de distinguirlo de un separador de miles mirando solo el
-  // texto, pero en esta tabla las superficies de fila SIEMPRE son < 1000 m²,
-  // asi que un punto de miles genuino practicamente no aparece. Se asume
-  // decimal (tal cual lo entiende parseFloat) en vez de borrarlo: borrarlo
-  // multiplicaba el valor por 100-1000 ("7.19" -> 719, "41.44" -> 4144).
+  // Si trae coma, esa es la decimal real (formato boliviano) y el punto es de miles -> se borra.
   const limpio = bruto.includes(',') ? bruto.replace(/\./g, '').replace(',', '.') : bruto
   const n = parseFloat(limpio.replace(/[^\d.-]/g, ''))
   return Number.isNaN(n) ? null : n
@@ -110,11 +58,7 @@ function escapeXml(texto) {
   return String(texto).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' })[c])
 }
 
-// Arma el `<c>` de reemplazo preservando el `s="N"` (estilo) que ya tenia la
-// celda de la plantilla en ese address. Los textos van como inline string
-// (`t="inlineStr"`) para no tener que tocar sharedStrings.xml. Un valor
-// `{ formula }` escribe una formula real (`<f>`), usado por las filas de
-// subtotal por planta -- Excel la recalcula sola (fullCalcOnLoad, ver abajo).
+// Arma el `<c>` de reemplazo preservando el `s="N"` (estilo) que ya tenia la celda de la plantilla en ese address.
 function construirCeldaXml(addr, attrsPrevios, valor) {
   const estilo = /\ss="(\d+)"/.exec(attrsPrevios || '')
   const sAttr = estilo ? ` s="${estilo[1]}"` : ''
@@ -127,8 +71,6 @@ function construirCeldaXml(addr, attrsPrevios, valor) {
   return `<c r="${addr}"${sAttr} t="inlineStr"><is><t xml:space="preserve">${escapeXml(valor)}</t></is></c>`
 }
 
-// Reemplaza, en el XML de la hoja, cada `<c r="...">` cuyo address este en
-// `valoresPorCelda` — sin tocar ningun otro `<c>` (formulas, otras columnas).
 function parchearCeldas(sheetXml, valoresPorCelda) {
   const pendientes = new Set(Object.keys(valoresPorCelda))
   if (pendientes.size === 0) return sheetXml
@@ -147,9 +89,6 @@ function parchearCeldas(sheetXml, valoresPorCelda) {
   return patched
 }
 
-// Ubica `xl/worksheets/sheetN.xml` para el nombre de hoja pedido, leyendo
-// workbook.xml + sus relationships (el numero de sheetN.xml no tiene por que
-// coincidir con el orden de las pestañas).
 async function resolverRutaHoja(zip, nombreHoja) {
   const workbookXml = await zip.file('xl/workbook.xml').async('string')
   const sheetMatch = new RegExp(`<sheet\\b[^>]*name="${nombreHoja}"[^>]*/>`).exec(workbookXml)
@@ -164,10 +103,6 @@ async function resolverRutaHoja(zip, nombreHoja) {
   return `xl/${targetMatch[1].replace(/^\/?(xl\/)?/, '')}`
 }
 
-// Agrupa las filas por planta EN ORDEN DE PRIMERA APARICION, sin importar de
-// que pagina/foto vino cada una -- asi el rango de cada subtotal (SUM) es
-// siempre contiguo en Hoja2, aunque en el papel una misma planta este
-// repartida entre fotos.
 function agruparPorPlanta(filas) {
   const grupos = []
   const porPlanta = new Map()
@@ -215,9 +150,6 @@ export async function fillSheet2(templateBuf, filas, datosGenerales = {}, colind
     valoresColindancias[`E${base + COLINDANCIAS_OFFSET[direccion]}`] = valor
   }
 
-  // Filas de datos, reagrupadas de forma contigua por planta, + una fila de
-  // subtotal al cierre de cada grupo (misma mecanica que la fila 15 "PLANTA
-  // SEMISOTANO" del ejemplo real: C=nombre de planta, D:J=SUM del rango).
   let cursor = FIRST_ROW
   agruparPorPlanta(filas).forEach((grupo) => {
     const inicioRango = cursor
@@ -249,8 +181,6 @@ export async function fillSheet2(templateBuf, filas, datosGenerales = {}, colind
     throw new Error(`Demasiadas filas para la plantilla (máx. ${LAST_ROW - FIRST_ROW + 1} filas de datos+subtotal).`)
   }
 
-  // Totales del edificio (INICIO!C35/C36/C38/C39): suma sobre las filas de
-  // DATOS unicamente (no las de subtotal, para no contar doble).
   const totales = filas.reduce(
     (acc, f) => ({
       privConstruida: acc.privConstruida + (f.sup_privada_construida || 0),
@@ -284,10 +214,6 @@ export async function fillSheet2(templateBuf, filas, datosGenerales = {}, colind
     )
   }
 
-  // El resto de las formulas (F, J, el bloque N:BA de cada fila, RESUMEN,
-  // MODEL SISCAT) dependen de lo que acabamos de escribir, pero su valor
-  // quedo con el numero viejo "en cache" del XML — sin esto Excel podria
-  // mostrar ese valor viejo hasta que el usuario fuerce un recalculo (F9).
   const workbookXml = (await zip.file('xl/workbook.xml').async('string')).replace(
     /<calcPr\b([^>]*?)\/>/,
     (m, attrs) => (attrs.includes('fullCalcOnLoad') ? m : `<calcPr${attrs} fullCalcOnLoad="1"/>`),
@@ -333,13 +259,4 @@ export function buildRows(paginas) {
   return filas
 }
 
-export function downloadBlob(blob, nombre) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = nombre
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
+export { downloadBlob } from '@/shared/utils'

@@ -2,10 +2,6 @@ import { MessageSquarePlus, Trash2 } from 'lucide-react'
 
 import { Button, IconButton, Input } from '@/shared/ui'
 
-/**
- * Point-by-point observations the reviewer writes below the read-only appraisal data —
- * no appraisal field is editable, only this list of remarks.
- */
 export function ObservationsEditor({ observations, onChange }) {
   const setLine = (idx, value) => onChange(observations.map((o, i) => (i === idx ? value : o)))
   const removeLine = (idx) => onChange(observations.filter((_, i) => i !== idx))

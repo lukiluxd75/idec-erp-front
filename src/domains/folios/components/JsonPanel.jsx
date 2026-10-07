@@ -21,7 +21,7 @@ export function JsonPanel({ data, filename }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button variant="secondary" size="sm" icon={copied ? Check : Copy} onClick={copy}>
           {copied ? 'Copiado' : 'Copiar'}
         </Button>

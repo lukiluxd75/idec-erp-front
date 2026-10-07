@@ -49,7 +49,7 @@ export default function CitesPage() {
         title="CITES"
         subtitle="Historial de códigos correlativos generados y su asociación documental."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="secondary" icon={Plus} onClick={() => setConfigModalOpen(true)}>
               Nueva sigla
             </Button>
