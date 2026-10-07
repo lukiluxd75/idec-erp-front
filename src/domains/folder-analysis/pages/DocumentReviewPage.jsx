@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, RotateCcw, Save } from 'lucide-react'
+import { ArrowLeft, Download, FileText, RotateCcw, Save } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -25,8 +25,39 @@ import {
 } from '@/domains/folder-analysis/utils/documentMeta'
 import { usePollWhile } from '@/domains/folder-analysis/utils/usePollWhile'
 import { Alert, Button, Card, ConfirmDialog, SectionHeader, Spinner } from '@/shared/ui'
+import { cn } from '@/shared/utils'
 
 const WITH_DATA = new Set(['extracted', 'reviewed'])
+
+/** "el plano" -> "del plano"; "la declaración jurada" -> "de la declaración jurada". */
+function de(noun) {
+  return noun.startsWith('el ') ? `del ${noun.slice(3)}` : `de ${noun}`
+}
+
+/**
+ * Lo que esta hoja no decía y otro documento de la misma carpeta sí: se avisa de
+ * dónde salió, porque no se leyó de la foto que está al lado.
+ */
+function BorrowedFrom({ docType }) {
+  return (
+    <p className="flex items-start gap-1 text-[11px] leading-snug text-slate-500">
+      <FileText className="mt-px h-3 w-3 shrink-0" aria-hidden />
+      <span>Traído {de(DOC_TYPE_BY_ID[docType]?.noun || 'el documento')} de esta carpeta.</span>
+    </p>
+  )
+}
+
+/** Un valor que el arquitecto escribió ya no es prestado de otro documento. */
+function withoutBorrowed(form, keys) {
+  const borrowed = form?.borrowed_values
+  if (!borrowed || !keys.some((key) => borrowed[key])) return form
+  return {
+    ...form,
+    borrowed_values: Object.fromEntries(
+      Object.entries(borrowed).filter(([key]) => !keys.includes(key))
+    ),
+  }
+}
 
 function initialForm(document) {
   if (document.doc_type === 'folio') return withFolioDefaults(document.data)
@@ -81,11 +112,16 @@ export default function DocumentReviewPage() {
   // Qué se le pide al arquitecto en esta hoja.
   const pageReading = catalog ? document?.doc_type === 'plan' || values.length === 0 : null
 
-  const setValue = (key, value) =>
-    setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), [key]: value } }))
+  // De qué otro documento de la carpeta salió cada valor que esta hoja no traía.
+  const borrowed = form?.borrowed_values || {}
 
   const setValues = (patch) =>
-    setForm((previous) => ({ ...previous, values: { ...(previous?.values || {}), ...patch } }))
+    setForm((previous) => ({
+      ...withoutBorrowed(previous, Object.keys(patch)),
+      values: { ...(previous?.values || {}), ...patch },
+    }))
+
+  const setValue = (key, value) => setValues({ [key]: value })
 
   const save = async () => {
     setSaving(true)
@@ -239,25 +275,28 @@ export default function DocumentReviewPage() {
                       escríbalo comparando con la foto.
                     </p>
                     <div className="grid gap-x-5 gap-y-3.5 sm:grid-cols-2">
-                      {values.map((field) =>
-                        field.multiple ? (
-                          <MultiFieldInput
-                            key={field.key}
-                            label={field.label}
-                            itemLabel={field.item_label}
-                            value={form?.values?.[field.key] ?? null}
-                            onChange={(value) => setValue(field.key, value)}
-                            className="sm:col-span-2"
-                          />
-                        ) : (
-                          <FieldInput
-                            key={field.key}
-                            label={field.label}
-                            value={form?.values?.[field.key] ?? null}
-                            onChange={(value) => setValue(field.key, value)}
-                          />
-                        )
-                      )}
+                      {values.map((field) => (
+                        <div
+                          key={field.key}
+                          className={cn('flex flex-col gap-1', field.multiple && 'sm:col-span-2')}
+                        >
+                          {field.multiple ? (
+                            <MultiFieldInput
+                              label={field.label}
+                              itemLabel={field.item_label}
+                              value={form?.values?.[field.key] ?? null}
+                              onChange={(value) => setValue(field.key, value)}
+                            />
+                          ) : (
+                            <FieldInput
+                              label={field.label}
+                              value={form?.values?.[field.key] ?? null}
+                              onChange={(value) => setValue(field.key, value)}
+                            />
+                          )}
+                          {borrowed[field.key] && <BorrowedFrom docType={borrowed[field.key]} />}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

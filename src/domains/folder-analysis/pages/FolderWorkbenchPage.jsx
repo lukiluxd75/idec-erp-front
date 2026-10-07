@@ -6,6 +6,7 @@ import { toast } from 'react-toastify'
 import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.api'
 import { ClassificationBoard } from '@/domains/folder-analysis/components/ClassificationBoard'
 import { FolderSheet } from '@/domains/folder-analysis/components/FolderSheet'
+import { SameParcelNotice } from '@/domains/folder-analysis/components/SameParcelNotice'
 import { DOC_TYPES, formatDateTime } from '@/domains/folder-analysis/utils/documentMeta'
 import { folderTypeOf, sheetForm, useCatalog } from '@/domains/folder-analysis/utils/catalog'
 import {
@@ -21,6 +22,8 @@ export default function FolderWorkbenchPage() {
   const { catalog, error: catalogError } = useCatalog()
   const [folder, setFolder] = useState(null)
   const [sheet, setSheet] = useState({})
+  // Las otras carpetas del mismo predio, para avisar de lo que ya está cargado de este lote.
+  const [sameParcel, setSameParcel] = useState([])
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
@@ -37,6 +40,11 @@ export default function FolderWorkbenchPage() {
           setFolder(value)
           if (withSheet) setSheet(value.data || {})
           setError(null)
+          // Un aviso de más: si no se pudo, la carpeta se trabaja igual.
+          folderAnalysisApi
+            .sameParcelFolders(id)
+            .then(setSameParcel)
+            .catch(() => setSameParcel([]))
         })
         .catch((e) => setError(e.message)),
     [id]
@@ -98,7 +106,7 @@ export default function FolderWorkbenchPage() {
       ...Object.fromEntries(pendientes.map(([key, suggestion]) => [key, suggestion.value])),
     }))
     toast.success(
-      `Se llenaron ${pendientes.length} ${pendientes.length === 1 ? 'dato' : 'datos'} con los documentos de la carpeta. Revísalos y guarda.`
+      `Se llenaron ${pendientes.length} ${pendientes.length === 1 ? 'dato' : 'datos'} con los documentos de la carpeta. Revíselos y guarde.`
     )
   }
 
@@ -163,9 +171,11 @@ export default function FolderWorkbenchPage() {
                 ? `Los documentos revisados de esta carpeta pueden llenar ${pendientes.length} ${pendientes.length === 1 ? 'campo vacío' : 'campos vacíos'}. Cada uno muestra de dónde sale antes de copiarlo.`
                 : 'Ya está traído todo lo que los documentos de esta carpeta pueden llenar.'}
               {distintos.length > 0 &&
-                ` ${distintos.length} ${distintos.length === 1 ? 'campo dice' : 'campos dicen'} algo distinto a su documento: no se tocan solos, mira la nota debajo de cada uno.`}
+                ` ${distintos.length} ${distintos.length === 1 ? 'campo dice' : 'campos dicen'} algo distinto a su documento: no se tocan solos, mire la nota debajo de cada uno.`}
             </p>
           )}
+
+          <SameParcelNotice folders={sameParcel} sheet={form} onApply={cambiar} />
 
           <FolderSheet
             folderType={type}

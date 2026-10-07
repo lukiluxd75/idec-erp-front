@@ -12,6 +12,9 @@ const LABELS = {
   built_area: 'Superficie construida', age_factor: 'Factor de antigüedad', ufv: 'UFV', taxable_base: 'Base imponible',
   assessed_tax: 'Impuesto determinado', exemption: 'Exención', discount_10: 'Descuento 10%', discount_app_5: 'Descuento APP 5%',
   amount_due: 'Importe a pagar', amount_paid: 'Monto pagado', balance: 'Saldo de gestión', text: 'Texto', tables: 'Tablas', pages: 'Páginas',
+  values: 'Datos para la carpeta', usable_area: 'Superficie útil',
+  // De qué otro documento de la carpeta salió un dato que esta hoja no traía.
+  borrowed_values: 'Traído de otro documento de la carpeta',
 }
 
 function labelFor(key) {

@@ -112,6 +112,13 @@ export const folderAnalysisApi = {
   /** Una carpeta con su tipo, su hoja y los documentos que tiene dentro. */
   folder: (id) => httpClient.get(E.FOLDER(id)),
 
+  /**
+   * Las otras carpetas del usuario que son del mismo predio que esta (el mismo
+   * código catastral), con lo que cada una tiene escrito del predio. Se avisa,
+   * no se aplica.
+   */
+  sameParcelFolders: (id) => httpClient.get(E.FOLDER_SAME_PARCEL(id)),
+
   createFolder: ({ name, notes, folderType, data, documentIds }) =>
     httpClient.post(E.FOLDERS, {
       name,

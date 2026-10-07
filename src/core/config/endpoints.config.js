@@ -124,6 +124,8 @@ export const API_ENDPOINTS = {
     FOLDERS_FROM_BOARD: '/api/folder-analysis/folders/from-board',
     FOLDER: (id) => `/api/folder-analysis/folders/${id}`,
     FOLDER_DOCUMENTS: (id) => `/api/folder-analysis/folders/${id}/documents`,
+    // Las otras carpetas del mismo predio: mismo código catastral.
+    FOLDER_SAME_PARCEL: (id) => `/api/folder-analysis/folders/${id}/same-parcel`,
     FOLDER_PHOTO: (folderId, captureId) =>
       `/api/folder-analysis/folders/${folderId}/photos/${captureId}`,
     FOLDER_DOCUMENT: (id, documentId) => `/api/folder-analysis/folders/${id}/documents/${documentId}`,
