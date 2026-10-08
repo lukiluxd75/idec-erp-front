@@ -74,7 +74,7 @@ export function InboxPanel({
           />
         </div>
       ) : (
-        <ul className="workbench-queue__list" role="list">
+        <ul className="workbench-queue__list">
           {captures.map((capture) => (
             <li
               key={capture.id}

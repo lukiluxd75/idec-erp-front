@@ -7,13 +7,13 @@ const DEFAULT_CENTER = [-17.39325, -66.15625]
 const DEFAULT_ZOOM = 17
 const GIS_HOSTS = ['https://gs.catastrocbba.com', 'http://192.168.105.219:6080', 'http://172.16.67.110:6080']
 
-const BLOCK_STYLE = { color: '#341a67', weight: 2, fillColor: '#009ed0', fillOpacity: 0.18 }
-const REF_POINT_STYLE = { radius: 6, color: '#15803d', fillColor: '#22c55e', fillOpacity: 0.95 }
-const MOV_POINT_STYLE = { radius: 6, color: '#b91c1c', fillColor: '#ef4444', fillOpacity: 0.95 }
+const BLOCK_STYLE = { color: 'var(--color-brand-800)', weight: 2, fillColor: 'var(--color-accent-500)', fillOpacity: 0.18 }
+const REF_POINT_STYLE = { radius: 6, color: 'var(--color-state-success)', fillColor: 'var(--color-state-success-soft)', fillOpacity: 0.95 }
+const MOV_POINT_STYLE = { radius: 6, color: 'var(--color-state-danger)', fillColor: 'var(--color-state-danger)', fillOpacity: 0.95 }
 
 const EXISTING_BLOCK_STYLE = {
-  draft: { color: '#b45309', fillColor: '#f59e0b' },
-  confirmed: { color: '#15803d', fillColor: '#22c55e' },
+  draft: { color: 'var(--color-state-warning)', fillColor: 'var(--color-state-warning)' },
+  confirmed: { color: 'var(--color-state-success)', fillColor: 'var(--color-state-success-soft)' },
 }
 
 function catastroWmsLayer(gisHost, service) {
@@ -226,14 +226,14 @@ function AlignmentMapInner({
     if (!ready || !group) return
     group.clearLayers()
     blockRing.forEach(([lon, lat]) => {
-      L.circleMarker([lat, lon], { radius: 5, color: '#007ea6', fillColor: '#009ed0', fillOpacity: 0.95 }).addTo(
+      L.circleMarker([lat, lon], { radius: 5, color: 'var(--color-accent-600)', fillColor: 'var(--color-accent-500)', fillOpacity: 0.95 }).addTo(
         group
       )
     })
     if (blockRing.length >= 2) {
       L.polyline(
         blockRing.map(([lon, lat]) => [lat, lon]),
-        { color: '#007ea6', weight: 2 }
+        { color: 'var(--color-accent-600)', weight: 2 }
       ).addTo(group)
     }
     if (blockRing.length >= 3) {
@@ -293,7 +293,7 @@ function AlignmentMapInner({
   return (
     <div
       ref={mapRef}
-      style={{ height, width: '100%', minHeight: height, background: '#0a0d12' }}
+      style={{ height, width: '100%', minHeight: height, background: 'var(--color-graphite-950)' }}
       className="w-full rounded-2xl border border-slate-200"
     />
   )

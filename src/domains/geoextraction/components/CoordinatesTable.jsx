@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { Download, MapPin, Save, Trash2, XCircle, ArrowLeftRight, Loader2, FileSpreadsheet } from 'lucide-react'
 import { Button, IconButton, EmptyState } from '@/shared/ui'
 import { cn } from '@/shared/utils'
@@ -56,7 +57,8 @@ export function CoordinatesTable({
           </div>
         )}
         {results.length > 0 ? (
-          <table className="w-full text-xs">
+          <DataTable>
+<table className="w-full text-xs">
             <thead>
               <tr className="bg-white/25 text-left text-[9px] font-bold uppercase tracking-widest text-slate-500">
                 {[...Array(results[0].items.length)].map((_, i) => (
@@ -108,6 +110,7 @@ export function CoordinatesTable({
               ))}
             </tbody>
           </table>
+</DataTable>
         ) : (
           <div className="flex h-full items-center justify-center py-40">
             <EmptyState icon={FileSpreadsheet} iconSize={64} tone="muted" title="Extracción Pendiente" />

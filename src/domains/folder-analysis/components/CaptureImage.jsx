@@ -10,7 +10,6 @@ export function CaptureImage({
   variant = 'thumbnail',
   alt = 'Foto',
   className = '',
-  onClick,
 }) {
   const main = useCaptureUrl(captureId, variant)
   const placeholder = useCaptureUrl(variant === 'thumbnail' ? null : captureId, 'thumbnail')
@@ -35,7 +34,6 @@ export function CaptureImage({
       src={shown}
       alt={alt}
       draggable={false}
-      onClick={onClick}
       className={cn('object-cover transition-[filter] duration-300', !main.url && 'blur-[2px]', className)}
     />
   )

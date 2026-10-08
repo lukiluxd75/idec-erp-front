@@ -595,7 +595,7 @@ function FolderFormModal({ folder, catalog, documents, holderByDocument, onClose
             onChange={(event) => setName(event.target.value)}
             maxLength={MAX_NAME_LENGTH}
             required
-            autoFocus
+            data-modal-initial-focus
           />
           {folder ? (
             <div className="flex flex-col justify-center">

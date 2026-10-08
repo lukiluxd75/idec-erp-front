@@ -33,7 +33,7 @@ function rasterizarFoco(img, angleDeg, foco, ladoPx) {
   ctx.restore()
   // Círculo rojo sobre el rótulo, igual que la tarjeta en pantalla.
   const r = ladoPx * 0.04
-  ctx.strokeStyle = '#dc2626'
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-state-danger').trim() || '#d60035'
   ctx.lineWidth = Math.max(1, ladoPx * 0.008)
   ctx.beginPath()
   ctx.arc(ladoPx / 2, ladoPx / 2, r, 0, Math.PI * 2)

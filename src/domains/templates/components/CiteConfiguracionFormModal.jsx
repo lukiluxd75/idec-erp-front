@@ -60,7 +60,7 @@ export function CiteConfiguracionFormModal({ open, onClose, onSaved }) {
     <Modal open={open} onClose={onClose} title="Nueva sigla de CITE" icon={Hash}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Código de área" value={form.area_codigo} onChange={setField('area_codigo')} placeholder="Ej. CAT" autoFocus />
+          <Input label="Código de área" value={form.area_codigo} onChange={setField('area_codigo')} placeholder="Ej. CAT" data-modal-initial-focus />
           <Input
             label="Código de tipo de documento"
             value={form.tipo_documento_codigo}

@@ -24,8 +24,9 @@ export function ProcedureEditForm({ procedure, onSave, onCancel, saving }) {
       <Input label="Nombre del trámite" value={name} onChange={(e) => setName(e.target.value)} required />
 
       <div className="flex flex-col">
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
+        <label htmlFor="procedure-description" className="mb-1.5 block text-sm font-medium text-slate-700">Descripción</label>
         <textarea
+          id="procedure-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}

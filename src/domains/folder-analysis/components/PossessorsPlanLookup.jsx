@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { CheckCircle2, ClipboardCheck, Download, HelpCircle, ImageIcon, MapPinned, Search, XCircle } from 'lucide-react'
@@ -8,7 +9,7 @@ import { folderAnalysisApi } from '@/domains/folder-analysis/api/folderAnalysis.
 import { Alert, Button, Card, SectionHeader, Spinner } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
 
-const SIDE_COLORS = { predio: '#2563eb', via: '#d97706', none: '#94a3b8' }
+const SIDE_COLORS = { predio: 'var(--color-accent-500)', via: 'var(--color-state-amber)', none: 'var(--color-haze-400)' }
 
 function formatM(value) {
   return value === null || value === undefined ? '—' : `${Number(value).toFixed(2)} m`
@@ -49,19 +50,19 @@ function ParcelMap({ result }) {
     const { map: drawing, plan } = result
 
     drawing.neighbours.forEach((neighbour) => {
-      L.polygon(neighbour.ring, { color: '#e2e8f0', weight: 1.5, fillColor: '#ffffff', fillOpacity: 0.12 })
+      L.polygon(neighbour.ring, { color: 'var(--color-slate-200)', weight: 1.5, fillColor: '#ffffff', fillOpacity: 0.12 })
         .bindTooltip(`Lote ${neighbour.number || neighbour.code}`, { sticky: true })
         .addTo(map)
     })
     drawing.streets.forEach((street) => {
       street.paths.forEach((path) => {
-        L.polyline(path, { color: '#fbbf24', weight: 3, dashArray: '6 6', opacity: 0.9 })
+        L.polyline(path, { color: 'var(--color-state-warning)', weight: 3, dashArray: '6 6', opacity: 0.9 })
           .bindTooltip(street.name, { sticky: true })
           .addTo(map)
       })
     })
 
-    const parcel = L.polygon(drawing.parcel, { color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 0.22 })
+    const parcel = L.polygon(drawing.parcel, { color: '#ffffff', weight: 3, fillColor: 'var(--color-accent-500)', fillOpacity: 0.22 })
     parcel.addTo(map)
 
     drawing.sides.forEach((side) => {
@@ -73,7 +74,7 @@ function ParcelMap({ result }) {
         interactive: false,
         icon: L.divIcon({
           className: '',
-          html: `<span style="background:#0f172a;color:#fff;font:700 11px/1 system-ui;padding:3px 5px;border-radius:6px;white-space:nowrap">${side.abbreviation}</span>`,
+          html: `<span style="background:var(--color-graphite-950);color:#fff;font:700 11px/1 system-ui;padding:3px 5px;border-radius:6px;white-space:nowrap">${side.abbreviation}</span>`,
           iconSize: [0, 0],
         }),
       }).addTo(map)
@@ -82,7 +83,7 @@ function ParcelMap({ result }) {
     let bounds = parcel.getBounds()
     if (plan?.survey_vertices_latlng?.length >= 3) {
       const drawn = L.polygon(plan.survey_vertices_latlng, {
-        color: '#dc2626',
+        color: 'var(--color-state-danger)',
         weight: 2,
         dashArray: '5 5',
         fillOpacity: 0.05,
@@ -90,7 +91,7 @@ function ParcelMap({ result }) {
         .bindTooltip('Lote según el plano (tabla de coordenadas)', { sticky: true })
         .addTo(map)
       plan.survey.vertices.forEach((vertex, index) => {
-        L.circleMarker(plan.survey_vertices_latlng[index], { radius: 4, color: '#dc2626', fillOpacity: 1 })
+        L.circleMarker(plan.survey_vertices_latlng[index], { radius: 4, color: 'var(--color-state-danger)', fillOpacity: 1 })
           .bindTooltip(vertex.name, { permanent: true, direction: 'top', offset: [0, -4] })
           .addTo(map)
       })
@@ -203,7 +204,8 @@ function LocationChecks({ result }) {
   return (
     <div className="rounded-xl border border-slate-200 p-3.5">
       <p className="text-sm font-bold text-slate-800">Ubicación del plano contra el IDE</p>
-      <table className="mt-2 w-full text-sm">
+      <DataTable>
+<table className="mt-2 w-full text-sm">
         <thead>
           <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500">
             <th className="pb-1 font-semibold">Dato</th>
@@ -232,6 +234,7 @@ function LocationChecks({ result }) {
           })}
         </tbody>
       </table>
+</DataTable>
       {differing.length > 0 && (
         <Alert type="warning" className="mt-3">
           {`No coincide: ${differing.map((check) => check.label.toLowerCase()).join(', ')}. Compruebe que el código está bien leído y que el plano es de este lote.`}
@@ -441,7 +444,9 @@ export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }
               <p className="mb-2 text-xs text-slate-500">
                 Por el punto hacia el que mira cada lado. Revise: se leen del GIS, no del plano.
               </p>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <DataTable>
+<table className="w-full min-w-[480px] text-sm">
                 <tbody>
                   {result.sides.map((side) => (
                     <tr key={side.index} className="border-t border-slate-100 first:border-0">
@@ -452,6 +457,8 @@ export function PossessorsPlanLookup({ documentId, code, onCodeChange, onApply }
                   ))}
                 </tbody>
               </table>
+</DataTable>
+              </div>
             </div>
 
             <div className="rounded-xl border border-slate-200 p-3.5">

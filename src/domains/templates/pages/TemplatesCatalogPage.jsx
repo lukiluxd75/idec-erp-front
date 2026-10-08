@@ -1,8 +1,10 @@
 import { FilePlus2, FileText, Pencil, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, Badge, Button, Card, EmptyState, Input, SectionHeader, Spinner } from '@/shared/ui'
+import { Alert, Badge, Button, Card, DataTable, Input, SectionHeader } from '@/shared/ui'
 import { templatesApi } from '../api/templates.api'
 import { TemplateFormModal } from '../components/TemplateFormModal'
+
+const PAGE_SIZE = 50
 
 export default function TemplatesCatalogPage() {
   const [query, setQuery] = useState('')
@@ -11,18 +13,24 @@ export default function TemplatesCatalogPage() {
   const [error, setError] = useState(null)
   const [editingId, setEditingId] = useState(undefined)
   const [modalToken, setModalToken] = useState(0)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
   const openModal = (id) => {
     setEditingId(id ?? null)
     setModalToken((token) => token + 1)
   }
 
-  const loadTemplates = useCallback((showFullSpinner) => {
+  const loadTemplates = useCallback((showFullSpinner, requestedPage = 1) => {
     if (showFullSpinner) setLoading(true)
     setError(null)
     return templatesApi
-      .list()
-      .then((data) => setItems(data))
+      .listPage(PAGE_SIZE, (requestedPage - 1) * PAGE_SIZE)
+      .then(({ items: data, total: count }) => {
+        setItems(data)
+        setTotal(count)
+        setPage(requestedPage)
+      })
       .catch((e) => setError(e.message))
       .finally(() => {
         if (showFullSpinner) setLoading(false)
@@ -34,10 +42,7 @@ export default function TemplatesCatalogPage() {
   }, [loadTemplates])
 
   const rows = useMemo(
-    () =>
-      items.filter((item) =>
-        `${item.nombre} ${item.codigo} ${item.area}`.toLowerCase().includes(query.toLowerCase())
-      ),
+    () => items.filter((item) => `${item.nombre} ${item.codigo} ${item.area}`.toLowerCase().includes(query.toLowerCase())),
     [items, query]
   )
 
@@ -48,70 +53,36 @@ export default function TemplatesCatalogPage() {
         eyebrow="Plantillas dinámicas"
         title="Catálogo de plantillas"
         subtitle="Formatos institucionales disponibles para generación documental."
-        actions={
-          <Button icon={FilePlus2} onClick={() => openModal(null)}>
-            Nueva plantilla
-          </Button>
-        }
+        actions={<Button icon={FilePlus2} onClick={() => openModal(null)}>Nueva plantilla</Button>}
       />
       <div className="mb-5">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} icon={Search} placeholder="Buscar por nombre, código o área…" />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} icon={Search} placeholder="Buscar en esta página…" />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <Spinner className="h-6 w-6" />
-        </div>
-      ) : error ? (
-        <Alert type="error">{error}</Alert>
-      ) : rows.length ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                <th className="py-3 pr-3">Plantilla</th>
-                <th className="py-3 pr-3">Área</th>
-                <th className="py-3 pr-3">Tipo</th>
-                <th className="py-3 pr-3">Estado</th>
-                <th className="py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-3 pr-3">
-                    <p className="font-semibold text-slate-800">{item.nombre}</p>
-                    <p className="font-mono text-xs text-slate-400">{item.codigo}</p>
-                  </td>
-                  <td className="py-3 pr-3 text-slate-600">{item.area}</td>
-                  <td className="py-3 pr-3 text-slate-600">{item.tipo_documento}</td>
-                  <td className="py-3 pr-3">
-                    <Badge variant={item.activa ? 'success' : 'neutral'} dot>
-                      {item.activa ? 'Activa' : 'Inactiva'}
-                    </Badge>
-                  </td>
-                  <td className="py-3 text-right">
-                    <button
-                      className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                      onClick={() => openModal(item.id)}
-                      title="Editar plantilla"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={FileText}
-          title="Todavía no hay plantillas registradas"
-          subtitle="Las plantillas creadas en el servicio documental aparecerán aquí."
+      {error ? <Alert type="error">{error}</Alert> : (
+        <DataTable
+          caption="Catálogo de plantillas"
+          rows={rows}
+          rowKey="id"
+          loading={loading}
+          emptyMessage={items.length === 0 ? 'Todavía no hay plantillas registradas.' : 'No se encontraron plantillas.'}
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPageChange={(nextPage) => loadTemplates(true, nextPage)}
+          className="rounded-xl border border-slate-200/70"
+          columns={[
+            { key: 'nombre', label: 'Plantilla', render: (item) => <><p className="font-semibold text-slate-800">{item.nombre}</p><p className="font-mono text-xs text-slate-400">{item.codigo}</p></> },
+            { key: 'area', label: 'Área' },
+            { key: 'tipo_documento', label: 'Tipo' },
+            { key: 'activa', label: 'Estado', render: (item) => <Badge variant={item.activa ? 'success' : 'neutral'} dot>{item.activa ? 'Activa' : 'Inactiva'}</Badge> },
+            { key: 'actions', label: 'Acciones', headerClassName: 'bg-slate-50 px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-500', cellClassName: 'text-right', render: (item) => (
+              <button type="button" className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700" onClick={() => openModal(item.id)} title="Editar plantilla" aria-label={`Editar plantilla ${item.nombre}`}>
+                <Pencil className="h-4 w-4" />
+              </button>
+            ) },
+          ]}
         />
-      ) : (
-        <EmptyState icon={Search} title="No se encontraron plantillas" />
       )}
 
       <TemplateFormModal

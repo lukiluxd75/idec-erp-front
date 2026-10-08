@@ -23,6 +23,11 @@ function getCv() {
   return cvPromise
 }
 
+/** Begin the OpenCV download/runtime initialization before the user runs detection. */
+export function precargarOpenCv() {
+  return getCv()
+}
+
 async function matFromBlob(cv, blob) {
   const bitmap = await createImageBitmap(blob)
   const canvas = document.createElement('canvas')

@@ -123,7 +123,7 @@ export function TemplateFormModal({ open, onClose, templateId, onSaved }) {
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Input label="Nombre" value={form.nombre} onChange={setField('nombre')} placeholder="Ej. Informe técnico catastral" autoFocus />
+            <Input label="Nombre" value={form.nombre} onChange={setField('nombre')} placeholder="Ej. Informe técnico catastral" data-modal-initial-focus />
             <Input label="Código" value={form.codigo} onChange={setField('codigo')} placeholder="Ej. INF-TEC-001" />
             <Input label="Área" value={form.area} onChange={setField('area')} placeholder="Ej. Catastro" />
             <Input label="Tipo de documento" value={form.tipo_documento} onChange={setField('tipo_documento')} placeholder="Ej. Informe" />
@@ -137,8 +137,9 @@ export function TemplateFormModal({ open, onClose, templateId, onSaved }) {
           />
 
           <div className="flex flex-col">
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Contenido HTML</label>
+            <label htmlFor="template-html-content" className="mb-1.5 block text-sm font-medium text-slate-700">Contenido HTML</label>
             <textarea
+              id="template-html-content"
               value={form.contenido_html}
               onChange={setField('contenido_html')}
               rows={8}

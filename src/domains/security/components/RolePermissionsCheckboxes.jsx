@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { ACTIONS, ERP_MODULES } from '../data/moduleCatalog'
 
 /** Permission matrix (modules × actions) for assigning permissions to a role. */
@@ -31,7 +32,8 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200/80">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[28rem] text-left text-sm">
+        <DataTable>
+<table className="w-full min-w-[28rem] text-left text-sm">
           <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
             <tr>
               <th className="px-3 py-2.5 font-semibold">Módulo</th>
@@ -87,6 +89,7 @@ export function RolePermissionsCheckboxes({ permissions, onChange }) {
             })}
           </tbody>
         </table>
+</DataTable>
       </div>
     </div>
   )

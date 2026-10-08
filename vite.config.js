@@ -17,7 +17,6 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 2000,
-    cssCodeSplit: false,
     sourcemap: false, // Desactiva mapas para evitar el crash de RAM en Jenkins
     rollupOptions: {
       external: ['fs', 'path'], 

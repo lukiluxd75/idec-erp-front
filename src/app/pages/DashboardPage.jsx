@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { ArrowUpRight, LayoutGrid, Search, UserRound } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpRight, GripVertical, LayoutGrid, Search, UserRound } from 'lucide-react'
 import { Card, EmptyState, Input, Select } from '@/shared/ui'
 import { useAuth } from '@/auth/hooks/useAuth'
 import { NAV_SECTIONS, collectNavLabels, getModuleEntryPath, canViewModule } from '@/shared/nav'
@@ -9,6 +9,7 @@ const SORT_STORAGE_KEY = 'idec-erp.dashboard.sort'
 
 const SORT_OPTIONS = [
   { id: 'catalog', label: 'Orden del catálogo' },
+  { id: 'custom', label: 'Personalizado' },
   { id: 'az', label: 'Nombre (A–Z)' },
   { id: 'za', label: 'Nombre (Z–A)' },
   { id: 'functions-desc', label: 'Más funciones' },
@@ -32,7 +33,16 @@ function readStoredSort() {
   }
 }
 
-function ModuleCard({ label, icon: Icon, menuChildren, entryPath }) {
+function readStoredOrder() {
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(`${SORT_STORAGE_KEY}.custom`) || '[]')
+    return Array.isArray(stored) ? stored.filter((path) => typeof path === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function ModuleCard({ label, icon: Icon, menuChildren, entryPath, position, total, onMove, draggable, isDragging, dropEdge, onDragStart, onDragOver, onDrop, onDragEnd }) {
   const subtitle =
     menuChildren?.length === 1
       ? 'Abrir módulo'
@@ -41,6 +51,14 @@ function ModuleCard({ label, icon: Icon, menuChildren, entryPath }) {
         : 'Abrir módulo'
 
   return (
+    <div
+      className={`relative rounded-2xl transition ${isDragging ? 'opacity-40' : ''} ${dropEdge === 'before' ? 'before:absolute before:-top-2 before:left-0 before:right-0 before:z-20 before:h-1 before:rounded-full before:bg-accent-500' : ''} ${dropEdge === 'after' ? 'after:absolute after:-bottom-2 after:left-0 after:right-0 after:z-20 after:h-1 after:rounded-full after:bg-accent-500' : ''}`}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+    >
+    {draggable ? <button type="button" draggable aria-label={`Arrastrar ${label} para reordenar`} title="Arrastra para reordenar" className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-lg bg-white/95 text-slate-500 shadow ring-1 ring-slate-200 active:cursor-grabbing" onDragStart={onDragStart} onDragEnd={onDragEnd} onClick={(event) => event.preventDefault()}><GripVertical className="h-4 w-4" /></button> : null}
     <NavLink
       to={entryPath}
       className="liquid-glass-tile group relative flex aspect-square flex-col overflow-hidden rounded-2xl p-4 transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-2 sm:p-5"
@@ -73,6 +91,17 @@ function ModuleCard({ label, icon: Icon, menuChildren, entryPath }) {
         <span className="block text-xs leading-relaxed text-slate-500">{subtitle}</span>
       </div>
     </NavLink>
+    {onMove ? (
+      <div className="absolute right-2 top-2 z-10 flex gap-1">
+        <button type="button" aria-label={`Subir ${label}`} title="Subir" disabled={position === 0} onClick={() => onMove(-1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow ring-1 ring-slate-200 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-35">
+          <ArrowUp className="h-4 w-4" />
+        </button>
+        <button type="button" aria-label={`Bajar ${label}`} title="Bajar" disabled={position === total - 1} onClick={() => onMove(1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow ring-1 ring-slate-200 hover:text-brand-800 disabled:cursor-not-allowed disabled:opacity-35">
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      </div>
+    ) : null}
+    </div>
   )
 }
 
@@ -81,6 +110,9 @@ export function DashboardPage() {
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState(readStoredSort)
+  const [customOrder, setCustomOrder] = useState(readStoredOrder)
+  const [draggedPath, setDraggedPath] = useState(null)
+  const [dropTarget, setDropTarget] = useState(null)
 
   const displayName = user?.username || 'Usuario'
   const modules = NAV_SECTIONS.filter(
@@ -105,6 +137,10 @@ export function DashboardPage() {
       .filter(Boolean)
 
     const ordered = [...matched]
+    if (sort === 'custom') {
+      const rank = new Map(customOrder.map((path, index) => [path, index]))
+      ordered.sort((a, b) => (rank.get(a.path) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.path) ?? Number.MAX_SAFE_INTEGER))
+    }
     if (sort === 'az' || sort === 'za') {
       ordered.sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }))
       if (sort === 'za') ordered.reverse()
@@ -113,7 +149,40 @@ export function DashboardPage() {
       if (sort === 'functions-desc') ordered.reverse()
     }
     return ordered
-  }, [modules, query, sort, user?.permisos])
+  }, [modules, query, sort, customOrder, user?.permisos])
+
+  const persistOrder = (paths) => {
+    const hiddenPaths = customOrder.filter((storedPath) => !paths.includes(storedPath))
+    const nextOrder = [...paths, ...hiddenPaths]
+    setCustomOrder(nextOrder)
+    try {
+      window.localStorage.setItem(`${SORT_STORAGE_KEY}.custom`, JSON.stringify(nextOrder))
+    } catch {
+      /* ignore private-mode storage errors */
+    }
+  }
+
+  const moveModule = (path, direction) => {
+    const paths = visibleModules.map((module) => module.path)
+    const from = paths.indexOf(path)
+    const to = from + direction
+    if (from < 0 || to < 0 || to >= paths.length) return
+    ;[paths[from], paths[to]] = [paths[to], paths[from]]
+    persistOrder(paths)
+  }
+
+  const dropModule = (targetPath, edge) => {
+    if (!draggedPath || draggedPath === targetPath) return
+    const paths = visibleModules.map((module) => module.path)
+    const from = paths.indexOf(draggedPath)
+    const to = paths.indexOf(targetPath)
+    if (from < 0 || to < 0) return
+    const [movingPath] = paths.splice(from, 1)
+    let insertion = to + (edge === 'after' ? 1 : 0)
+    if (from < insertion) insertion -= 1
+    paths.splice(insertion, 0, movingPath)
+    persistOrder(paths)
+  }
 
   const changeSort = (value) => {
     setSort(value)
@@ -198,11 +267,55 @@ export function DashboardPage() {
             className="py-10"
           />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-            {visibleModules.map((module) => (
-              <ModuleCard key={module.path} {...module} />
-            ))}
-          </div>
+          <>
+            {sort === 'custom' ? (
+              <p className="-mt-2 text-xs text-slate-500" role="status">
+                {query.trim()
+                  ? 'Borra la búsqueda para reordenar el catálogo completo.'
+                  : 'Arrastra cada módulo desde el asa ⋮⋮ y suéltalo antes o después de otro.'}
+              </p>
+            ) : null}
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
+              {visibleModules.map((module, index) => {
+                const canReorder = sort === 'custom' && !query.trim()
+                return (
+                  <ModuleCard
+                    key={module.path}
+                    {...module}
+                    position={index}
+                    total={visibleModules.length}
+                    onMove={canReorder ? (direction) => moveModule(module.path, direction) : null}
+                    draggable={canReorder}
+                    isDragging={draggedPath === module.path}
+                    dropEdge={dropTarget?.path === module.path && draggedPath !== module.path ? dropTarget.edge : null}
+                    onDragStart={(event) => {
+                      event.stopPropagation()
+                      setDraggedPath(module.path)
+                      event.dataTransfer.effectAllowed = 'move'
+                      event.dataTransfer.setData('text/plain', module.path)
+                    }}
+                    onDragOver={(event) => {
+                      if (!canReorder || !draggedPath) return
+                      event.preventDefault()
+                      const bounds = event.currentTarget.getBoundingClientRect()
+                      const edge = event.clientX > bounds.left + bounds.width / 2 ? 'after' : 'before'
+                      event.dataTransfer.dropEffect = 'move'
+                      setDropTarget({ path: module.path, edge })
+                    }}
+                    onDrop={(event) => {
+                      if (!canReorder) return
+                      event.preventDefault()
+                      const bounds = event.currentTarget.getBoundingClientRect()
+                      const edge = event.clientX > bounds.left + bounds.width / 2 ? 'after' : 'before'
+                      dropModule(module.path, edge)
+                      setDropTarget(null)
+                    }}
+                    onDragEnd={() => { setDraggedPath(null); setDropTarget(null) }}
+                  />
+                )
+              })}
+            </div>
+          </>
         )}
       </Card>
     </div>

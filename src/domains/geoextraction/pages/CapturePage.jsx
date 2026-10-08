@@ -578,6 +578,7 @@ export default function CapturePage() {
                 <img
                   ref={imgRef}
                   src={imageSrc}
+                  alt="Documento escaneado para extraer coordenadas"
                   className="w-auto cursor-crosshair"
                   style={{ height: `${zoom * ZOOM_BASE_PX}px`, maxWidth: 'none', maxHeight: 'none' }}
                   onLoad={(e) => (imgRef.current = e.currentTarget)}

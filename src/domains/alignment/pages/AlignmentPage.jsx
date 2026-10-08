@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'react-toastify'
 import {
@@ -435,7 +436,8 @@ export default function AlignmentPage() {
           </div>
         ) : (
           <div className="overflow-auto">
-            <table className="min-w-full text-left text-sm">
+            <DataTable>
+<table className="min-w-full text-left text-sm">
               <thead className="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-3 py-2">#</th>
@@ -468,6 +470,7 @@ export default function AlignmentPage() {
                 })}
               </tbody>
             </table>
+</DataTable>
           </div>
         )}
       </Card>

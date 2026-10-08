@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { useCallback, useEffect, useState } from 'react'
 import { ClipboardList, FileQuestion, Pencil, Search } from 'lucide-react'
 import { toast } from 'react-toastify'
@@ -75,7 +76,8 @@ export default function ProceduresAdminPage() {
         <EmptyState icon={FileQuestion} title="No se encontraron trámites" />
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <DataTable>
+<table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
                 <th className="py-2 pr-3 font-semibold">Código</th>
@@ -112,6 +114,7 @@ export default function ProceduresAdminPage() {
               ))}
             </tbody>
           </table>
+</DataTable>
         </div>
       )}
 

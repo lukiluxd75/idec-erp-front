@@ -44,10 +44,8 @@ export function CaptureLightbox({ items = [], startAt = 0, onClose, folderId = n
       role="dialog"
       aria-modal="true"
       aria-label={item.label || 'Foto'}
-      onClick={onClose}
     >
       <div
-        onClick={(event) => event.stopPropagation()}
         className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-700/60 bg-white shadow-2xl"
       >
         <div className="flex items-center gap-3 border-b border-slate-200 px-4 py-2.5">

@@ -45,7 +45,7 @@ export function AreaFormModal({ open, onClose, area }) {
           value={areaName}
           onChange={(event) => setAreaName(event.target.value)}
           placeholder="Ej. Recursos Humanos"
-          autoFocus
+          data-modal-initial-focus
         />
 
         <div className="flex justify-end gap-2 pt-1">

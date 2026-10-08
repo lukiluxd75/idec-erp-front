@@ -56,7 +56,7 @@ export function RoleFormModal({ open, onClose, role }) {
             value={roleName}
             onChange={(event) => setRoleName(event.target.value)}
             placeholder="Ej. Supervisor de Catastro"
-            autoFocus
+            data-modal-initial-focus
           />
         )}
 

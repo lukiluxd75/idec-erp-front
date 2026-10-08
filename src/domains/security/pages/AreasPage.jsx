@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { useMemo, useState } from 'react'
 import { Building2, Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { toast } from 'react-toastify'
@@ -101,7 +102,8 @@ export default function AreasPage() {
               />
             ) : (
               <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200/70">
-                <table className="w-full text-left text-sm">
+                <DataTable>
+<table className="w-full text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <tr>
                       <th className="px-4 py-3">Nombre</th>
@@ -142,6 +144,7 @@ export default function AreasPage() {
                     })}
                   </tbody>
                 </table>
+</DataTable>
               </div>
             )}
           </>

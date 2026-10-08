@@ -1,16 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Menu, User } from 'lucide-react'
+import { LogOut, Menu, Moon, Sun, User } from 'lucide-react'
 import { BRAND } from '@/shared/branding'
 import { ENV } from '@/core/config/env.config'
 import { ProfileModal } from './ProfileModal'
+
+const THEME_STORAGE_KEY = 'idec-erp.theme'
+
+function storedDarkTheme() {
+  try {
+    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark'
+  } catch {
+    return false
+  }
+}
 
 /** ERP top bar: wide, aligned, with compact user actions. */
 export function Header({ onLogout, onToggleSidebar, user }) {
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
+  const [darkTheme, setDarkTheme] = useState(storedDarkTheme)
   const displayName = user?.username || 'Usuario'
   const initial = String(displayName).charAt(0).toUpperCase()
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('theme-dark', darkTheme)
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, darkTheme ? 'dark' : 'light')
+    } catch {
+      /* Ignore unavailable storage; the theme remains active for this session. */
+    }
+  }, [darkTheme])
+
+  const toggleTheme = () => setDarkTheme((enabled) => !enabled)
 
   return (
     <header className="liquid-glass-bar sticky top-0 z-20 border-b">
@@ -50,6 +72,16 @@ export function Header({ onLogout, onToggleSidebar, user }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={darkTheme ? 'Activar tema claro' : 'Activar tema oscuro'}
+            aria-pressed={darkTheme}
+            title={darkTheme ? 'Tema claro' : 'Tema oscuro'}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            {darkTheme ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
           <button
             type="button"
             onClick={() => setProfileOpen(true)}

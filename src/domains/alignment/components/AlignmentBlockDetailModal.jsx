@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { useEffect, useState } from 'react'
 import { toast } from 'react-toastify'
 import { CheckCircle2, Crosshair, Image as ImageIcon, Trash2 } from 'lucide-react'
@@ -118,8 +119,9 @@ export default function AlignmentBlockDetailModal({ open, blockId, onClose, onCh
               <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
                 Puntos de control ({detail.control_points.length})
               </h3>
-              <div className="max-h-48 overflow-y-auto rounded-xl border border-slate-200">
-                <table className="min-w-full text-left text-xs">
+              <div className="max-h-48 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200">
+                <DataTable>
+<table className="min-w-full text-left text-xs">
                   <thead className="bg-slate-50 text-[10px] font-bold uppercase text-slate-500">
                     <tr>
                       <th className="px-2 py-1.5">#</th>
@@ -141,6 +143,7 @@ export default function AlignmentBlockDetailModal({ open, blockId, onClose, onCh
                     ))}
                   </tbody>
                 </table>
+</DataTable>
               </div>
             </div>
 

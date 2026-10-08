@@ -58,7 +58,7 @@ export function SaveToFolderModal({ documents, folderType, folderTypeLabel, loos
           onChange={(event) => setNumber(event.target.value)}
           maxLength={MAX_NUMBER_LENGTH}
           required
-          autoFocus
+          data-modal-initial-focus
         />
 
         {analyzing > 0 && (

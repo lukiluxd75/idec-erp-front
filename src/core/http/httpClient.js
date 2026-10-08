@@ -60,7 +60,7 @@ class HttpClient {
    * @returns {Promise<any>}
    */
   async request(endpoint, options = {}) {
-    const { requiresAuth = true, token, headers = {}, body, responseType, _isRetry = false, ...customConfig } = options
+    const { requiresAuth = true, token, headers = {}, body, responseType, includePagination = false, _isRetry = false, ...customConfig } = options
 
     const url = endpoint.startsWith('http') ? endpoint : `${this.baseUrl}${endpoint}`
 
@@ -145,6 +145,15 @@ class HttpClient {
       throw new ApiError(errorMessage, response.status, responseData)
     }
 
+    if (includePagination) {
+      return {
+        items: responseData,
+        total: Number(response.headers.get('X-Total-Count')) || (Array.isArray(responseData) ? responseData.length : 0),
+        limit: Number(response.headers.get('X-Page-Limit')) || null,
+        offset: Number(response.headers.get('X-Page-Offset')) || 0,
+      }
+    }
+
     return responseData
   }
 
@@ -169,6 +178,12 @@ class HttpClient {
 
   get(endpoint, options = {}) {
     return this.request(endpoint, { ...options, method: 'GET' })
+  }
+
+  getPage(endpoint, { limit = 50, offset = 0, ...options } = {}) {
+    const separator = endpoint.includes('?') ? '&' : '?'
+    const pagedEndpoint = `${endpoint}${separator}page_size=${encodeURIComponent(limit)}&page_offset=${encodeURIComponent(offset)}`
+    return this.request(pagedEndpoint, { ...options, method: 'GET', includePagination: true })
   }
 
   post(endpoint, body, options = {}) {

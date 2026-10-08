@@ -12,7 +12,7 @@ import {
 } from '@/shared/colindancias/colindanciasDetector'
 import { generarColindanciasPdf } from '@/shared/colindancias/colindanciasPdf'
 import { ocrImagenEnMosaicos } from '@/shared/colindancias/ocrMosaicos'
-import { detectNorth } from '@/shared/colindancias/planNorthDetector'
+import { detectNorth, precargarOpenCv } from '@/shared/colindancias/planNorthDetector'
 import { ProgressBar } from '@/domains/resolutions/components/ProgressBar'
 import { Button, Card, SectionHeader } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
@@ -27,6 +27,7 @@ export function ColindanciasSection({
 }) {
   const [detectando, setDetectando] = useState(false)
   const [progreso, setProgreso] = useState({ valor: 0, etapa: '' })
+  const [estadoOpenCv, setEstadoOpenCv] = useState('loading')
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, nombres, autoDetectadas, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
@@ -36,6 +37,14 @@ export function ColindanciasSection({
   const cargadasRef = useRef(new Set())
   const [yaMostradas, setYaMostradas] = useState(() => new Set()) // pisos que ya aparecieron
   const objectUrlsRef = useRef({})
+
+  useEffect(() => {
+    let active = true
+    precargarOpenCv()
+      .then(() => active && setEstadoOpenCv('ready'))
+      .catch(() => active && setEstadoOpenCv('error'))
+    return () => { active = false }
+  }, [])
 
   const plantasConPlano = [...new Set(planPages.map((p) => p.planta).filter(Boolean))]
 
@@ -209,6 +218,7 @@ export function ColindanciasSection({
       toast.error(`No se pudo detectar colindancias: ${e.message}`)
     } finally {
       setDetectando(false)
+      setProgreso({ valor: 0, etapa: '' })
     }
   }
 
@@ -312,7 +322,13 @@ export function ColindanciasSection({
           </Button>
         )}
       </div>
-      {detectando && <ProgressBar className="mt-4" value={progreso.valor} max={1} label={progreso.etapa} />}
+      {detectando ? (
+        <ProgressBar className="mt-4" value={progreso.valor} max={1} label={progreso.etapa} />
+      ) : estadoOpenCv !== 'ready' ? (
+        <p className="mt-3 text-xs text-slate-500" role="status">
+          {estadoOpenCv === 'error' ? 'No se pudo preparar OpenCV; se volverá a intentar al detectar.' : 'Preparando OpenCV para el análisis de planos…'}
+        </p>
+      ) : null}
 
       {plantasConPlano.every((p) => !pisoVisible(p)) && (
         <p className="mt-5 text-sm text-slate-400">

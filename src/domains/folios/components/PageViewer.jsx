@@ -91,12 +91,18 @@ export function PageViewer({ folioId, pages, version }) {
             {error}
           </div>
         ) : img ? (
-          <img
-            src={img.url}
-            alt={img.label}
+          <button
+            type="button"
             onClick={() => setZoom((z) => !z)}
-            className={cn('block cursor-zoom-in', zoom ? 'max-w-none cursor-zoom-out' : 'w-full')}
-          />
+            aria-label={zoom ? 'Ajustar foto al ancho' : 'Ver foto a tamaño real'}
+            className="block w-full p-0 text-left"
+          >
+            <img
+              src={img.url}
+              alt={img.label}
+              className={cn('block cursor-zoom-in', zoom ? 'max-w-none cursor-zoom-out' : 'w-full')}
+            />
+          </button>
         ) : null}
       </div>
     </div>

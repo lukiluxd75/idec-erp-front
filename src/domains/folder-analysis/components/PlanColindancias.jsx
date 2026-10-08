@@ -8,7 +8,7 @@ import { focosDe, motivosDe, unidadesVisibles } from '@/shared/colindancias/coli
 import { LEYENDAS_COLINDANCIA, analizarColindancias, autodetectarUnidades } from '@/shared/colindancias/colindanciasDetector'
 import { generarColindanciasPdf } from '@/shared/colindancias/colindanciasPdf'
 import { ocrImage } from '@/shared/colindancias/ocrClient'
-import { detectNorth } from '@/shared/colindancias/planNorthDetector'
+import { detectNorth, precargarOpenCv } from '@/shared/colindancias/planNorthDetector'
 import { Button, Card, SectionHeader } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
 
@@ -19,6 +19,8 @@ function tituloDePagina(bloques, indice) {
 
 export function PlanColindancias({ documentId, pages }) {
   const [detectando, setDetectando] = useState(false)
+  const [estadoOpenCv, setEstadoOpenCv] = useState('loading')
+  const [progreso, setProgreso] = useState({ completed: 0, total: 0, label: '' })
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [datosPorPagina, setDatosPorPagina] = useState({}) // { [capture_id]: { ancho, alto, bloques, angleDeg, confidence, titulo, nombres, focos, motivos } }
   const [imagenesPorPagina, setImagenesPorPagina] = useState({}) // { [capture_id]: objectURL }
@@ -27,6 +29,14 @@ export function PlanColindancias({ documentId, pages }) {
 
   const cargadasRef = useRef(new Set())
   const objectUrlsRef = useRef({})
+
+  useEffect(() => {
+    let active = true
+    precargarOpenCv()
+      .then(() => active && setEstadoOpenCv('ready'))
+      .catch(() => active && setEstadoOpenCv('error'))
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     pages.forEach((p) => {
@@ -90,12 +100,15 @@ export function PlanColindancias({ documentId, pages }) {
       const nuevosDatos = {}
       const nuevasColindancias = {}
       const nuevoLog = {}
+      setProgreso({ completed: 0, total: pages.length, label: 'Preparando páginas del plano…' })
       for (const [indice, p] of pages.entries()) {
+        setProgreso({ completed: indice, total: pages.length, label: `Leyendo página ${indice + 1} de ${pages.length}…` })
         const blob = await folderAnalysisApi.captureBlob(p.capture_id, 'original')
         const bitmap = await createImageBitmap(blob)
         const { width: ancho, height: alto } = bitmap
         bitmap.close?.()
         const bloques = await ocrImage(blob, `plano_${indice + 1}.jpg`)
+        setProgreso({ completed: indice, total: pages.length, label: `Detectando orientación de la página ${indice + 1} de ${pages.length}…` })
         const norte = await detectNorth(blob, bloques)
         const nombres = autodetectarUnidades(bloques)
         const titulo = tituloDePagina(bloques, indice)
@@ -139,6 +152,7 @@ export function PlanColindancias({ documentId, pages }) {
           analisis: analisis.detalle,
           sugerencias,
         }
+        setProgreso({ completed: indice + 1, total: pages.length, label: `Página ${indice + 1} de ${pages.length} completada.` })
       }
       setDatosPorPagina((prev) => ({ ...prev, ...nuevosDatos }))
       setLogPorPagina((prev) => ({ ...prev, ...nuevoLog }))
@@ -148,6 +162,7 @@ export function PlanColindancias({ documentId, pages }) {
       toast.error(`No se pudo detectar colindancias: ${e.message}`)
     } finally {
       setDetectando(false)
+      setProgreso({ completed: 0, total: 0, label: '' })
     }
   }
 
@@ -222,6 +237,17 @@ export function PlanColindancias({ documentId, pages }) {
           </Button>
         )}
       </div>
+
+      {detectando ? (
+        <div className="mt-3 space-y-1" role="status" aria-live="polite">
+          <p className="text-xs text-slate-600">{progreso.label}</p>
+          <progress className="h-2 w-full accent-accent-500" max={Math.max(1, progreso.total)} value={progreso.completed} aria-label="Páginas del plano procesadas" />
+        </div>
+      ) : estadoOpenCv !== 'ready' ? (
+        <p className="mt-3 text-xs text-slate-500" role="status">
+          {estadoOpenCv === 'error' ? 'No se pudo preparar OpenCV; se volverá a intentar al detectar.' : 'Preparando OpenCV para el análisis de planos…'}
+        </p>
+      ) : null}
 
       {pages.map((p, indice) => {
         const datos = datosPorPagina[p.capture_id]

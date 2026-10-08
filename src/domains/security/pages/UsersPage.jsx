@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { useMemo, useState } from 'react'
 import { RefreshCw, Search, Users, Pencil, UserX, UserCheck } from 'lucide-react'
 import { toast } from 'react-toastify'
@@ -248,7 +249,8 @@ export default function UsersPage() {
               />
             ) : (
               <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200/70">
-                <table className="w-full min-w-[880px] table-fixed text-left text-sm">
+                <DataTable>
+<table className="w-full min-w-[880px] table-fixed text-left text-sm">
                   <colgroup>
                     <col className="w-[16%]" />
                     <col className="w-[22%]" />
@@ -339,6 +341,7 @@ export default function UsersPage() {
                     ))}
                   </tbody>
                 </table>
+</DataTable>
               </div>
             )}
           </>

@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { DoorOpen, Hash, Layers, MapPin, Ruler, Scaling } from 'lucide-react'
 import { useState } from 'react'
 
@@ -114,7 +115,6 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
 
                 {isEditing ? (
                   <textarea
-                    autoFocus
                     value={field.value}
                     onChange={(e) => updateField(i, e.target.value)}
                     onBlur={() => setEditingField(null)}
@@ -161,7 +161,8 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
       {page.tables?.length > 0 &&
         page.tables.map((table, ti) => (
           <div key={ti} className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full border-collapse text-sm">
+            <DataTable>
+<table className="w-full border-collapse text-sm">
               <tbody>
                 {table.map((row, ri) => (
                   <tr key={ri} className={ri === 0 ? 'bg-slate-50 font-semibold' : 'odd:bg-white even:bg-slate-50/60'}>
@@ -174,6 +175,7 @@ export function PlanPageInfo({ value, onChange, pageIndex }) {
                 ))}
               </tbody>
             </table>
+</DataTable>
           </div>
         ))}
 

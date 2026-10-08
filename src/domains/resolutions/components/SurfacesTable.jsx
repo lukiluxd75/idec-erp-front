@@ -1,3 +1,4 @@
+import DataTable from '@/shared/ui/DataTable'
 import { Trash2 } from 'lucide-react'
 
 import { ENV } from '@/core/config/env.config'
@@ -47,7 +48,8 @@ export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaCha
               Página {pagina.pagina}
             </p>
             <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0 text-sm">
+              <DataTable>
+<table className="min-w-full border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr>
                     <th className="rounded-tl-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-left text-xs font-semibold text-slate-600">
@@ -165,6 +167,7 @@ export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaCha
                   )}
                 </tbody>
               </table>
+</DataTable>
             </div>
           </div>
         )

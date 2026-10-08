@@ -52,7 +52,7 @@ export function VariableFormModal({ open, onClose, onSaved }) {
   return (
     <Modal open={open} onClose={onClose} title="Registrar variable" icon={Braces}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input label="Nombre" value={form.nombre} onChange={setField('nombre')} placeholder="Ej. Nombre del solicitante" autoFocus />
+        <Input label="Nombre" value={form.nombre} onChange={setField('nombre')} placeholder="Ej. Nombre del solicitante" data-modal-initial-focus />
         <Input
           label="Clave"
           value={form.clave}

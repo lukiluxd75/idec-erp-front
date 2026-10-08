@@ -5,6 +5,7 @@ import { GisBackdrop, Header } from '@/shared/layout'
 import { getCurrentDomain } from '@/shared/nav'
 import { isWideRoute } from '@/domains'
 import { Sidebar } from './Sidebar'
+import { ErrorBoundary } from '@/shared/ui'
 
 /** `lg` de Tailwind: el ancho desde el que el menú cabe al lado del contenido. */
 const DESKTOP_QUERY = '(min-width: 1024px)'
@@ -55,7 +56,9 @@ export function AppShell() {
 
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8">
           <div className={`mx-auto space-y-6 ${isWideRoute(location.pathname) ? 'max-w-[1600px]' : 'max-w-5xl'}`}>
-            <Outlet />
+            <ErrorBoundary resetKey={location.pathname}>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

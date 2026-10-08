@@ -1,24 +1,15 @@
 import { Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { LoginPage } from '@/auth/pages'
 import { ProtectedRoute, PublicRoute } from '@/auth/guards'
 import { useAuth } from '@/auth/hooks/useAuth'
-import { PLACEHOLDER_ROUTES, DOMAIN_SECTIONS, getCurrentDomain, canViewModule } from '@/shared/nav'
+import { PLACEHOLDER_ROUTES, DOMAIN_SECTIONS, NAV_SECTIONS, getCurrentDomain, canViewModule } from '@/shared/nav'
 import { DOMAIN_ROUTES } from '@/domains'
+import { cadastralViewerRoutes } from '@/domains/cadastralviewer/routes'
 import { Spinner } from '@/shared/ui/Spinner'
 import { AppShell } from './layout'
-import { DashboardPage, DomainHome, ModulePlaceholder } from './pages'
-
-// ▼ Import defensivo: si el archivo no existe o falla, no rompe la app
-import * as cadastralViewerModule from '@/domains/cadastralviewer/routes'
-
-// Normaliza: acepta tanto `export const cadastralViewerRoutes` como `export default`
-const cadastralViewerRoutes =
-  cadastralViewerModule?.cadastralViewerRoutes ||
-  (Array.isArray(cadastralViewerModule?.default) ? cadastralViewerModule.default : [])
-
-// Debug temporal — borrar cuando funcione
-console.log('[AppRoutes] cadastralViewerRoutes =', cadastralViewerRoutes)
+import { DashboardPage, DomainHome, ModulePlaceholder, NotFoundPage } from './pages'
 
 const IMPLEMENTED_PATHS = new Set(DOMAIN_ROUTES.map((route) => route.path))
 
@@ -38,9 +29,40 @@ function ModuleGuard({ section, children }) {
   return children
 }
 
+function RouteDocumentTitle() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    if (pathname === '/') {
+      document.title = 'Iniciar sesión · IDEC · GAMC'
+      return
+    }
+    if (pathname === '/kiosk') {
+      document.title = 'Kiosco · Visor Catastral · IDEC · GAMC'
+      return
+    }
+
+    const matches = []
+    const collect = (nodes) => {
+      for (const node of nodes) {
+        if (node.path && (pathname === node.path || pathname.startsWith(`${node.path}/`))) {
+          matches.push(node)
+        }
+        if (node.children) collect(node.children)
+      }
+    }
+    collect(NAV_SECTIONS)
+    const title = matches.sort((a, b) => b.path.length - a.path.length)[0]?.label
+    document.title = title ? `${title} · IDEC · GAMC` : 'Página no encontrada · IDEC · GAMC'
+  }, [pathname])
+
+  return null
+}
+
 export function AppRoutes() {
   return (
     <BrowserRouter>
+      <RouteDocumentTitle />
       <Routes>
 
         <Route
@@ -49,16 +71,6 @@ export function AppRoutes() {
             <PublicRoute>
               <LoginPage />
             </PublicRoute>
-          }
-        />
-
-        {/* Prueba temporal */}
-        <Route
-          path="/kiosk-test"
-          element={
-            <div style={{ padding: 40, fontSize: 24, fontFamily: 'sans-serif' }}>
-              ✅ /kiosk-test funciona
-            </div>
           }
         />
 
@@ -116,7 +128,7 @@ export function AppRoutes() {
           ))}
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

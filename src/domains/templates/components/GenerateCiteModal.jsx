@@ -64,7 +64,7 @@ export function GenerateCiteModal({ open, onClose, onSaved }) {
         </p>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Select label="Sigla" value={configuracionId} onChange={(e) => setConfiguracionId(e.target.value)} autoFocus>
+          <Select label="Sigla" value={configuracionId} onChange={(e) => setConfiguracionId(e.target.value)} data-modal-initial-focus>
             {configuraciones.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.nombre} ({c.area_codigo}/{c.tipo_documento_codigo})

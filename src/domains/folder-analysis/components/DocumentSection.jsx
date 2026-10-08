@@ -16,7 +16,6 @@ export function DocumentSection({ type, documents, busy, loose = 0, onCreate, on
 
   return (
     <section
-      role="region"
       aria-label={`Carril de clasificación: ${type.label}`}
       onDragOver={(e) => {
         if (!isCaptureDrag(e) || busy) return
@@ -84,7 +83,7 @@ export function DocumentSection({ type, documents, busy, loose = 0, onCreate, on
             {dragOver ? 'Suelte para crear un documento' : `Arrastre una foto aquí para crear ${type.noun}`}
           </div>
         ) : (
-          <ul className="workbench-lane__list" role="list">
+          <ul className="workbench-lane__list">
             {documents.map((document) => (
               <li key={document.id}>
                 <DocumentCard

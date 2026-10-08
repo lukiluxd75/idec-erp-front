@@ -211,7 +211,7 @@ export function Sidebar({ open = true, onClose }) {
         }`}
       >
         <aside
-          className={`liquid-glass-bar flex h-dvh w-64 flex-col border-r transition-opacity duration-200 ease-in-out max-lg:shadow-2xl ${
+          className={`app-sidebar liquid-glass-bar flex h-dvh w-64 flex-col border-r transition-opacity duration-200 ease-in-out max-lg:shadow-2xl ${
             open ? 'opacity-100 delay-100' : 'opacity-0'
           }`}
         >

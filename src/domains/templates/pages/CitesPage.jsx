@@ -1,9 +1,11 @@
 import { FileOutput, Hash, Plus, Search } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Alert, Badge, Button, Card, EmptyState, Input, SectionHeader, Spinner } from '@/shared/ui'
+import { Alert, Badge, Button, Card, DataTable, Input, SectionHeader } from '@/shared/ui'
 import { templatesApi } from '../api/templates.api'
 import { CiteConfiguracionFormModal } from '../components/CiteConfiguracionFormModal'
 import { GenerateCiteModal } from '../components/GenerateCiteModal'
+
+const PAGE_SIZE = 50
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -21,13 +23,19 @@ export default function CitesPage() {
   const [error, setError] = useState(null)
   const [configModalOpen, setConfigModalOpen] = useState(false)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  const loadCites = useCallback(() => {
+  const loadCites = useCallback((requestedPage = 1) => {
     setLoading(true)
     setError(null)
     return templatesApi
-      .listCites()
-      .then((data) => setItems(data))
+      .listCitesPage(PAGE_SIZE, (requestedPage - 1) * PAGE_SIZE)
+      .then(({ items: data, total: count }) => {
+        setItems(data)
+        setTotal(count)
+        setPage(requestedPage)
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
@@ -48,62 +56,36 @@ export default function CitesPage() {
         eyebrow="Plantillas dinámicas"
         title="CITES"
         subtitle="Historial de códigos correlativos generados y su asociación documental."
-        actions={
+        actions={(
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" icon={Plus} onClick={() => setConfigModalOpen(true)}>
-              Nueva sigla
-            </Button>
-            <Button icon={FileOutput} onClick={() => setGenerateModalOpen(true)}>
-              Generar CITE
-            </Button>
+            <Button variant="secondary" icon={Plus} onClick={() => setConfigModalOpen(true)}>Nueva sigla</Button>
+            <Button icon={FileOutput} onClick={() => setGenerateModalOpen(true)}>Generar CITE</Button>
           </div>
-        }
+        )}
       />
       <div className="mb-5">
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} icon={Search} placeholder="Buscar por CITE o trámite…" />
+        <Input value={query} onChange={(e) => setQuery(e.target.value)} icon={Search} placeholder="Buscar en esta página…" />
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <Spinner className="h-6 w-6" />
-        </div>
-      ) : error ? (
-        <Alert type="error">{error}</Alert>
-      ) : rows.length ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                <th className="py-3 pr-3">CITE</th>
-                <th className="py-3 pr-3">Trámite</th>
-                <th className="py-3 pr-3">Estado</th>
-                <th className="py-3">Generado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-3 pr-3 font-mono text-xs font-semibold text-brand-800">{item.codigo}</td>
-                  <td className="py-3 pr-3 text-slate-600">{item.tramite_id ?? '—'}</td>
-                  <td className="py-3 pr-3">
-                    <Badge variant={item.estado === 'ANULADO' ? 'danger' : 'success'} dot>
-                      {item.estado}
-                    </Badge>
-                  </td>
-                  <td className="py-3 text-slate-500">{formatDate(item.generado_en)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={Hash}
-          title="Aún no hay CITES generados"
-          subtitle="Registre una sigla (área + tipo de documento) y luego genere el primer CITE."
+      {error ? <Alert type="error">{error}</Alert> : (
+        <DataTable
+          caption="Historial de CITES generados"
+          rows={rows}
+          rowKey="id"
+          loading={loading}
+          emptyMessage={items.length === 0 ? 'Aún no hay CITES generados.' : 'Ningún CITE coincide con la búsqueda.'}
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={total}
+          onPageChange={loadCites}
+          className="rounded-xl border border-slate-200/70"
+          columns={[
+            { key: 'codigo', label: 'CITE', cellClassName: 'font-mono text-xs font-semibold text-brand-800' },
+            { key: 'tramite_id', label: 'Trámite', render: (item) => item.tramite_id ?? '—' },
+            { key: 'estado', label: 'Estado', render: (item) => <Badge variant={item.estado === 'ANULADO' ? 'danger' : 'success'} dot>{item.estado}</Badge> },
+            { key: 'generado_en', label: 'Generado', render: (item) => formatDate(item.generado_en) },
+          ]}
         />
-      ) : (
-        <EmptyState icon={Search} title="Ningún CITE coincide con la búsqueda" />
       )}
 
       <CiteConfiguracionFormModal open={configModalOpen} onClose={() => setConfigModalOpen(false)} onSaved={loadCites} />

@@ -5,31 +5,43 @@ function PlanoUnidad({ url, etiqueta, angleDeg, ancho, alto, foco }) {
   const [completo, setCompleto] = useState(false)
   if (!url) return <span className="px-2 text-center text-[10px] text-slate-400">Cargando plano…</span>
   if (!foco || !ancho || !alto || completo) {
-    return (
+    const image = (
       <img
         src={url}
         alt={`Plano ${etiqueta}`}
         className={`max-h-full max-w-full object-contain transition-transform ${foco ? 'cursor-zoom-in' : ''}`}
         style={{ transform: `rotate(${-angleDeg}deg)` }}
-        onClick={foco ? () => setCompleto(false) : undefined}
-        title={foco ? 'Clic para acercar a la unidad' : undefined}
       />
+    )
+    if (!foco) return image
+    return (
+      <button
+        type="button"
+        onClick={() => setCompleto(false)}
+        aria-label={`Volver al acercamiento del plano ${etiqueta}`}
+        className="max-h-full max-w-full p-0"
+      >
+        {image}
+      </button>
     )
   }
   // viewBox centrado en el rótulo: el SVG escala solo al tamaño de la tarjeta.
   const v = foco.ventana
   return (
-    <svg
-      viewBox={`${-v / 2} ${-v / 2} ${v} ${v}`}
-      className="h-full w-full cursor-zoom-out"
+    <button
+      type="button"
       onClick={() => setCompleto(true)}
+      aria-label={`Ver el plano completo ${etiqueta}`}
+      className="h-full w-full cursor-zoom-out p-0"
     >
-      <title>Clic para ver el plano completo</title>
-      <g transform={`rotate(${-angleDeg}) translate(${-foco.x} ${-foco.y})`}>
-        <image href={url} width={ancho} height={alto} />
-      </g>
-      <circle r={v * 0.04} fill="none" stroke="#dc2626" strokeWidth={v * 0.008} />
-    </svg>
+      <svg viewBox={`${-v / 2} ${-v / 2} ${v} ${v}`} className="h-full w-full">
+        <title>Ver el plano completo</title>
+        <g transform={`rotate(${-angleDeg}) translate(${-foco.x} ${-foco.y})`}>
+          <image href={url} width={ancho} height={alto} />
+        </g>
+        <circle r={v * 0.04} fill="none" stroke="var(--color-state-danger)" strokeWidth={v * 0.008} />
+      </svg>
+    </button>
   )
 }
 

@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from '@/core/config/endpoints.config'
 
 export const templatesApi = {
   list: () => httpClient.get(API_ENDPOINTS.TEMPLATES.BASE),
+  listPage: (limit = 50, offset = 0) => httpClient.getPage(API_ENDPOINTS.TEMPLATES.BASE, { limit, offset }),
 
   get: (id) => httpClient.get(API_ENDPOINTS.TEMPLATES.ONE(id)),
 
@@ -16,10 +17,12 @@ export const templatesApi = {
   deactivate: (id) => httpClient.delete(API_ENDPOINTS.TEMPLATES.ONE(id)),
 
   listVariables: () => httpClient.get(API_ENDPOINTS.TEMPLATES.VARIABLES),
+  listVariablesPage: (limit = 50, offset = 0) => httpClient.getPage(API_ENDPOINTS.TEMPLATES.VARIABLES, { limit, offset }),
 
   createVariable: (payload) => httpClient.post(API_ENDPOINTS.TEMPLATES.VARIABLES, payload),
 
   listCites: () => httpClient.get(API_ENDPOINTS.TEMPLATES.CITES),
+  listCitesPage: (limit = 50, offset = 0) => httpClient.getPage(API_ENDPOINTS.TEMPLATES.CITES, { limit, offset }),
 
   listCiteConfiguraciones: () => httpClient.get(API_ENDPOINTS.TEMPLATES.CITES_CONFIGURACIONES),
 
