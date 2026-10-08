@@ -22,6 +22,7 @@ export function ColindanciasSection({
   resolutionNumber,
   planPages,
   unidadesPorPlanta,
+  areasPorPlanta = {},
   colindancias,
   setColindancias,
 }) {
@@ -29,6 +30,7 @@ export function ColindanciasSection({
   const [progreso, setProgreso] = useState({ valor: 0, etapa: '' })
   const [estadoOpenCv, setEstadoOpenCv] = useState('loading')
   const [generandoPdf, setGenerandoPdf] = useState(false)
+  const [dudasPorPlanta, setDudasPorPlanta] = useState({}) // { [planta]: { [unidad]: { [lado]: motivo } } } -- en rojo hasta que el arquitecto lo toque
   const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, nombres, autoDetectadas, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
   const [logPorPagina, setLogPorPagina] = useState({}) // { ["orden|planta"]: entrada del log de llenado }
@@ -80,10 +82,13 @@ export function ColindanciasSection({
     setDatosPorPlanta((prev) => ({ ...prev, [planta]: { ...(prev[planta] || {}), angleDeg } }))
     if (!datos?.ancho || !datos?.alto) return // aun no corrio el OCR -- solo gira la vista previa
     const nombres = unidadesPorPlanta[planta]?.length ? unidadesPorPlanta[planta] : datos.nombres || []
-    const analisis = analizarColindancias(datos.bloques, nombres, { angleDeg }, {
-      width: datos.ancho,
-      height: datos.alto,
-    })
+    const analisis = analizarColindancias(
+      datos.bloques,
+      nombres,
+      { angleDeg },
+      { width: datos.ancho, height: datos.alto },
+      { areas: areasPorPlanta[planta] },
+    )
     const sugerencias = analisis.sugerencias
     const focos = focosDe(analisis.detalle, datos.ancho, datos.alto)
     const motivos = motivosDe(analisis.detalle)
@@ -102,6 +107,7 @@ export function ColindanciasSection({
           }
         : prev,
     )
+    setDudasPorPlanta((prev) => ({ ...prev, [planta]: analisis.detalle.dudas || {} }))
     setColindancias((prev) => ({
       ...prev,
       [planta]: { ...(prev[planta] || {}), ...sugerencias },
@@ -127,6 +133,7 @@ export function ColindanciasSection({
     try {
       const nuevosDatos = {}
       const nuevasColindancias = {}
+      const nuevasDudas = {}
       const nuevoLog = {}
       const leidas = {}
       for (const p of paginasConPlanta) {
@@ -157,7 +164,13 @@ export function ColindanciasSection({
         const deTabla = unidadesPorPlanta[p.planta] || []
         const nombres = deTabla.length > 0 ? deTabla : autodetectarUnidades(bloques)
         const claveLog = `${p.order_index}|${p.planta}`
-        const analisis = analizarColindancias(bloques, nombres, norte, { width: ancho, height: alto })
+        const analisis = analizarColindancias(
+          bloques,
+          nombres,
+          norte,
+          { width: ancho, height: alto },
+          { areas: areasPorPlanta[p.planta] },
+        )
         const sugerencias = analisis.sugerencias
 
         nuevosDatos[p.planta] = {
@@ -178,6 +191,7 @@ export function ColindanciasSection({
         objectUrlsRef.current[p.planta] = url
         setImagenesPorPlanta((prev) => ({ ...prev, [p.planta]: url }))
         nuevasColindancias[p.planta] = { ...(nuevasColindancias[p.planta] || {}), ...sugerencias }
+        nuevasDudas[p.planta] = { ...(nuevasDudas[p.planta] || {}), ...(analisis.detalle.dudas || {}) }
         nuevoLog[claveLog] = {
           planta: p.planta,
           pagina: p.order_index,
@@ -201,6 +215,7 @@ export function ColindanciasSection({
         }
       }
       setDatosPorPlanta((prev) => ({ ...prev, ...nuevosDatos }))
+      setDudasPorPlanta((prev) => ({ ...prev, ...nuevasDudas }))
       setLogPorPagina((prev) => ({ ...prev, ...nuevoLog }))
       setColindancias((prev) => {
         const merged = { ...prev }
@@ -261,6 +276,12 @@ export function ColindanciasSection({
   }
 
   const onCambioValor = (planta, ambiente, direccion, valor) => {
+    // Al corregirlo el arquitecto, deja de estar en duda.
+    setDudasPorPlanta((prev) => {
+      if (!prev[planta]?.[ambiente]?.[direccion]) return prev
+      const resto = { ...prev[planta][ambiente], [direccion]: undefined }
+      return { ...prev, [planta]: { ...prev[planta], [ambiente]: resto } }
+    })
     setColindancias((prev) => ({
       ...prev,
       [planta]: {
@@ -443,6 +464,7 @@ export function ColindanciasSection({
                   ancho={datos?.ancho}
                   alto={datos?.alto}
                   foco={datos?.focos?.[ambiente]}
+                  dudas={dudasPorPlanta[planta]?.[ambiente]}
                 />
               ))}
             </div>
