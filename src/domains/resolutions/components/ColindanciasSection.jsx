@@ -13,6 +13,7 @@ import {
 import { generarColindanciasPdf } from '@/shared/colindancias/colindanciasPdf'
 import { ocrImagenEnMosaicos } from '@/shared/colindancias/ocrMosaicos'
 import { detectNorth } from '@/shared/colindancias/planNorthDetector'
+import { ProgressBar } from '@/domains/resolutions/components/ProgressBar'
 import { Button, Card, SectionHeader } from '@/shared/ui'
 import { downloadBlob } from '@/shared/utils'
 
@@ -25,6 +26,7 @@ export function ColindanciasSection({
   setColindancias,
 }) {
   const [detectando, setDetectando] = useState(false)
+  const [progreso, setProgreso] = useState({ valor: 0, etapa: '' })
   const [generandoPdf, setGenerandoPdf] = useState(false)
   const [datosPorPlanta, setDatosPorPlanta] = useState({}) // { [planta]: { ancho, alto, bloques, angleDeg, confidence, pagina, nombres, autoDetectadas, focos } }
   const [imagenesPorPlanta, setImagenesPorPlanta] = useState({}) // { [planta]: objectURL } -- preview, independiente del OCR
@@ -35,10 +37,10 @@ export function ColindanciasSection({
   const [yaMostradas, setYaMostradas] = useState(() => new Set()) // pisos que ya aparecieron
   const objectUrlsRef = useRef({})
 
-  const plantasConPlano = [...new Set(planPages.map((p) => p.planta))]
+  const plantasConPlano = [...new Set(planPages.map((p) => p.planta).filter(Boolean))]
 
   useEffect(() => {
-    const plantas = [...new Set(planPages.map((p) => p.planta))]
+    const plantas = [...new Set(planPages.map((p) => p.planta).filter(Boolean))]
     plantas.forEach((planta) => {
       if (cargadasRef.current.has(planta)) return
       const pagina = planPages.find((p) => p.planta === planta)
@@ -102,20 +104,37 @@ export function ColindanciasSection({
       toast.error('Primero suba las páginas del plano.')
       return
     }
+    // Una hoja sin planta asignada no se puede ubicar en ninguna sección: se omite para no trabar al resto.
+    const paginasConPlanta = planPages.filter((p) => p.planta)
+    const sinPlanta = planPages.length - paginasConPlanta.length
+    if (paginasConPlanta.length === 0) {
+      toast.error('Ninguna hoja del plano tiene planta asignada: asígnela con el lápiz y vuelva a detectar.')
+      return
+    }
     setDetectando(true)
+    const ordenes = [...new Set(paginasConPlanta.map((p) => p.order_index))]
+    const totalPaginas = ordenes.length
+    setProgreso({ valor: 0, etapa: 'Preparando…' })
     try {
       const nuevosDatos = {}
       const nuevasColindancias = {}
       const nuevoLog = {}
       const leidas = {}
-      for (const p of planPages) {
+      for (const p of paginasConPlanta) {
         if (!leidas[p.order_index]) {
+          const n = ordenes.indexOf(p.order_index)
+          const aviso = (frac) =>
+            setProgreso({
+              valor: (n + frac * 0.9) / totalPaginas,
+              etapa: `Plano ${n + 1} de ${totalPaginas} (${p.planta}): leyendo texto…`,
+            })
+          aviso(0)
           const blobPagina = await resolutionsApi.planPageBlob(resolutionId, p.order_index)
           const bitmap = await createImageBitmap(blobPagina)
           const { width, height } = bitmap
           bitmap.close?.()
           // Planos grandes/alargados: el OCR solo lee bien por mosaicos (ocrMosaicos.js).
-          const bloquesPagina = await ocrImagenEnMosaicos(blobPagina, `plano_${p.order_index}.jpg`)
+          const bloquesPagina = await ocrImagenEnMosaicos(blobPagina, `plano_${p.order_index}.jpg`, aviso)
           leidas[p.order_index] = {
             blob: blobPagina,
             ancho: width,
@@ -123,6 +142,7 @@ export function ColindanciasSection({
             bloques: bloquesPagina,
             norte: await detectNorth(blobPagina, bloquesPagina),
           }
+          setProgreso({ valor: (n + 1) / totalPaginas, etapa: `Plano ${n + 1} de ${totalPaginas}: analizando colindancias…` })
         }
         const { blob, ancho, alto, bloques, norte } = leidas[p.order_index]
         const deTabla = unidadesPorPlanta[p.planta] || []
@@ -180,7 +200,11 @@ export function ColindanciasSection({
         })
         return merged
       })
-      toast.success('Colindancias sugeridas. Revise cada unidad antes de generar el Excel.')
+      toast.success(
+        sinPlanta > 0
+          ? `Colindancias sugeridas. ${sinPlanta} hoja(s) sin planta se omitieron: asígneles la planta y vuelva a detectar.`
+          : 'Colindancias sugeridas. Revise cada unidad antes de generar el Excel.',
+      )
     } catch (e) {
       toast.error(`No se pudo detectar colindancias: ${e.message}`)
     } finally {
@@ -288,6 +312,7 @@ export function ColindanciasSection({
           </Button>
         )}
       </div>
+      {detectando && <ProgressBar className="mt-4" value={progreso.valor} max={1} label={progreso.etapa} />}
 
       {plantasConPlano.every((p) => !pisoVisible(p)) && (
         <p className="mt-5 text-sm text-slate-400">

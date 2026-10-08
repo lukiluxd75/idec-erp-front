@@ -107,14 +107,18 @@ async function recortar(bitmap, { x0, y0, x1, y1 }) {
 
 /**
  * Igual que ocrImage(blob, filename), pero para planos grandes/alargados lee
- * además por mosaicos. Devuelve bloques { points, text, confidence } en
+ * además por mosaicos. `onProgress(fraccion 0..1)` avisa cada lectura. Devuelve bloques { points, text, confidence } en
  * coordenadas de la página.
  */
-export async function ocrImagenEnMosaicos(blob, filename) {
+export async function ocrImagenEnMosaicos(blob, filename, onProgress) {
   const bitmap = await createImageBitmap(blob)
   try {
     const mosaicos = planearMosaicos(bitmap.width, bitmap.height)
+    const total = mosaicos.length + 1
+    let hechos = 0
+    const avisar = () => onProgress?.(++hechos / total)
     const entera = await ocrImage(blob, filename)
+    avisar()
     if (mosaicos.length === 0) return entera
 
     const resultados = new Array(mosaicos.length)
@@ -126,6 +130,7 @@ export async function ocrImagenEnMosaicos(blob, filename) {
         const recorte = await recortar(bitmap, m)
         const bloques = await ocrImage(recorte, `${filename.replace(/\.[^.]+$/, '')}_m${n}.jpg`)
         resultados[n] = bloques.map((b) => ({ ...b, points: b.points.map(([x, y]) => [x + m.x0, y + m.y0]) }))
+        avisar()
       }
     }
     await Promise.all(Array.from({ length: Math.min(CONCURRENCIA, mosaicos.length) }, trabajador))
