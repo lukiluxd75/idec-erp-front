@@ -230,11 +230,18 @@ export default function ResolutionPage() {
   }
 
   const unidadesPorPlanta = {}
+  const areasPorPlanta = {} // { [planta]: { [ambiente]: m2 } } para ubicar en el plano las unidades cuyo nombre no se leyó
   if (paginasTabla) {
     buildRows(paginasTabla).forEach((f) => {
       if (!f.planta) return
       if (!unidadesPorPlanta[f.planta]) unidadesPorPlanta[f.planta] = []
       if (!unidadesPorPlanta[f.planta].includes(f.ambiente)) unidadesPorPlanta[f.planta].push(f.ambiente)
+      const privada = (f.sup_privada_construida || 0) + (f.sup_privada_libre || 0)
+      const m2 = privada > 0 ? privada : (f.sup_comun_construida || 0) + (f.sup_comun_libre || 0)
+      if (m2 > 0) {
+        areasPorPlanta[f.planta] = areasPorPlanta[f.planta] || {}
+        areasPorPlanta[f.planta][f.ambiente] = Math.round(m2 * 100) / 100
+      }
     })
   }
 
@@ -442,6 +449,7 @@ export default function ResolutionPage() {
           resolutionNumber={resolucion.resolution_number}
           planPages={paginasPorPlanta}
           unidadesPorPlanta={unidadesPorPlanta}
+          areasPorPlanta={areasPorPlanta}
           colindancias={colindancias}
           setColindancias={setColindancias}
         />

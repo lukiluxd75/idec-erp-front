@@ -45,7 +45,25 @@ function PlanoUnidad({ url, etiqueta, angleDeg, ancho, alto, foco }) {
   )
 }
 
-export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, imagenUrl, angleDeg, ancho, alto, foco }) {
+const inputBase =
+  'w-full min-w-0 truncate rounded-lg border px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60'
+const inputOk = 'border-slate-200 bg-white'
+const inputDudoso = 'border-state-danger/60 bg-state-danger/5 text-state-danger'
+
+export function ColindanciaCard({
+  ambiente,
+  valores,
+  onCambioValor,
+  datalistId,
+  imagenUrl,
+  angleDeg,
+  ancho,
+  alto,
+  foco,
+  dudas = {},
+}) {
+  const cls = (lado) => `${inputBase} ${dudas[lado] ? inputDudoso : inputOk}`
+  const tip = (lado) => (dudas[lado] ? `Revisar: ${dudas[lado]}` : valores[lado] || '')
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
       <p className="mb-3 truncate text-sm font-semibold text-slate-700" title={ambiente}>
@@ -63,9 +81,9 @@ export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, 
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Norte</span>
           <input
             list={datalistId}
-            className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+            className={cls('norte')}
             value={valores.norte || ''}
-            title={valores.norte || ''}
+            title={tip('norte')}
             onChange={(e) => onCambioValor('norte', e.target.value)}
             placeholder="Sin detectar…"
           />
@@ -75,9 +93,9 @@ export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, 
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Oeste</span>
           <input
             list={datalistId}
-            className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+            className={cls('oeste')}
             value={valores.oeste || ''}
-            title={valores.oeste || ''}
+            title={tip('oeste')}
             onChange={(e) => onCambioValor('oeste', e.target.value)}
             placeholder="Sin detectar…"
           />
@@ -94,9 +112,9 @@ export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, 
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Este</span>
           <input
             list={datalistId}
-            className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+            className={cls('este')}
             value={valores.este || ''}
-            title={valores.este || ''}
+            title={tip('este')}
             onChange={(e) => onCambioValor('este', e.target.value)}
             placeholder="Sin detectar…"
           />
@@ -105,9 +123,9 @@ export function ColindanciaCard({ ambiente, valores, onCambioValor, datalistId, 
         <div style={{ gridArea: 'sud' }} className="flex min-w-0 flex-col items-center">
           <input
             list={datalistId}
-            className="w-full min-w-0 truncate rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs outline-none focus:border-accent-500/60"
+            className={cls('sud')}
             value={valores.sud || ''}
-            title={valores.sud || ''}
+            title={tip('sud')}
             onChange={(e) => onCambioValor('sud', e.target.value)}
             placeholder="Sin detectar…"
           />

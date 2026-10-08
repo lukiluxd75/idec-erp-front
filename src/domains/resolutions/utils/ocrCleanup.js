@@ -31,6 +31,7 @@ function fijar(cell, n) {
   if (!cell || n == null || n < 0) return
   cell.ocrOriginal = cell.ocrOriginal ?? cell.text
   cell.text = n.toFixed(2)
+  cell.dudosa = true // la corrigio el cruce con los totales: que la revise el arquitecto
 }
 
 // Relaciones de cada fila, sobre [c, l, t1, cc, cl, g]:  t1 = c + l  y  g = t1 + cc + cl.
@@ -58,10 +59,13 @@ function conciliarFila(cells, idx) {
   if (forzadas.length === 0 && cuadra(base)) return
 
   const candidatos = []
+  const vistos = new Set()
   const evaluar = (conjunto) => {
     const tocadas = new Set([...forzadas, ...conjunto])
     if (tocadas.size > 2) return
-    const lista = [...tocadas]
+    const lista = [...tocadas].sort((a, b) => a - b)
+    if (vistos.has(lista.join())) return // la misma combinacion no es una solucion distinta
+    vistos.add(lista.join())
     let nuevos
     if (lista.length === 1) {
       const [k] = lista
@@ -196,6 +200,7 @@ function corregirSecuencia(rows, ambienteIdx) {
       const cell = row.cells[ambienteIdx]
       cell.ocrOriginal = cell.ocrOriginal ?? cell.text
       cell.text = `${m[1]} ${previo + 1}`
+      cell.dudosa = true
     }
   })
 }
@@ -241,6 +246,7 @@ export function votarEntrePisos(paginas) {
         if (cell.text !== ganador && (confianza(cell) < 0.97 || (votos >= 3 && distancia(cell.text, ganador) === 1))) {
           cell.ocrOriginal = cell.ocrOriginal ?? cell.text
           cell.text = ganador
+          cell.dudosa = true
         }
       })
     }
@@ -273,7 +279,10 @@ export function limpiarPagina(pagina) {
           : i === ambienteIdx
             ? limpiarAmbiente(cell.text)
             : cell.text
-      return nuevo === cell.text ? { ...cell } : { ...cell, text: nuevo, ocrOriginal: cell.text }
+      if (nuevo === cell.text) return { ...cell }
+      // Solo agregar espacios no es dudoso; cambiar letras (nombre mal leido) si.
+      const dudosa = i === ambienteIdx && nuevo.replace(/\s/g, '') !== cell.text.replace(/\s/g, '')
+      return { ...cell, text: nuevo, ocrOriginal: cell.text, ...(dudosa ? { dudosa: true } : {}) }
     })
 
   const rows = pagina.rows.map((row) => {
@@ -285,6 +294,7 @@ export function limpiarPagina(pagina) {
     if (total === 0 && ideal && valor(ideal) > 0) {
       ideal.ocrOriginal = ideal.ocrOriginal ?? ideal.text
       ideal.text = '0.00'
+      ideal.dudosa = true
     }
     return { ...row, cells }
   })

@@ -120,7 +120,7 @@ export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaCha
                       )}
                       {row.cells.map((cell, cellIdx) => {
                         if (columnasOcultas[cellIdx]) return null
-                        const low = cell.text && cell.confidence < ENV.OCR_CONFIDENCE_THRESHOLD
+                        const low = cell.text && (cell.confidence < ENV.OCR_CONFIDENCE_THRESHOLD || cell.dudosa)
                         return (
                           <td key={cellIdx} className="border border-l-0 border-t-0 border-slate-200 px-1.5 py-1">
                             <input
@@ -130,6 +130,7 @@ export function SurfacesTable({ paginas, onRoleChange, onCellChange, onPlantaCha
                                 low && 'border-state-danger/60 bg-state-danger/5 text-state-danger',
                               )}
                               value={cell.text}
+                              title={cell.dudosa && cell.ocrOriginal ? `Corregido automáticamente (el OCR leyó "${cell.ocrOriginal}"): revisar` : undefined}
                               onChange={(e) => onCellChange(pageIdx, row.id, cellIdx, e.target.value)}
                             />
                           </td>
