@@ -8,6 +8,8 @@ export const PLANTAS_RESUMEN = [
   // escriben en Hoja2 (con su subtotal), pero RESUMEN/MODEL SISCAT no la
   // suman hasta que la plantilla oficial la incluya.
   'PLANTA TERRAZA',
+  // Cubierta ("PLANO DE CUBIERTA BLOQUE II"): igual que la terraza, sin fila en RESUMEN.
+  'PLANTA CUBIERTA',
 ]
 
 function normPlanta(s) {
@@ -25,6 +27,7 @@ export function guessPlantaCanonica(rawText) {
   if (s.includes('SOTANO')) return 'PLANTA SOTANO'
   if (s.includes('BAJA') || /^PB\b/.test(s)) return 'PLANTA BAJA'
   if (s.includes('TERRAZA')) return 'PLANTA TERRAZA'
+  if (s.includes('CUBIERTA')) return 'PLANTA CUBIERTA'
   const m = s.match(/(\d+)/)
   if (m) {
     const n = parseInt(m[1], 10)

@@ -13,6 +13,8 @@ import { StatusBadge } from '@/domains/resolutions/components/StatusBadge'
 import { SurfacesTable } from '@/domains/resolutions/components/SurfacesTable'
 import { plantasDePagina } from '@/domains/resolutions/utils/plantasCatalog'
 import { buildRows, downloadBlob, fillSheet2 } from '@/domains/resolutions/utils/sheet2Excel'
+import { ProgressBar } from '@/domains/resolutions/components/ProgressBar'
+import { limpiarPagina, votarEntrePisos } from '@/domains/resolutions/utils/ocrCleanup'
 import { parseSuperficiesPage } from '@/domains/resolutions/utils/surfacesOcrParser'
 import { detectAndDeskewTable } from '@/domains/resolutions/utils/tableLineDetector'
 import { ocrImage } from '@/shared/colindancias/ocrClient'
@@ -49,6 +51,7 @@ export default function ResolutionPage() {
 
   const [paginasTabla, setPaginasTabla] = useState(null)
   const [ocrRunning, setOcrRunning] = useState(false)
+  const [ocrProgress, setOcrProgress] = useState({ hecho: 0, total: 0, etapa: '' })
   const [ocrError, setOcrError] = useState(null)
   const [ocrDiagnostics, setOcrDiagnostics] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -99,10 +102,20 @@ export default function ResolutionPage() {
     try {
       const out = []
       const diag = []
-      for (const img of paginasImg) {
+      // Cada página cuenta tres pasos (enderezar, leer, interpretar) para que la barra avance fluida.
+      const total = paginasImg.length * 3
+      let hecho = 0
+      const avanzar = (etapa) => setOcrProgress({ hecho: ++hecho, total, etapa })
+      setOcrProgress({ hecho: 0, total, etapa: 'Preparando…' })
+      for (const [n, img] of paginasImg.entries()) {
+        const pag = `Tabla ${n + 1} de ${paginasImg.length}`
         const { blob: blobCorregido, lineYs, corregido } = await detectAndDeskewTable(img.blob)
+        avanzar(`${pag}: leyendo texto…`)
         const bloques = await ocrImage(blobCorregido, `pagina_${img.orden}.jpg`)
-        const parsed = parseSuperficiesPage(bloques, { lineYs })
+        avanzar(`${pag}: interpretando columnas…`)
+        const parsedCrudo = parseSuperficiesPage(bloques, { lineYs })
+        const parsed = limpiarPagina(parsedCrudo)
+        avanzar(`${pag}: lista`)
         // For diagnostics: "Descargar diagnóstico OCR" (below) downloads this as a file if column detection goes wrong.
          
         console.log(`[OCR] página ${img.orden} — deskew`, { corregido, lineYs })
@@ -111,8 +124,10 @@ export default function ResolutionPage() {
          
         console.log(`[OCR] página ${img.orden} — parseado`, parsed)
         out.push({ pagina: img.orden, ...parsed })
-        diag.push({ pagina: img.orden, corregido, lineYs, bloques, parseado: parsed })
+        diag.push({ pagina: img.orden, corregido, lineYs, bloques, parseadoCrudo: parsedCrudo, parseado: parsed })
       }
+      // Los pisos tipo repiten unidades: se alinean con la mayoría las celdas dudosas.
+      votarEntrePisos(out)
       setPaginasTabla(out)
       setOcrDiagnostics(diag)
       toast.success('OCR terminado. Revise las columnas y las celdas en rojo.')
@@ -367,6 +382,9 @@ export default function ResolutionPage() {
               </Button>
             )}
           </div>
+          {ocrRunning && (
+            <ProgressBar className="mt-4" value={ocrProgress.hecho} max={ocrProgress.total} label={ocrProgress.etapa} />
+          )}
           {ocrError && (
             <Alert type="error" className="mt-3">
               {ocrError}
